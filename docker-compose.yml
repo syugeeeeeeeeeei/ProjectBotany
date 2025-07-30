@@ -1,0 +1,12 @@
+# docker-compose.yml (Base configuration)
+services:
+  vite:
+    build:
+      context: ./compose/vite
+      dockerfile: Dockerfile
+    networks:
+      - app_network
+
+networks:
+  app_network:
+    driver: bridge
