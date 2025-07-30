@@ -4,8 +4,9 @@ FROM node:22-alpine
 WORKDIR /app
 
 # Copy package.json and install dependencies
-COPY package.json ./
-RUN yarn install --network-timeout 100000 && yarn cache clean
+COPY package.json .yarnrc.yml ./
+RUN corepack enable && yarn set version stable
+RUN yarn install && yarn cache clean
 
 # Copy application files
 COPY . .

@@ -2,7 +2,7 @@
 services:
   vite:
     build:
-      context: ./compose/vite
+      context: ./vite
       dockerfile: Dockerfile
     networks:
       - app_network
