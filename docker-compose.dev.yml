@@ -7,4 +7,5 @@ services:
     volumes:
       - ./vite:/app:delegated
       - /app/node_modules
-    command: sh -c "yarn dev"
+    tty: true
+    stdin_open: true
