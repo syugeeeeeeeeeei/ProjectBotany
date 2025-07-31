@@ -1,4 +1,4 @@
-import { animated, useSpring } from '@react-spring/three';
+import { animated, to, useSpring } from '@react-spring/three';
 import { useGesture } from '@use-gesture/react';
 import React from 'react';
 import { useGameStore } from '../store/gameStore';
@@ -15,53 +15,47 @@ const PlayerHand3D: React.FC<{ cards: CardDefinition[] }> = ({ cards }) => {
 	);
 };
 
-// 各プレイヤーの手札コンテナと回転ロジック
+// 各プレイヤーの手札コンテナと横スライドロジック
 const Hand: React.FC<{ player: 'native_side' | 'alien_side'; cards: CardDefinition[] }> = ({ player, cards }) => {
 	const { isHandVisible } = useGameStore();
 	const isTopPlayer = player === 'native_side';
 
-	const [{ rotation }, api] = useSpring(() => ({ rotation: 0, config: { tension: 300, friction: 30 } }));
+	const [{ xOffset }, api] = useSpring(() => ({ xOffset: 0, config: { tension: 300, friction: 30 } }));
 
-	// ✨ useGestureのロジックを、より安全な方法に刷新
 	useGesture({
-		onDrag: ({ event, movement: [mx], first, memo = rotation.get() }) => {
-			// PointerEventはマウスとタッチを統合した新しいAPI
+		onDrag: ({ event, movement: [mx], first, memo }) => {
 			if (!(event instanceof PointerEvent)) return memo;
 
 			const y = event.clientY;
 			const isTopHalf = y < window.innerHeight / 2;
 
-			// この手札が担当する画面半分でのドラッグでなければ、値を更新せずにmemoを返す
-			if (isTopPlayer !== isTopHalf) {
-				// ドラッグが領域外から始まっても、最初の位置を記憶させる
-				if (first) return rotation.get();
-				return memo;
+			if (isTopPlayer !== isTopHalf) return memo;
+
+			if (first) {
+				memo = xOffset.get();
 			}
-
-			// ドラッグ開始時の角度を記憶
-			const newMemo = first ? rotation.get() : memo;
-
-			// 記憶した角度に現在の移動量を加えて更新
-			api.start({ rotation: newMemo + mx * 0.5 });
-			return newMemo;
+			api.start({ xOffset: memo + mx });
+			return memo;
 		},
 	}, {
 		target: window,
 		eventOptions: { passive: false }
 	});
 
-	const { y } = useSpring({
-		y: isHandVisible ? 1 : -2,
+	// ✨ --- Y座標を固定し、Z座標でHide/Showを実装 ---
+	const { z } = useSpring({
+		z: isHandVisible ? 6.5 : 5.5, // Show: 6.5, Hide: 5.5
 		config: { tension: 200, friction: 20 },
 	});
 
-	const positionZ = isTopPlayer ? -6.5 : 6.5;
+	const positionY = 1.2; // Y座標は常にこの値に固定
 
 	return (
-		<animated.group position={[0, y.get(), positionZ]}>
-			<animated.group rotation-y={rotation.to(r => r * Math.PI / 180)}>
+		// ✨ `to`インターポレーターを使ってpositionを正しく設定
+		<animated.group position={to([z], (zVal) => [0, positionY, isTopPlayer ? -zVal : zVal])}>
+			<animated.group position-x={xOffset.to(x => x / 100)}>
 				{cards.map((card, index) => (
-					<CardInFan
+					<CardInLine
 						key={`${player}-${card.id}`}
 						card={card}
 						index={index}
@@ -75,21 +69,24 @@ const Hand: React.FC<{ player: 'native_side' | 'alien_side'; cards: CardDefiniti
 	);
 };
 
-// カードを扇状に配置するためのコンポーネント
-const CardInFan: React.FC<{ card: CardDefinition, index: number, total: number, player: 'native_side' | 'alien_side', isTopPlayer: boolean }> =
+// カードを横一列に配置するためのコンポーネント
+const CardInLine: React.FC<{ card: CardDefinition, index: number, total: number, player: 'native_side' | 'alien_side', isTopPlayer: boolean }> =
 	({ card, index, total, player, isTopPlayer }) => {
-		const fanAngle = 60;
-		const anglePerCard = total > 1 ? fanAngle / (total - 1) : 0;
-		const cardAngle = (index - (total - 1) / 2) * anglePerCard;
-		const radius = 4.5;
-		const tiltAngle = Math.PI / 4;
+
+		const cardWidth = 1.7;
+		const spacing = 0.2;
+
+		const totalWidth = (total * cardWidth) + ((total - 1) * spacing);
+		const startX = -totalWidth / 2;
+
+		const xPos = startX + index * (cardWidth + spacing) + cardWidth / 2;
+
+		const tiltAngle = -Math.PI / 2;
 
 		return (
-			<group rotation={[0, cardAngle * Math.PI / 180, 0]}>
-				<group position={[0, 0, radius]}>
-					<group rotation={[isTopPlayer ? tiltAngle : -tiltAngle, isTopPlayer ? Math.PI : 0, 0]}>
-						<Card3D card={card} position={[0, 0, 0]} player={player} />
-					</group>
+			<group position={[xPos, 0, 0]}>
+				<group rotation={[tiltAngle, isTopPlayer ? Math.PI : 0, 0]}>
+					<Card3D card={card} position={[0, 0, 0]} player={player} />
 				</group>
 			</group>
 		);
