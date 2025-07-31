@@ -5,16 +5,23 @@ import React, { useEffect, useMemo, useRef } from 'react';
 import type { CardDefinition } from '../types/data';
 import Card3D from './Card3D';
 
+// App.tsxから渡されるカードの型を定義
 type CardWithInstanceId = CardDefinition & { instanceId: string };
 
-const CARD_WIDTH = 1.7;
-const CARD_SPACING = 0.2;
-
-const Hand3D: React.FC<{
+// --- Propsの型定義 ---
+// このコンポーネントが親(App.tsx)から受け取るデータの型を定義します
+interface Hand3DProps {
 	player: 'native_side' | 'alien_side';
 	cards: CardWithInstanceId[];
 	isVisible: boolean;
-}> = ({ player, cards, isVisible }) => {
+};
+
+// --- 定数定義 ---
+const CARD_WIDTH = 1.7;
+const CARD_SPACING = 0.2;
+
+// 【修正点】コンポーネント定義をReact.FC<Hand3DProps>に変更し、propsを正しく受け取る
+const Hand3D: React.FC<Hand3DProps> = ({ player, cards, isVisible }) => {
 	const isTopPlayer = player === 'native_side';
 
 	// 最終的なX座標を永続的に保存するRef
@@ -29,38 +36,37 @@ const Hand3D: React.FC<{
 
 	const movementBounds = useMemo(() => {
 		const totalHandWidth = (cards.length * CARD_WIDTH) + (Math.max(0, cards.length - 1) * CARD_SPACING);
-		const quantifiableWidth = totalHandWidth / 2 - CARD_WIDTH / 2;
-		if (quantifiableWidth <= 0) return { min: 0, max: 0 };
-		const max = quantifiableWidth * 100;
+		// 表示領域(ビューポート)の幅を適当に定義します（例: 8）
+		const viewWidth = 8;
+		if (totalHandWidth <= viewWidth) {
+			return { min: 0, max: 0 };
+		}
+		const max = (totalHandWidth - viewWidth) / 2;
 		const min = -max;
+
 		return { min, max };
 	}, [cards.length]);
 
-	// memoに依存しない、最も堅牢な最終ドラッグロジック
 	const bind = useGesture({
 		onDrag: ({ down, movement: [mx], first }) => {
-			// ドラッグの最初のフレームで、現在の最終位置を開始点として記録
 			if (first) {
 				dragStartOffsetRef.current = xOffsetRef.current;
 			}
-
-			// 常にRefから読み取った開始点を基準に計算
 			const newX = dragStartOffsetRef.current + mx;
+			// 3D空間の単位に合わせるため、100で割るなどの調整は不要
 			const clampedX = Math.max(movementBounds.min, Math.min(newX, movementBounds.max));
-
 			api.start({ xOffset: clampedX, immediate: down });
 
-			// ドラッグ終了時に最終位置を永続的なRefに保存
 			if (!down) {
 				xOffsetRef.current = clampedX;
 			}
 		},
 	});
 
+	// isVisibleの状態が変わった時に、アニメーションAPIを現在のRef値で更新
 	useEffect(() => {
 		api.start({ xOffset: xOffsetRef.current });
 	}, [isVisible, api]);
-
 
 	const { z } = useSpring({
 		z: isVisible ? 4 : 5.5,
@@ -78,7 +84,8 @@ const Hand3D: React.FC<{
 				rotation={[-Math.PI / 2, 0, 0]}
 				position={[0, 0, 0.1]}
 			/>
-			<animated.group position-x={xOffset.to(x => x / 100)}>
+			{/* 【修正点】xOffsetを直接position-xに適用 */}
+			<animated.group position-x={xOffset}>
 				{cards.map((card, index) => (
 					<CardInLine
 						key={card.instanceId}
@@ -93,6 +100,8 @@ const Hand3D: React.FC<{
 		</animated.group>
 	);
 };
+
+// --- 以下は内部コンポーネントのため変更なし ---
 
 const CardInLine: React.FC<{
 	card: CardWithInstanceId;
@@ -110,6 +119,7 @@ const CardInLine: React.FC<{
 	return (
 		<group position={[xPos, 0, 0]}>
 			<group rotation={[tiltAngle, yRotation, 0]}>
+				{/* 【修正点】Card3Dに渡すpropsを `card` に統一 */}
 				<Card3D card={card} position={[0, 0, 0]} player={player} />
 			</group>
 		</group>

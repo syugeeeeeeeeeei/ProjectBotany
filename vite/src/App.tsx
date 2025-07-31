@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react';
 import styled from 'styled-components';
 import GameBoard3D from './components/GameBoard3D';
 import GameInfo from './components/GameInfo';
-import Hand3D from './components/Hand3D';
+import Hand3D from './components/Hand3D'; // デフォルトインポートに戻す
 import SceneController from './components/SceneController';
 import { cardMasterData, useGameStore } from './store/gameStore';
 
@@ -73,21 +73,20 @@ const GameOverScreen = styled.div`
 `;
 
 function App() {
+  // 【修正点】AppコンポーネントでZustandストアの状態をまとめて取得
   const store = useGameStore();
 
   const [multiplier, setMultiplier] = useState(1);
 
-  // useMemoを使って、倍率が変更されたときだけダミー手札を再生成
   const { alienCards, nativeCards } = useMemo(() => {
     const generateDummyCards = (type: 'alien' | 'native') => {
       const baseCards = cardMasterData.filter(
         c => type === 'alien' ? c.cardType === 'alien' : c.cardType !== 'alien'
       );
-      // カードを複製する際に、一意なinstanceIdを付与する
       return Array.from({ length: multiplier }).flatMap((_, i) =>
         baseCards.map(card => ({
           ...card,
-          instanceId: `${card.id}-instance-${i}` // 元のIDとインデックスを組み合わせてユニークIDを生成
+          instanceId: `${card.id}-instance-${i}`
         }))
       );
     };
@@ -96,7 +95,6 @@ function App() {
       nativeCards: generateDummyCards('native'),
     };
   }, [multiplier]);
-
 
   const [isAlienHandVisible, setAlienHandVisible] = useState(true);
   const [isNativeHandVisible, setNativeHandVisible] = useState(true);
@@ -122,6 +120,7 @@ function App() {
           <directionalLight position={[10, 10, 5]} intensity={1} />
           <GameBoard3D fieldState={store.gameField} />
 
+          {/* 【修正点】Hand3Dに渡すPropsを型に合わせて修正 */}
           <Hand3D
             player="alien_side"
             cards={alienCards}
@@ -155,7 +154,6 @@ function App() {
         </button>
         <button onClick={store.progressTurn} disabled={store.isGameOver || store.activePlayerId !== 'native_side'}>End Turn</button>
       </SidePanel>
-
     </MainContainer>
   );
 }
