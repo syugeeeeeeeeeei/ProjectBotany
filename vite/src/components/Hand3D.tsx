@@ -5,16 +5,11 @@ import React, { useEffect, useMemo, useRef } from 'react';
 import type { CardDefinition } from '../types/data';
 import Card3D from './Card3D';
 
-// CardDefinitionにinstanceIdプロパティを追加
 type CardWithInstanceId = CardDefinition & { instanceId: string };
 
-// 手札のレイアウトに関する定数
 const CARD_WIDTH = 1.7;
 const CARD_SPACING = 0.2;
 
-/**
- * 1つの手札の描画と操作を管理するコンポーネント
- */
 const Hand3D: React.FC<{
 	player: 'native_side' | 'alien_side';
 	cards: CardWithInstanceId[];
@@ -22,11 +17,14 @@ const Hand3D: React.FC<{
 }> = ({ player, cards, isVisible }) => {
 	const isTopPlayer = player === 'native_side';
 
+	// 最終的なX座標を永続的に保存するRef
 	const xOffsetRef = useRef(0);
+	// ドラッグ開始時のX座標を一時的に保存するRef
+	const dragStartOffsetRef = useRef(0);
 
 	const [{ xOffset }, api] = useSpring(() => ({
 		xOffset: 0,
-		config: { mass: 1, tension: 500, friction: 40 },
+		config: { mass: 1, tension: 500, friction: 50 },
 	}));
 
 	const movementBounds = useMemo(() => {
@@ -38,25 +36,27 @@ const Hand3D: React.FC<{
 		return { min, max };
 	}, [cards.length]);
 
-	// ドラッグ操作のロジックを修正
+	// memoに依存しない、最も堅牢な最終ドラッグロジック
 	const bind = useGesture({
-		// ドラッグ開始時に、現在の位置をmemoに記憶させる
-		onDragStart: ({ memo }) => {
-			memo = xOffsetRef.current;
-			return memo;
-		},
-		// ドラッグ中は、記憶したmemoを基準に計算する
-		onDrag: ({ down, movement: [mx], memo }) => {
-			let newX = memo + mx;
-			newX = Math.max(movementBounds.min, Math.min(newX, movementBounds.max));
-			api.start({ xOffset: newX });
+		onDrag: ({ down, movement: [mx], first }) => {
+			// ドラッグの最初のフレームで、現在の最終位置を開始点として記録
+			if (first) {
+				dragStartOffsetRef.current = xOffsetRef.current;
+			}
+
+			// 常にRefから読み取った開始点を基準に計算
+			const newX = dragStartOffsetRef.current + mx;
+			const clampedX = Math.max(movementBounds.min, Math.min(newX, movementBounds.max));
+
+			api.start({ xOffset: clampedX, immediate: down });
+
+			// ドラッグ終了時に最終位置を永続的なRefに保存
 			if (!down) {
-				xOffsetRef.current = newX;
+				xOffsetRef.current = clampedX;
 			}
 		},
 	});
 
-	// isVisibleの状態が変更されたときに、X座標を正しく制御する
 	useEffect(() => {
 		api.start({ xOffset: xOffsetRef.current });
 	}, [isVisible, api]);
@@ -94,9 +94,6 @@ const Hand3D: React.FC<{
 	);
 };
 
-/**
- * カードを横一列に並べるコンポーネント
- */
 const CardInLine: React.FC<{
 	card: CardWithInstanceId;
 	index: number;
