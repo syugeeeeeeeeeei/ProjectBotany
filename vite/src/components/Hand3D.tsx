@@ -23,8 +23,8 @@ interface Hand3DProps {
 };
 
 const CARDS_PER_PAGE = 3;
-const CARD_WIDTH = 2.2;
-const CARD_SPACING = 0.2;
+const CARD_WIDTH = 1.8;
+const CARD_SPACING =0.9;
 const PAGE_WIDTH = (CARDS_PER_PAGE * CARD_WIDTH) + ((CARDS_PER_PAGE - 1) * CARD_SPACING);
 
 const Hand3D: React.FC<Hand3DProps> = ({
@@ -169,7 +169,7 @@ const CardInLine: React.FC<{
 	return (
 		<group position={[xPos, 0, 0]}>
 			<group rotation={[tiltAngle, yRotation, 0]} scale={1.3}>
-				<Card3D card={card} position={[0, 0, 0]} player={player} />
+				<Card3D card={card} position={[0, 0, 0]} player={player} width={CARD_WIDTH} />
 			</group>
 		</group>
 	);
