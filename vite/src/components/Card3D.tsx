@@ -15,7 +15,7 @@ interface Card3DProps {
 	card: CardDefinition & { instanceId: string };
 	position: [number, number, number];
 	player: PlayerId;
-	width : number;
+	width: number;
 }
 
 
@@ -119,27 +119,27 @@ const Card3D: React.FC<Card3DProps> = ({ card, position, player, width }) => {
 
 
 		return shape;
-	}, []);
+	}, [CARD_WIDTH]);
 
 
 	return (
 		<animated.group
 			// ★ 修正: rotationプロパティとジェスチャーのbindを適用し、onClickを削除
 			position={springProps.position as any}
-			scale={springProps.scale}
+			scale={springProps.scale as any}
 			rotation={springProps.rotation as any}
 			onPointerEnter={(e) => { e.stopPropagation(); if (isPlayable) setIsHovered(true); }}
 			onPointerLeave={(e) => { e.stopPropagation(); setIsHovered(false); }}
 			{...bind()}
 		>
 			{/* カードの縁（選択時に光る） */}
-			<RoundedBox args={[CARD_WIDTH + 0.1, CARD_HEIGHT + 0.1, CARD_DEPTH - 0.02]} radius={CARD_RADIUS}>
+			<RoundedBox castShadow args={[CARD_WIDTH + 0.1, CARD_HEIGHT + 0.1, CARD_DEPTH - 0.02]} radius={CARD_RADIUS}>
 				<meshStandardMaterial color={isSelected ? '#FFD700' : '#B8860B'} emissive={isSelected ? '#FFD700' : 'black'} emissiveIntensity={isSelected ? 0.5 : 0} />
 			</RoundedBox>
 
 
 			{/* カードの土台 */}
-			<RoundedBox args={[CARD_WIDTH, CARD_HEIGHT, CARD_DEPTH]} radius={CARD_RADIUS}>
+			<RoundedBox castShadow args={[CARD_WIDTH, CARD_HEIGHT, CARD_DEPTH]} radius={CARD_RADIUS}>
 				<meshStandardMaterial color="#F5EFE6" />
 			</RoundedBox>
 
