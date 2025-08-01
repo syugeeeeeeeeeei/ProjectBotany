@@ -3,14 +3,14 @@ import { Plane } from '@react-three/drei';
 import { useGesture } from '@use-gesture/react';
 import React, { useMemo } from 'react';
 import { useGameStore } from '../store/gameStore';
-import type { CardDefinition } from '../types/data';
+import type { CardDefinition, PlayerId } from '../types/data';
 import Card3D from './Card3D';
 import type { DebugSettings } from './DebugDialog';
 
 type CardWithInstanceId = CardDefinition & { instanceId: string };
 
 interface Hand3DProps {
-	player: 'native_side' | 'alien_side';
+	player: PlayerId;
 	cards: CardWithInstanceId[];
 	isVisible: boolean;
 	onVisibilityChange: (visible: boolean) => void;
@@ -47,30 +47,34 @@ const Hand3D: React.FC<Hand3DProps> = ({
 	const bind = useGesture(
 		{
 			onDrag: ({ last, movement: [mx, my], velocity: [vx, vy], direction: [dx, dy], tap }) => {
-				if (tap || !last) return; // タップやドラッグ中は無視し、ドラッグ終了時のみ判定
+				if (tap || !last) return;
 
 				const absMx = Math.abs(mx);
 				const absMy = Math.abs(my);
 
-				if (absMx > absMy) { // 横方向のフリック
+				if (absMx > absMy) {
 					if (absMx > PAGE_WIDTH * flickDistanceRatio && Math.abs(vx) > flickVelocityThreshold) {
 						const newPage = Math.max(0, Math.min(maxPage, currentPage - Math.sign(dx)));
 						if (newPage !== currentPage) onPageChange(newPage);
 					}
-				} else { // 縦方向のスワイプ
+				} else {
 					if (absMy > 50 && Math.abs(vy) > 0.2) {
 						const swipeUp = dy < 0;
-						// 修正：下にスワイプで非表示、上にスワイプで表示
-						if (swipeUp) { // 上スワイプ
-							if (!isVisible) onVisibilityChange(true); // Hide状態ならShowへ
-						} else { // 下スワイプ
-							if (isVisible) onVisibilityChange(false); // Show状態ならHideへ
+
+						// ★修正点: プレイヤーの位置に応じてスワイプ操作を反転
+						if (isTopPlayer) {
+							// 相手側（上プレイヤー）: 上スワイプでHide, 下スワイプでShow
+							if (swipeUp && isVisible) onVisibilityChange(false);
+							if (!swipeUp && !isVisible) onVisibilityChange(true);
+						} else {
+							// 自分側（下プレイヤー）: 上スワイプでShow, 下スワイプでHide
+							if (swipeUp && !isVisible) onVisibilityChange(true);
+							if (!swipeUp && isVisible) onVisibilityChange(false);
 						}
 					}
 				}
 			},
 			onClick: ({ event }) => {
-				// カード以外の背景部分をタップしたら選択解除
 				event.stopPropagation();
 				if (useGameStore.getState().selectedCardId) {
 					selectCard(null);
@@ -140,7 +144,7 @@ const CardInLine: React.FC<{
 	card: CardWithInstanceId;
 	index: number;
 	total: number;
-	player: 'native_side' | 'alien_side';
+	player: PlayerId;
 	isTopPlayer: boolean;
 }> = ({ card, index, total, player, isTopPlayer }) => {
 	const totalWidth = (total * CARD_WIDTH) + (Math.max(0, total - 1) * CARD_SPACING);

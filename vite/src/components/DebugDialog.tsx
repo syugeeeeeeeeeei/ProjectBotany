@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import styled from 'styled-components';
 
-// --- Styled Components ---
+// --- Styled Components --- (変更なし)
 const DialogContainer = styled.div<{ $isOpen: boolean }>`
   position: fixed; bottom: 75px; right: 20px; background-color: #1c1c1ee6;
   color: white; border: 1px solid #444; border-radius: 8px;
@@ -33,7 +33,7 @@ const PlayerControlsContainer = styled.div`
   display: flex; flex-direction: column; gap: 10px;
 `;
 
-// --- Component Definitions ---
+// --- Component Definitions --- (変更なし)
 
 type PlayerControlProps = {
 	name: string; currentPage: number; maxPage: number;
@@ -64,7 +64,6 @@ interface DebugDialogProps {
 	cardMultiplier: number;
 	onSetCardMultiplier: (updater: (prev: number) => number) => void;
 	players: PlayerControlProps[];
-	// 手札表示制御用のPropsを追加
 	isAlienHandVisible: boolean;
 	onToggleAlienHand: () => void;
 	isNativeHandVisible: boolean;
@@ -77,13 +76,15 @@ export const DebugDialog: React.FC<DebugDialogProps> = ({
 	cardMultiplier,
 	onSetCardMultiplier,
 	players,
-	// Propsを受け取る
 	isAlienHandVisible,
 	onToggleAlienHand,
 	isNativeHandVisible,
 	onToggleNativeHand,
 }) => {
 	const [isOpen, setIsOpen] = useState(true);
+	// ★追加: 全画面表示の状態を管理
+	const [isFullscreen, setIsFullscreen] = useState(!!document.fullscreenElement);
+
 	const {
 		isGestureAreaVisible,
 		flickDistanceRatio,
@@ -91,12 +92,43 @@ export const DebugDialog: React.FC<DebugDialogProps> = ({
 		swipeAreaHeight
 	} = debugSettings;
 
+	// ★追加: 全画面表示を切り替える関数
+	const handleToggleFullscreen = () => {
+		if (!document.fullscreenElement) {
+			document.documentElement.requestFullscreen().catch(err => {
+				alert(`全画面表示にできませんでした: ${err.message}`);
+			});
+		} else {
+			document.exitFullscreen();
+		}
+	};
+
+	// ★追加: 全画面状態の変更（例: Escキー押下）を監視してstateに反映
+	useEffect(() => {
+		const onFullscreenChange = () => {
+			setIsFullscreen(!!document.fullscreenElement);
+		};
+		document.addEventListener('fullscreenchange', onFullscreenChange);
+		return () => document.removeEventListener('fullscreenchange', onFullscreenChange);
+	}, []);
+
 	return (
 		<>
 			<ToggleButton onClick={() => setIsOpen(o => !o)}>
 				{isOpen ? 'Close Debug' : 'Open Debug'}
 			</ToggleButton>
 			<DialogContainer $isOpen={isOpen}>
+				{/* ★追加: 全画面表示ボタンを含むセクション */}
+				<Section>
+					<SectionTitle>一般設定</SectionTitle>
+					<ControlRow>
+						<label>全画面表示</label>
+						<button onClick={handleToggleFullscreen}>
+							{isFullscreen ? '終了する' : '開始する'}
+						</button>
+					</ControlRow>
+				</Section>
+
 				<Section>
 					<SectionTitle>表示設定</SectionTitle>
 					<ControlRow>
@@ -107,7 +139,6 @@ export const DebugDialog: React.FC<DebugDialogProps> = ({
 							onChange={() => onSetDebugSettings(s => ({ ...s, isGestureAreaVisible: !s.isGestureAreaVisible }))}
 						/>
 					</ControlRow>
-					{/* 手札表示切り替えUIを追加 */}
 					<ControlRow>
 						<label htmlFor="toggle-alien-hand">エイリアン手札表示</label>
 						<input
