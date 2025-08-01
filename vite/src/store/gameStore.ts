@@ -15,6 +15,11 @@ const cardMasterData: CardDefinition[] = [
 interface GameStateWithSelection extends GameState {
 	selectedCardId: string | null;
 	selectedAlienInstanceId: string | null;
+	// ✨ 手札の表示状態を追加
+	isAlienHandVisible: boolean;
+	isNativeHandVisible: boolean;
+	// ✨ カード選択前の手札表示状態を記憶
+	preSelectionHandVisibility: { alien: boolean; native: boolean } | null;
 }
 
 interface GameActions {
@@ -23,6 +28,9 @@ interface GameActions {
 	playCard: (targetCell: CellState) => void;
 	selectAlienInstance: (instanceId: string | null) => void;
 	moveAlien: (targetCell: CellState) => void;
+	// ✨ 手札表示を切り替えるアクションを追加
+	toggleHandVisibility: (player: 'alien_side' | 'native_side') => void;
+	setHandVisibility: (player: 'alien_side' | 'native_side', isVisible: boolean) => void;
 }
 
 const createInitialGameState = (): GameStateWithSelection => ({
@@ -40,6 +48,10 @@ const createInitialGameState = (): GameStateWithSelection => ({
 	activeAlienInstances: {},
 	selectedCardId: null,
 	selectedAlienInstanceId: null,
+	// ✨ 初期状態を追加
+	isAlienHandVisible: true,
+	isNativeHandVisible: true,
+	preSelectionHandVisibility: null,
 });
 
 const createInitialPlayerState = (id: 'native_side' | 'alien_side', name: string): PlayerState => ({
@@ -157,10 +169,36 @@ export const useGameStore = create<GameStateWithSelection & GameActions>((set, g
 		};
 	}),
 
-	selectCard: (cardId) => set({
-		selectedCardId: cardId,
-		selectedAlienInstanceId: null
-	}),
+	selectCard: (cardId) => {
+		const state = get();
+		const player = state.activePlayerId;
+		const isDeselecting = state.selectedCardId !== null && (cardId === null || cardId === state.selectedCardId);
+
+		if (isDeselecting) {
+			// 選択解除
+			const visibility = state.preSelectionHandVisibility;
+			set({
+				selectedCardId: null,
+				selectedAlienInstanceId: null,
+				isAlienHandVisible: visibility?.alien ?? state.isAlienHandVisible,
+				isNativeHandVisible: visibility?.native ?? state.isNativeHandVisible,
+				preSelectionHandVisibility: null,
+			});
+		} else if (cardId) {
+			// 新規選択
+			set({
+				selectedCardId: cardId,
+				selectedAlienInstanceId: null,
+				preSelectionHandVisibility: {
+					alien: state.isAlienHandVisible,
+					native: state.isNativeHandVisible,
+				},
+				isAlienHandVisible: player === 'alien_side' ? false : state.isAlienHandVisible,
+				isNativeHandVisible: player === 'native_side' ? false : state.isNativeHandVisible,
+			});
+		}
+	},
+
 
 	playCard: (targetCell) => {
 		const state = get();
@@ -228,12 +266,14 @@ export const useGameStore = create<GameStateWithSelection & GameActions>((set, g
 					cellToUpdate.ownerId = 'native_side';
 				} else {
 					console.log('このマスは回復できません。');
-					return;
+					return; // ここで処理を中断
 				}
 				break;
 			}
 		}
 
+		// ✨ カード使用後に選択を解除し、手札の表示状態を復元
+		const visibility = state.preSelectionHandVisibility;
 		set({
 			playerStates: {
 				...playerStates,
@@ -244,7 +284,10 @@ export const useGameStore = create<GameStateWithSelection & GameActions>((set, g
 			},
 			gameField: { ...gameField, cells: newCells },
 			activeAlienInstances: newActiveAlienInstances,
-			selectedCardId: null
+			selectedCardId: null,
+			preSelectionHandVisibility: null,
+			isAlienHandVisible: visibility?.alien ?? state.isAlienHandVisible,
+			isNativeHandVisible: visibility?.native ?? state.isNativeHandVisible,
 		});
 	},
 
@@ -301,6 +344,8 @@ export const useGameStore = create<GameStateWithSelection & GameActions>((set, g
 		const updatedAlien = { ...alien, currentX: targetCell.x, currentY: targetCell.y };
 		newActiveAlienInstances[alien.instanceId] = updatedAlien;
 
+		// ✨ 移動後にも選択状態をリセットし、手札表示状態を復元
+		const visibility = state.preSelectionHandVisibility;
 		set({
 			playerStates: {
 				...playerStates,
@@ -311,9 +356,28 @@ export const useGameStore = create<GameStateWithSelection & GameActions>((set, g
 			},
 			gameField: { ...gameField, cells: newCells },
 			activeAlienInstances: newActiveAlienInstances,
-			selectedAlienInstanceId: null
+			selectedAlienInstanceId: null,
+			preSelectionHandVisibility: null,
+			isAlienHandVisible: visibility?.alien ?? state.isAlienHandVisible,
+			isNativeHandVisible: visibility?.native ?? state.isNativeHandVisible,
 		});
 	},
+
+	// ✨ アクションの実装
+	toggleHandVisibility: (player) => set((state) => {
+		if (player === 'alien_side') {
+			return { isAlienHandVisible: !state.isAlienHandVisible };
+		}
+		return { isNativeHandVisible: !state.isNativeHandVisible };
+	}),
+
+	setHandVisibility: (player, isVisible) => set(() => {
+		if (player === 'alien_side') {
+			return { isAlienHandVisible: isVisible };
+		}
+		return { isNativeHandVisible: isVisible };
+	}),
+
 }));
 
 export { cardMasterData };

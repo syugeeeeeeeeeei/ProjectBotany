@@ -2,9 +2,10 @@ import { OrbitControls } from '@react-three/drei';
 import { Canvas } from '@react-three/fiber';
 import { useMemo, useState } from 'react';
 import styled from 'styled-components';
+import { DebugDialog, type DebugSettings } from './components/DebugDialog'; // ✨ 型をインポート
 import GameBoard3D from './components/GameBoard3D';
 import GameInfo from './components/GameInfo';
-import Hand3D from './components/Hand3D'; // デフォルトインポートに戻す
+import Hand3D from './components/Hand3D';
 import SceneController from './components/SceneController';
 import { cardMasterData, useGameStore } from './store/gameStore';
 
@@ -49,22 +50,6 @@ const SidePanel = styled.div`
   }
 `;
 
-const TestControls = styled.div`
-  position: absolute;
-  top: 20px;
-  left: 50%;
-  transform: translateX(-50%);
-  background: #ffffff20;
-  padding: 10px;
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  gap: 15px;
-  color: white;
-  z-index: 20;
-  pointer-events: auto;
-`;
-
 const GameOverScreen = styled.div`
   position: absolute; top: 0; left: 0; width: 100%; height: 100%;
   background-color: rgba(0, 0, 0, 0.8); color: white;
@@ -73,10 +58,22 @@ const GameOverScreen = styled.div`
 `;
 
 function App() {
-  // 【修正点】AppコンポーネントでZustandストアの状態をまとめて取得
   const store = useGameStore();
 
   const [multiplier, setMultiplier] = useState(1);
+  const [alienHandPage, setAlienHandPage] = useState(0);
+  const [nativeHandPage, setNativeHandPage] = useState(0);
+  const [isAlienHandVisible, setAlienHandVisible] = useState(true);
+  const [isNativeHandVisible, setNativeHandVisible] = useState(true);
+
+  // ✨ デバッグ設定をオブジェクトで一元管理
+  const [debugSettings, setDebugSettings] = useState<DebugSettings>({
+    isGestureAreaVisible: true,
+    flickDistanceRatio: 0.25,
+    flickVelocityThreshold: 0.2,
+    swipeAreaHeight: 4,
+  });
+
 
   const { alienCards, nativeCards } = useMemo(() => {
     const generateDummyCards = (type: 'alien' | 'native') => {
@@ -96,23 +93,31 @@ function App() {
     };
   }, [multiplier]);
 
-  const [isAlienHandVisible, setAlienHandVisible] = useState(true);
-  const [isNativeHandVisible, setNativeHandVisible] = useState(true);
 
   const getWinnerText = () => {
     if (store.winningPlayerId) return `${store.playerStates[store.winningPlayerId].playerName} の勝利！`;
     return '引き分け';
   };
 
+  const createPageHandlers = (
+    page: number,
+    setPage: React.Dispatch<React.SetStateAction<number>>,
+    cardsLength: number
+  ) => {
+    const maxPage = Math.ceil(cardsLength / 4) - 1;
+    return {
+      handleNext: () => setPage(p => Math.min(p + 1, maxPage)),
+      handlePrev: () => setPage(p => Math.max(p - 1, 0)),
+      maxPage
+    };
+  };
+
+  const alienPageHandlers = createPageHandlers(alienHandPage, setAlienHandPage, alienCards.length);
+  const nativePageHandlers = createPageHandlers(nativeHandPage, setNativeHandPage, nativeCards.length);
+
+
   return (
     <MainContainer>
-      <TestControls>
-        <span>カード枚数:</span>
-        <button onClick={() => setMultiplier(m => Math.max(1, m - 1))}>-</button>
-        <span>x{multiplier} ({alienCards.length}枚)</span>
-        <button onClick={() => setMultiplier(m => m + 1)}>+</button>
-      </TestControls>
-
       <CanvasContainer>
         <Canvas camera={{ position: [0, 15, 14], fov: 70 }}>
           <color attach="background" args={['#5d4037']} />
@@ -120,16 +125,22 @@ function App() {
           <directionalLight position={[10, 10, 5]} intensity={1} />
           <GameBoard3D fieldState={store.gameField} />
 
-          {/* 【修正点】Hand3Dに渡すPropsを型に合わせて修正 */}
+          {/* ✨ debugSettingsオブジェクトを渡す */}
           <Hand3D
             player="alien_side"
             cards={alienCards}
             isVisible={isAlienHandVisible}
+            currentPage={alienHandPage}
+            onPageChange={setAlienHandPage}
+            debugSettings={debugSettings}
           />
           <Hand3D
             player="native_side"
             cards={nativeCards}
             isVisible={isNativeHandVisible}
+            currentPage={nativeHandPage}
+            onPageChange={setNativeHandPage}
+            debugSettings={debugSettings}
           />
 
           <OrbitControls makeDefault enableZoom={false} enableRotate={false} enablePan={false} />
@@ -154,6 +165,18 @@ function App() {
         </button>
         <button onClick={store.progressTurn} disabled={store.isGameOver || store.activePlayerId !== 'native_side'}>End Turn</button>
       </SidePanel>
+
+      {/* ✨ debugSettingsオブジェクトとセッターを渡す */}
+      <DebugDialog
+        debugSettings={debugSettings}
+        onSetDebugSettings={setDebugSettings}
+        cardMultiplier={multiplier}
+        onSetCardMultiplier={setMultiplier}
+        players={[
+          { name: 'Alien Side', currentPage: alienHandPage, maxPage: alienPageHandlers.maxPage, onNext: alienPageHandlers.handleNext, onPrev: alienPageHandlers.handlePrev },
+          { name: 'Native Side', currentPage: nativeHandPage, maxPage: nativePageHandlers.maxPage, onNext: nativePageHandlers.handleNext, onPrev: nativePageHandlers.handlePrev },
+        ]}
+      />
     </MainContainer>
   );
 }

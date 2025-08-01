@@ -10,6 +10,3 @@ RUN yarn install
 
 # Copy application files
 COPY . .
-
-# Build the application
-RUN yarn build
