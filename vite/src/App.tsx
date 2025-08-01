@@ -1,48 +1,31 @@
-// syugeeeeeeeeeei/projectany/ProjectBotany-dev/vite/src/App.tsx
-
 import { OrbitControls } from '@react-three/drei';
 import { Canvas } from '@react-three/fiber';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import styled, { createGlobalStyle } from 'styled-components';
-import { type DebugSettings } from './components/DebugDialog';
+import { DebugDialog, type DebugSettings } from './components/DebugDialog';
 import GameBoard3D from './components/GameBoard3D';
 import GameInfo from './components/GameInfo';
 import Hand3D from './components/Hand3D';
 import SceneController from './components/SceneController';
+import UIOverlay from './components/UIOverlay';
 import { cardMasterData, useGameStore } from './store/gameStore';
-
-const isSafari = navigator.vendor && navigator.vendor.indexOf('Apple') > -1 &&
-  navigator.userAgent &&
-  navigator.userAgent.indexOf('CriOS') == -1 &&
-  navigator.userAgent.indexOf('FxiOS') == -1;
+import type { PlayerId } from './types/data';
 
 const GlobalStyle = createGlobalStyle`
   html, body {
-    margin: 0;
-    padding: 0;
-    width: 100%;
-    height:100%;
-    overflow: hidden;
-    background-color: #50342bff;
+    margin: 0; padding: 0; width: 100%; height:100%;
+    overflow: hidden; background-color: #50342bff;
   }
-
-  #root {
-    width: 100%;
-    height: 100%;
-  }
-
-  body {
-    user-select: none;
-    -webkit-user-select: none;
-    -moz-user-select: none;
-    -ms-user-select: none;
-  }
+  #root { width: 100%; height: 100%; }
+  body { user-select: none; -webkit-user-select: none; }
 `;
 
 const MainContainer = styled.div`
   width: 100%;
-  height: ${isSafari ? "98%" : "100%"};
+  height: 100%;
   position: relative;
+  pointer-events: none;
+  overscroll-behavior: none;
 `;
 
 const CanvasContainer = styled.div`
@@ -51,57 +34,116 @@ const CanvasContainer = styled.div`
   position: absolute;
   top: 0;
   left: 0;
+  pointer-events: auto;
 `;
 
 const SidePanel = styled.div`
   position: absolute;
   top: 50%;
   transform: translateY(-50%);
-  width: 250px;
-  padding: 20px;
+  width: 120px;
+  // padding: 20px;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 20px;
-  background-color: #00000050;
   color: white;
-  border-radius: 10px;
   pointer-events: auto;
   z-index: 10;
+  font-family: sans-serif;
 
   &.left {
-    left: 20px;
-    & > * {
+    left: 5px;
+    & > .content {
+      display: flex; flex-direction: column;
+      align-items: center; gap: 10px;
       transform: rotate(180deg);
     }
   }
-  &.right {
-    right: 20px;
+  &.right { 
+    right: 5px; 
+    & > .content {
+      display: flex; flex-direction: column;
+      align-items: center; gap: 10px;
+    }
   }
 `;
 
-const GameOverScreen = styled.div`
-  position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-  background-color: rgba(0, 0, 0, 0.8); color: white;
-  display: flex; justify-content: center; align-items: center;
-  flex-direction: column; font-size: 2em; z-index: 100;
+const DebugContainer = styled.div`
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 200;
+  pointer-events: none;
+
+  & > * {
+    pointer-events: auto;
+  }
+`;
+
+// ★追加: 画面全体を覆うロック用のオーバーレイ
+const ScreenLockOverlay = styled.div`
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 999; /* 最前面に表示して全てをブロック */
+  background-color: transparent; /* 見た目は透明 */
+`;
+
+// ★追加: ターン終了ボタンのスタイル
+const TurnEndButton = styled.button`
+  background: linear-gradient(145deg, #81c784, #4caf50);
+  color: white;
+  border: none;
+  border-radius: 12px;
+  padding: 12px 15px;
+  font-size: 1.2em;
+  font-weight: bold;
+  cursor: pointer;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+  transition: all 0.2s ease-in-out;
+  text-shadow: 1px 1px 2px rgba(0,0,0,0.4);
+  width: 100%; /* 親要素の幅に合わせる */
+
+  &:hover:not(:disabled) {
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+    transform: translateY(-2px);
+  }
+
+  &:active:not(:disabled) {
+    transform: translateY(1px) scale(0.98);
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+  }
+
+  &:disabled {
+    background: #757575; /* グレーアウト */
+    color: #bdbdbd;
+    cursor: not-allowed;
+    box-shadow: none;
+    transform: none;
+    opacity: 0.7;
+  }
 `;
 
 function App() {
-
   const store = useGameStore();
-  const { selectedCardId, selectCard, activePlayerId } = store;
+  const { selectedCardId, notification, setNotification, resetGame } = store;
 
-  const [isHandInteractionLocked, setHandInteractionLocked] = useState(false);
+  const [isGameStarted, setIsGameStarted] = useState(false);
+  const [showTurnBanner, setShowTurnBanner] = useState(false);
+  const [isStartingTurn, setIsStartingTurn] = useState(false);
+
   const [multiplier, setMultiplier] = useState(1);
   const [alienHandPage, setAlienHandPage] = useState(0);
   const [nativeHandPage, setNativeHandPage] = useState(0);
   const [isAlienHandVisible, setAlienHandVisible] = useState(true);
   const [isNativeHandVisible, setNativeHandVisible] = useState(true);
   const [handResetKey, setHandResetKey] = useState(0);
-
   const handVisibilityBeforeSelect = useRef({ alien: true, native: true });
-
   const [debugSettings, setDebugSettings] = useState<DebugSettings>({
     isGestureAreaVisible: false,
     flickDistanceRatio: 0.25,
@@ -109,64 +151,97 @@ function App() {
     swipeAreaHeight: 3,
   });
 
+  // ★修正: isHandInteractionLocked関連のstateとuseEffectを削除
+
+  // ★修正: カード選択時のロジックをシンプルに戻す
   useEffect(() => {
-    setHandInteractionLocked(!!selectedCardId);
     if (selectedCardId) {
-      handVisibilityBeforeSelect.current = {
-        alien: isAlienHandVisible,
-        native: isNativeHandVisible,
-      };
+      handVisibilityBeforeSelect.current = { alien: isAlienHandVisible, native: isNativeHandVisible };
       setAlienHandVisible(false);
       setNativeHandVisible(false);
     } else {
       setAlienHandVisible(handVisibilityBeforeSelect.current.alien);
       setNativeHandVisible(handVisibilityBeforeSelect.current.native);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedCardId]);
 
   useEffect(() => {
-    const forceRemount = (event: Event) => {
-      console.log(`[App] Event triggered: ${event.type}. Forcing hand remount.`);
-      setHandResetKey(k => k + 1);
-    };
-
+    const forceRemount = () => setHandResetKey(k => k + 1);
     document.addEventListener('visibilitychange', forceRemount);
     window.addEventListener('pageshow', forceRemount);
-    window.addEventListener('focus', forceRemount);
-
     return () => {
-      console.log('[App] Cleaning up event listeners.');
       document.removeEventListener('visibilitychange', forceRemount);
       window.removeEventListener('pageshow', forceRemount);
-      window.removeEventListener('focus', forceRemount);
     };
   }, []);
 
+  useEffect(() => {
+    if (!isGameStarted || store.isGameOver) return;
+    setIsStartingTurn(true);
+    const timer = setTimeout(() => {
+      setShowTurnBanner(true);
+      setIsStartingTurn(false);
+    }, 1000);
+    return () => clearTimeout(timer);
+  }, [store.activePlayerId, store.currentTurn, isGameStarted, store.isGameOver]);
+
+  useEffect(() => {
+    if (showTurnBanner) {
+      const timer = setTimeout(() => { setShowTurnBanner(false); }, 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [showTurnBanner]);
+
+  useEffect(() => {
+    if (notification) {
+      const timer = setTimeout(() => setNotification(null), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [notification, setNotification]);
 
   const { alienCards, nativeCards } = useMemo(() => {
     const generateDummyCards = (type: 'alien' | 'native') => {
-      const baseCards = cardMasterData.filter(
-        c => type === 'alien' ? c.cardType === 'alien' : c.cardType !== 'alien'
-      );
-      return Array.from({ length: multiplier }).flatMap((_, i) =>
-        baseCards.map(card => ({
-          ...card,
-          instanceId: `${card.id}-instance-${i}`
-        }))
-      );
+      const baseCards = cardMasterData.filter(c => type === 'alien' ? c.cardType === 'alien' : c.cardType !== 'alien');
+      return Array.from({ length: multiplier }).flatMap((_, i) => baseCards.map(card => ({ ...card, instanceId: `${card.id}-instance-${i}` })));
     };
-    return {
-      alienCards: generateDummyCards('alien'),
-      nativeCards: generateDummyCards('native'),
-    };
+    return { alienCards: generateDummyCards('alien'), nativeCards: generateDummyCards('native') };
   }, [multiplier]);
 
 
-  const getWinnerText = () => {
-    if (store.winningPlayerId) return `${store.playerStates[store.winningPlayerId].playerName} の勝利！`;
-    return '引き分け';
+  const getOverlayProps = (thisPlayerId: PlayerId) => {
+    const { isGameOver, winningPlayerId, activePlayerId, currentTurn, playerStates } = store;
+    const isMyTurn = activePlayerId === thisPlayerId;
+
+    if (!isGameStarted) {
+      return {
+        show: true,
+        message: 'Project Botany',
+        buttonText: 'Start Game',
+        onButtonClick: () => {
+          setIsGameStarted(true);
+        }
+      };
+    }
+    if (isGameOver) {
+      let resultText = '';
+      if (winningPlayerId === thisPlayerId) resultText = 'あなたの勝利！';
+      else if (winningPlayerId === null) resultText = '引き分け';
+      else resultText = 'あなたの敗北';
+      return { show: true, message: 'Game Over', subMessage: resultText, buttonText: 'Play Again', onButtonClick: () => { resetGame(); setIsGameStarted(true); } };
+    }
+    if (showTurnBanner) {
+      const role = isMyTurn ? '(あなた)' : '(あいて)';
+      const message = `Turn ${currentTurn}/${store.maximumTurns}\n${playerStates[activePlayerId].playerName} ${role} のターン`;
+      return { show: true, message };
+    }
+    if (notification && notification.forPlayer === thisPlayerId) {
+      return { show: true, message: notification.message, isDismissible: true };
+    }
+    return { show: false, message: '' };
   };
+
+  const alienOverlayProps = getOverlayProps('alien_side');
+  const nativeOverlayProps = getOverlayProps('native_side');
 
   const createPageHandlers = (
     page: number,
@@ -184,12 +259,19 @@ function App() {
   const alienPageHandlers = createPageHandlers(alienHandPage, setAlienHandPage, alienCards.length);
   const nativePageHandlers = createPageHandlers(nativeHandPage, setNativeHandPage, nativeCards.length);
 
-  const handleCanvasClick = (event: React.MouseEvent<HTMLDivElement>) => {
-    if (event.target !== event.currentTarget) return;
-    if (selectedCardId) {
-      selectCard(null);
-    }
+  const onToggleAlienHand = () => {
+    const newVisibility = !isAlienHandVisible;
+    setAlienHandVisible(newVisibility);
+    handVisibilityBeforeSelect.current.alien = newVisibility;
   };
+
+  const onToggleNativeHand = () => {
+    const newVisibility = !isNativeHandVisible;
+    setNativeHandVisible(newVisibility);
+    handVisibilityBeforeSelect.current.native = newVisibility;
+  };
+
+
   const debugDialogProps = {
     debugSettings: debugSettings,
     onSetDebugSettings: setDebugSettings,
@@ -201,62 +283,64 @@ function App() {
         { name: 'Native Side', currentPage: nativeHandPage, maxPage: nativePageHandlers.maxPage, onNext: nativePageHandlers.handleNext, onPrev: nativePageHandlers.handlePrev },
       ],
     isAlienHandVisible: isAlienHandVisible,
-    onToggleAlienHand: () => setAlienHandVisible(v => !v),
+    onToggleAlienHand: onToggleAlienHand,
     isNativeHandVisible: isNativeHandVisible,
-    onToggleNativeHand: () => setNativeHandVisible(v => !v)
+    onToggleNativeHand: onToggleNativeHand,
   }
+
+  // ★修正: isInteractionLockedはカード選択中かどうかの判定のみに
+  const isHandInteractionLocked = !!selectedCardId;
 
   return (
     <>
       <GlobalStyle />
-      {/* <OnScreenConsole /> */}
-      {/* <DebugDialog {...debugDialogProps} /> */}
+      {/* ★追加: isStartingTurnがtrueの間、画面全体をロック */}
+      {isStartingTurn && <ScreenLockOverlay />}
+
+      <DebugContainer>
+        <DebugDialog {...debugDialogProps} />
+      </DebugContainer>
+
       <MainContainer>
-        <CanvasContainer onClick={handleCanvasClick}>
+        <UIOverlay
+          {...alienOverlayProps}
+          side="bottom"
+          onDismiss={alienOverlayProps.isDismissible ? () => setNotification(null) : undefined}
+        />
+        <UIOverlay
+          {...nativeOverlayProps}
+          side="top"
+          onDismiss={nativeOverlayProps.isDismissible ? () => setNotification(null) : undefined}
+        />
+
+        <CanvasContainer>
           <Canvas camera={{ position: [0, 15, 14], fov: 70 }}>
             <color attach="background" args={['#5d4037']} />
             <ambientLight intensity={0.8} />
             <directionalLight position={[10, 10, 5]} intensity={1} />
             <GameBoard3D fieldState={store.gameField} />
-
-            <Hand3D
-              key={`alien-hand-${handResetKey}`}
-              player="alien_side"
-              cards={alienCards}
-              isVisible={isAlienHandVisible}
-              onVisibilityChange={setAlienHandVisible}
-              currentPage={alienHandPage}
-              onPageChange={setAlienHandPage}
-              debugSettings={debugSettings}
-              isInteractionLocked={isHandInteractionLocked}
-            />
-            <Hand3D
-              key={`native-hand-${handResetKey}`}
-              player="native_side"
-              cards={nativeCards}
-              isVisible={isNativeHandVisible}
-              onVisibilityChange={setNativeHandVisible}
-              currentPage={nativeHandPage}
-              onPageChange={setNativeHandPage}
-              debugSettings={debugSettings}
-              isInteractionLocked={isHandInteractionLocked}
-            />
-
+            <Hand3D key={`alien-hand-${handResetKey}`} player="alien_side" cards={alienCards} isVisible={isAlienHandVisible} onVisibilityChange={setAlienHandVisible} currentPage={alienHandPage} onPageChange={setAlienHandPage} debugSettings={debugSettings} isInteractionLocked={isHandInteractionLocked} />
+            <Hand3D key={`native-hand-${handResetKey}`} player="native_side" cards={nativeCards} isVisible={isNativeHandVisible} onVisibilityChange={setNativeHandVisible} currentPage={nativeHandPage} onPageChange={setNativeHandPage} debugSettings={debugSettings} isInteractionLocked={isHandInteractionLocked} />
             <OrbitControls makeDefault enableZoom={false} enableRotate={false} enablePan={false} />
             <SceneController />
           </Canvas>
         </CanvasContainer>
 
-        {store.isGameOver && <GameOverScreen><h2>Game Over</h2><p>{getWinnerText()}</p></GameOverScreen>}
-
         <SidePanel className="right">
-          <GameInfo />
-          <button onClick={store.progressTurn} disabled={store.isGameOver || store.activePlayerId !== 'alien_side'}>End Turn</button>
+          <div className="content">
+            <GameInfo player="alien_side" />
+            <TurnEndButton onClick={store.progressTurn} disabled={store.isGameOver || store.activePlayerId !== 'alien_side'}>
+              ターン終了
+            </TurnEndButton>
+          </div>
         </SidePanel>
-
         <SidePanel className="left">
-          <GameInfo />
-          <button onClick={store.progressTurn} disabled={store.isGameOver || store.activePlayerId !== 'native_side'}>End Turn</button>
+          <div className="content">
+            <GameInfo player="native_side" />
+            <TurnEndButton onClick={store.progressTurn} disabled={store.isGameOver || store.activePlayerId !== 'native_side'}>
+              ターン終了
+            </TurnEndButton>
+          </div>
         </SidePanel>
       </MainContainer>
     </>

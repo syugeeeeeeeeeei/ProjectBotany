@@ -3,7 +3,7 @@
 import { animated, to, useSpring } from '@react-spring/three';
 import { Plane } from '@react-three/drei';
 import { useGesture } from '@use-gesture/react';
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
 import { useGameStore } from '../store/gameStore';
 import type { CardDefinition, PlayerId } from '../types/data';
 import Card3D from './Card3D';
@@ -19,11 +19,11 @@ interface Hand3DProps {
 	currentPage: number;
 	onPageChange: (page: number) => void;
 	debugSettings: DebugSettings;
-	isInteractionLocked: boolean; // ★Propを受け取る
+	isInteractionLocked: boolean;
 };
 
-const CARDS_PER_PAGE = 4;
-const CARD_WIDTH = 1.7;
+const CARDS_PER_PAGE = 3;
+const CARD_WIDTH = 2.2;
 const CARD_SPACING = 0.2;
 const PAGE_WIDTH = (CARDS_PER_PAGE * CARD_WIDTH) + ((CARDS_PER_PAGE - 1) * CARD_SPACING);
 
@@ -35,13 +35,19 @@ const Hand3D: React.FC<Hand3DProps> = ({
 	currentPage,
 	onPageChange,
 	debugSettings,
-	isInteractionLocked // ★Propを受け取る
+	isInteractionLocked
 }) => {
-	const { isGestureAreaVisible, flickDistanceRatio, flickVelocityThreshold, swipeAreaHeight } = debugSettings;
+	const { isGestureAreaVisible, flickVelocityThreshold, swipeAreaHeight } = debugSettings;
 	const { selectCard, selectedCardId } = useGameStore();
 
 	const isTopPlayer = player === 'native_side';
 	const maxPage = Math.ceil(cards.length / CARDS_PER_PAGE) - 1;
+
+	const isVisibleRef = useRef(isVisible);
+	useEffect(() => {
+		isVisibleRef.current = isVisible;
+	}, [isVisible]);
+
 
 	const { x } = useSpring({
 		x: -currentPage * (PAGE_WIDTH + 1),
@@ -50,36 +56,35 @@ const Hand3D: React.FC<Hand3DProps> = ({
 
 	const bind = useGesture(
 		{
-			onDrag: ({ last, movement: [mx, my], velocity: [vx, vy], direction: [dx, dy], tap, first }) => {
-				console.log("drag");
-				
+			onDrag: ({ last, movement: [mx, my], velocity: [vx, vy], direction: [dx, dy], tap }) => {
 				if (tap || !last) return;
+
+				// ★修正: 判定ロジックをピクセルベースの固定値に統一
+				const FLICK_DISTANCE_THRESHOLD = 75;
 
 				const absMx = Math.abs(mx);
 				const absMy = Math.abs(my);
 
 				if (absMx > absMy) { // 横フリック
-					// ★手札が表示されている時のみページめくり
-					if (isVisible && absMx > PAGE_WIDTH * flickDistanceRatio && Math.abs(vx) > flickVelocityThreshold) {
+					if (isVisibleRef.current && absMx > FLICK_DISTANCE_THRESHOLD && Math.abs(vx) > flickVelocityThreshold) {
 						const newPage = Math.max(0, Math.min(maxPage, currentPage - Math.sign(dx)));
 						if (newPage !== currentPage) onPageChange(newPage);
 					}
 				} else { // 縦スワイプ
-					if (absMy > 50 && Math.abs(vy) > 0.2) {
+					if (absMy > FLICK_DISTANCE_THRESHOLD && Math.abs(vy) > flickVelocityThreshold) {
 						const swipeUp = dy < 0;
 						if (isTopPlayer) {
-							if (swipeUp && isVisible) onVisibilityChange(false);
-							if (!swipeUp && !isVisible) onVisibilityChange(true);
+							if (swipeUp && isVisibleRef.current) onVisibilityChange(false);
+							if (!swipeUp && !isVisibleRef.current) onVisibilityChange(true);
 						} else {
-							if (swipeUp && !isVisible) onVisibilityChange(true);
-							if (!swipeUp && isVisible) onVisibilityChange(false);
+							if (swipeUp && !isVisibleRef.current) onVisibilityChange(true);
+							if (!swipeUp && isVisibleRef.current) onVisibilityChange(false);
 						}
 					}
 				}
 			},
 			onClick: ({ event }) => {
-				// ★手札表示中のみ、Planeのクリックで選択解除
-				if (isVisible) {
+				if (isVisibleRef.current) {
 					event.stopPropagation();
 					if (selectedCardId) {
 						selectCard(null);
@@ -88,7 +93,6 @@ const Hand3D: React.FC<Hand3DProps> = ({
 			},
 		},
 		{
-			// ★修正：isInteractionLockedがfalseの時のみジェスチャーを有効化
 			enabled: !isInteractionLocked,
 			drag: {
 				filterTaps: true,
@@ -98,7 +102,7 @@ const Hand3D: React.FC<Hand3DProps> = ({
 	);
 
 	const { z } = useSpring({
-		z: isVisible ? 4 : 5.5,
+		z: isVisible ? 3.5 : 5.5,
 		config: { tension: 200, friction: 20 },
 	});
 
@@ -119,7 +123,6 @@ const Hand3D: React.FC<Hand3DProps> = ({
 				rotation={[-Math.PI / 2, 0, 0]}
 				position={[0, 0, 0.1]}
 				{...bind()}
-
 			>
 				<meshStandardMaterial
 					color="red"
@@ -164,7 +167,7 @@ const CardInLine: React.FC<{
 
 	return (
 		<group position={[xPos, 0, 0]}>
-			<group rotation={[tiltAngle, yRotation, 0]}>
+			<group rotation={[tiltAngle, yRotation, 0]} scale={1.3}>
 				<Card3D card={card} position={[0, 0, 0]} player={player} />
 			</group>
 		</group>

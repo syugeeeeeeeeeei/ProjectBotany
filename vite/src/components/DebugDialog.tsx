@@ -81,7 +81,7 @@ export const DebugDialog: React.FC<DebugDialogProps> = ({
 	isNativeHandVisible,
 	onToggleNativeHand,
 }) => {
-	const [isOpen, setIsOpen] = useState(true);
+	const [isOpen, setIsOpen] = useState(false);
 	// ★追加: 全画面表示の状態を管理
 	const [isFullscreen, setIsFullscreen] = useState(!!document.fullscreenElement);
 

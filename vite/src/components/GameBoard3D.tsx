@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useMemo } from 'react';
+import * as THREE from 'three'; // ★追加
 import { useGameStore } from '../store/gameStore';
 import type { CellState, FieldState } from '../types/data';
 
@@ -14,16 +15,64 @@ const getCellColor = (cellType: CellState['cellType']) => {
 	}
 };
 
+// ★追加: 支配マスを縁取りで表示するコンポーネント
+const MoveTargetOutline: React.FC = () => {
+	const shape = useMemo(() => {
+		const s = 0.45; // 外側の四角形の半分のサイズ
+		const w = 0.05; // 縁の太さ
+		const innerS = s - w; // 内側の四角形の半分のサイズ
+
+		const newShape = new THREE.Shape();
+		// 外側の四角形
+		newShape.moveTo(-s, s);
+		newShape.lineTo(s, s);
+		newShape.lineTo(s, -s);
+		newShape.lineTo(-s, -s);
+		newShape.closePath();
+
+		// くり抜く穴
+		const hole = new THREE.Path();
+		hole.moveTo(-innerS, innerS);
+		hole.lineTo(innerS, innerS);
+		hole.lineTo(innerS, -innerS);
+		hole.lineTo(-innerS, -innerS);
+		hole.closePath();
+
+		newShape.holes.push(hole);
+		return newShape;
+	}, []);
+
+	return (
+		<mesh position-z={0.01}> {/* マスより少しだけ手前に表示 */}
+			<shapeGeometry args={[shape]} />
+			<meshBasicMaterial color="#87CEEB" side={THREE.DoubleSide} />
+		</mesh>
+	);
+};
+
+
 // 個々のセル（マス）を表す3Dオブジェクト
 const Cell: React.FC<{ cell: CellState }> = ({ cell }) => {
-	const { selectedCardId, selectedAlienInstanceId, playCard, selectAlienInstance, moveAlien } = useGameStore();
+	const { selectedAlienInstanceId, playCard, selectAlienInstance, moveAlien, selectedCardId } = useGameStore();
+
+	const isMoveTarget = useMemo(() => {
+		if (!selectedAlienInstanceId) return false;
+		return cell.cellType === 'alien_invasion_area' && cell.dominantAlienInstanceId === selectedAlienInstanceId;
+	}, [selectedAlienInstanceId, cell]);
+
 
 	const handleCellClick = () => {
 		if (selectedCardId) {
 			playCard(cell);
-		} else if (selectedAlienInstanceId) {
-			moveAlien(cell);
-		} else if (cell.alienInstanceId) {
+			return;
+		}
+		if (selectedAlienInstanceId) {
+			if (isMoveTarget) moveAlien(cell);
+			else if (cell.alienInstanceId) selectAlienInstance(cell.alienInstanceId);
+			else selectAlienInstance(null);
+			return;
+		}
+		if (cell.alienInstanceId) {
 			selectAlienInstance(cell.alienInstanceId);
 		}
 	};
@@ -31,11 +80,20 @@ const Cell: React.FC<{ cell: CellState }> = ({ cell }) => {
 	const isSelected = cell.alienInstanceId !== null && cell.alienInstanceId === selectedAlienInstanceId;
 	const position: [number, number, number] = [cell.x - 3, 0, cell.y - 4.5];
 
+	// ★修正: 支配マスのハイライト（emissive）を削除
+	const emissiveColor = isSelected ? '#4488FF' : 'black';
+	const emissiveIntensity = isSelected ? 1.5 : 0;
+
+
 	return (
-		<mesh position={position} onClick={handleCellClick} rotation={[-Math.PI / 2, 0, 0]}>
-			<planeGeometry args={[0.9, 0.9]} />
-			<meshStandardMaterial color={getCellColor(cell.cellType)} emissive={isSelected ? 'yellow' : 'black'} emissiveIntensity={isSelected ? 1 : 0} />
-		</mesh>
+		<group position={position} onClick={handleCellClick} rotation={[-Math.PI / 2, 0, 0]}>
+			<mesh>
+				<planeGeometry args={[0.9, 0.9]} />
+				<meshStandardMaterial color={getCellColor(cell.cellType)} emissive={emissiveColor} emissiveIntensity={emissiveIntensity} />
+			</mesh>
+			{/* ★修正: isMoveTargetがtrueの時に縁取りコンポーネントを表示 */}
+			{isMoveTarget && <MoveTargetOutline />}
+		</group>
 	);
 };
 

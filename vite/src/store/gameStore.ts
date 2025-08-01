@@ -1,6 +1,6 @@
 import { nanoid } from 'nanoid';
 import { create } from 'zustand';
-import type { ActiveAlienInstance, CardDefinition, CellState, FieldState, GameState, PlayerState } from '../types/data';
+import type { ActiveAlienInstance, CardDefinition, CellState, FieldState, GameState, PlayerId, PlayerState } from '../types/data';
 
 const cardMasterData: CardDefinition[] = [
 	{ id: 'alien-1', name: 'オオキンケイギク', description: '召喚後2ターンで成長する。', cost: 2, cardType: 'alien', imagePath: '', baseInvasionPower: 1, baseInvasionShape: 'cross', canGrow: true, growthConditions: [{ type: 'turns_since_last_action', value: 2 }], growthEffects: [{ type: 'increase_invasion_power', value: 1 }] },
@@ -11,10 +11,10 @@ const cardMasterData: CardDefinition[] = [
 	{ id: 'alien-3', name: 'アメリカオニアザミ', description: '低コストで素早い侵略が可能。', cost: 1, cardType: 'alien', imagePath: '', baseInvasionPower: 1, baseInvasionShape: 'cross' },
 ];
 
-// UIの状態管理を完全に削除
 interface GameStateWithSelection extends GameState {
 	selectedCardId: string | null;
 	selectedAlienInstanceId: string | null;
+	notification: { message: string; forPlayer: PlayerId } | null;
 }
 
 interface GameActions {
@@ -23,6 +23,8 @@ interface GameActions {
 	playCard: (targetCell: CellState) => void;
 	selectAlienInstance: (instanceId: string | null) => void;
 	moveAlien: (targetCell: CellState) => void;
+	setNotification: (message: string | null, forPlayer?: PlayerId) => void;
+	resetGame: () => void;
 }
 
 const createInitialGameState = (): GameStateWithSelection => ({
@@ -34,12 +36,14 @@ const createInitialGameState = (): GameStateWithSelection => ({
 	winningPlayerId: null,
 	gameField: createInitialFieldState(),
 	playerStates: {
-		native_side: createInitialPlayerState('native_side', '在来種保護官'),
-		alien_side: createInitialPlayerState('alien_side', '外来種研究員'),
+		// ★修正: プレイヤー名を変更
+		native_side: createInitialPlayerState('native_side', '在来種'),
+		alien_side: createInitialPlayerState('alien_side', '外来種'),
 	},
 	activeAlienInstances: {},
 	selectedCardId: null,
 	selectedAlienInstanceId: null,
+	notification: null,
 });
 
 const createInitialPlayerState = (id: 'native_side' | 'alien_side', name: string): PlayerState => ({
@@ -69,8 +73,11 @@ const createInitialFieldState = (): FieldState => {
 	return { width, height, cells };
 };
 
+
 export const useGameStore = create<GameStateWithSelection & GameActions>((set, get) => ({
 	...createInitialGameState(),
+
+	resetGame: () => set(createInitialGameState()),
 
 	progressTurn: () => set((state) => {
 		if (state.isGameOver) return state;
@@ -167,23 +174,22 @@ export const useGameStore = create<GameStateWithSelection & GameActions>((set, g
 		const { selectedCardId, activePlayerId, playerStates, gameField, activeAlienInstances } = state;
 		if (!selectedCardId) return;
 
-		// ★修正点: selectedCardId (instanceId) から元の card.id を抽出
 		const cardId = selectedCardId.split('-instance-')[0];
 		const card = cardMasterData.find(c => c.id === cardId);
 		if (!card) return;
 
 		if (activePlayerId === 'alien_side' && card.cardType !== 'alien') {
-			console.log("外来種サイドは外来種カードしか使用できません。");
+			get().setNotification("外来種カードしか使用できません", activePlayerId);
 			return;
 		}
 		if (activePlayerId === 'native_side' && card.cardType === 'alien') {
-			console.log("在来種サイドは外来種カードを使用できません。");
+			get().setNotification("外来種カードは使用できません", activePlayerId);
 			return;
 		}
 
 		const currentPlayer = playerStates[activePlayerId];
 		if (currentPlayer.currentEnvironment < card.cost) {
-			console.log("エンバイロメントが足りません！");
+			get().setNotification("エンバイロメントが足りません！", activePlayerId);
 			return;
 		}
 
@@ -229,7 +235,7 @@ export const useGameStore = create<GameStateWithSelection & GameActions>((set, g
 					cellToUpdate.cellType = 'native_area';
 					cellToUpdate.ownerId = 'native_side';
 				} else {
-					console.log('このマスは回復できません。');
+					get().setNotification('このマスは回復できません。', activePlayerId);
 					return;
 				}
 				break;
@@ -252,7 +258,7 @@ export const useGameStore = create<GameStateWithSelection & GameActions>((set, g
 
 	selectAlienInstance: (instanceId) => set((state) => {
 		if (state.activePlayerId !== 'alien_side') {
-			console.log("外来種サイドのターンではありません。");
+			get().setNotification("外来種サイドのターンではありません。", 'alien_side');
 			return {};
 		}
 		if (state.selectedAlienInstanceId === instanceId) {
@@ -267,8 +273,8 @@ export const useGameStore = create<GameStateWithSelection & GameActions>((set, g
 	moveAlien: (targetCell) => {
 		const state = get();
 		const { selectedAlienInstanceId, activePlayerId, playerStates, activeAlienInstances, gameField } = state;
-
 		if (!selectedAlienInstanceId) return;
+
 		const alien = activeAlienInstances[selectedAlienInstanceId];
 		if (!alien) return;
 
@@ -278,12 +284,12 @@ export const useGameStore = create<GameStateWithSelection & GameActions>((set, g
 		const moveCost = originalCard.cost;
 		const currentPlayer = playerStates[activePlayerId];
 		if (currentPlayer.currentEnvironment < moveCost) {
-			console.log("移動のためのエンバイロメントが足りません！");
+			get().setNotification("移動のためのエンバイロメントが足りません！", activePlayerId);
 			return;
 		}
 
 		if (targetCell.cellType !== 'alien_invasion_area' || targetCell.dominantAlienInstanceId !== alien.instanceId) {
-			console.log("このマスには移動できません。自身の侵略マスを選択してください。");
+			get().setNotification("自身の侵略マスにしか移動できません", activePlayerId);
 			return;
 		}
 
@@ -315,6 +321,13 @@ export const useGameStore = create<GameStateWithSelection & GameActions>((set, g
 			activeAlienInstances: newActiveAlienInstances,
 			selectedAlienInstanceId: null
 		});
+	},
+	setNotification: (message, forPlayer) => {
+		if (message && forPlayer) {
+			set({ notification: { message, forPlayer } });
+		} else {
+			set({ notification: null });
+		}
 	},
 }));
 

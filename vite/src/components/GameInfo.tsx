@@ -1,39 +1,43 @@
 import React from 'react';
 import styled from 'styled-components';
 import { useGameStore } from '../store/gameStore';
+import type { PlayerId } from '../types/data';
 
 const InfoContainer = styled.div`
   background-color: rgba(0, 0, 0, 0.7);
   color: white;
-  padding: 10px 20px;
+  padding: 10px 5px;
   border-radius: 8px;
-  margin-bottom: 20px;
   display: flex;
-  justify-content: space-around;
-  width: 80%;
-  max-width: 500px;
+  flex-direction: column; /* ★修正: 縦並びに変更 */
+  gap: 10px; /* ★追加: 要素間のスペース */
+  align-items: center; /* ★追加: 中央揃え */
+  width: 100%; /* ★修正: 横幅を親要素に合わせる */
 `;
 
 const InfoItem = styled.div`
   text-align: center;
+  font-size: 1.3em; /* ★修正: 少し大きく */
+  & > div:first-child {
+    font-size: 0.8em;
+    color: #aaa;
+  }
 `;
 
-const GameInfo: React.FC = () => {
-	const { currentTurn, maximumTurns, activePlayerId, playerStates } = useGameStore();
+// ★修正: playerのIDを受け取るようにPropsを変更
+const GameInfo: React.FC<{ player: PlayerId }> = ({ player }) => {
+	const { playerStates } = useGameStore();
+	const playerData = playerStates[player];
 
 	return (
 		<InfoContainer>
 			<InfoItem>
-				<div>Turn</div>
-				<div>{currentTurn} / {maximumTurns}</div>
-			</InfoItem>
-			<InfoItem>
-				<div>Active Player</div>
-				<div>{playerStates[activePlayerId].playerName}</div>
+				<div>Player</div>
+				<div>{playerData.playerName}</div>
 			</InfoItem>
 			<InfoItem>
 				<div>Environment</div>
-				<div>{playerStates[activePlayerId].currentEnvironment} / {playerStates[activePlayerId].maxEnvironment}</div>
+				<div>{playerData.currentEnvironment} / {playerData.maxEnvironment}</div>
 			</InfoItem>
 		</InfoContainer>
 	);
