@@ -1,17 +1,35 @@
+// syugeeeeeeeeeei/projectany/ProjectBotany-dev/vite/src/App.tsx
+
 import { OrbitControls } from '@react-three/drei';
 import { Canvas } from '@react-three/fiber';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import styled, { createGlobalStyle } from 'styled-components';
-import { DebugDialog, type DebugSettings } from './components/DebugDialog';
+import { type DebugSettings } from './components/DebugDialog';
 import GameBoard3D from './components/GameBoard3D';
 import GameInfo from './components/GameInfo';
 import Hand3D from './components/Hand3D';
-// ★修正: OnScreenConsole をインポート
-import { OnScreenConsole } from './components/OnScreenConsole';
 import SceneController from './components/SceneController';
 import { cardMasterData, useGameStore } from './store/gameStore';
 
+const isSafari = navigator.vendor && navigator.vendor.indexOf('Apple') > -1 &&
+  navigator.userAgent &&
+  navigator.userAgent.indexOf('CriOS') == -1 &&
+  navigator.userAgent.indexOf('FxiOS') == -1;
+
 const GlobalStyle = createGlobalStyle`
+  html, body {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height:${isSafari ? "99%" : "100%"};
+    overflow: hidden;
+  }
+
+  #root {
+    width: 100%;
+    height: 100%;
+  }
+
   body {
     user-select: none;
     -webkit-user-select: none;
@@ -21,8 +39,8 @@ const GlobalStyle = createGlobalStyle`
 `;
 
 const MainContainer = styled.div`
-  width: 100vw;
-  height: 100vh;
+  width: 100%;
+  height: 100%;
   position: relative;
 `;
 
@@ -69,6 +87,7 @@ const GameOverScreen = styled.div`
 `;
 
 function App() {
+
   const store = useGameStore();
   const { selectedCardId, selectCard, activePlayerId } = store;
 
@@ -78,13 +97,12 @@ function App() {
   const [nativeHandPage, setNativeHandPage] = useState(0);
   const [isAlienHandVisible, setAlienHandVisible] = useState(true);
   const [isNativeHandVisible, setNativeHandVisible] = useState(true);
-  // ★修正: `handResetKey` にリネームして意図を明確化
   const [handResetKey, setHandResetKey] = useState(0);
 
   const handVisibilityBeforeSelect = useRef({ alien: true, native: true });
 
   const [debugSettings, setDebugSettings] = useState<DebugSettings>({
-    isGestureAreaVisible: true,
+    isGestureAreaVisible: false,
     flickDistanceRatio: 0.25,
     flickVelocityThreshold: 0.2,
     swipeAreaHeight: 3,
@@ -106,21 +124,18 @@ function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedCardId]);
 
-  // ★修正: アプリ復帰時のイベントリスナーを強化
   useEffect(() => {
-    const forceRemount = () => {
-      console.log(`Event triggered: Forcing hand remount.`);
+    const forceRemount = (event: Event) => {
+      console.log(`[App] Event triggered: ${event.type}. Forcing hand remount.`);
       setHandResetKey(k => k + 1);
     };
 
-    // 'visibilitychange' はタブの切り替えなどで発火
     document.addEventListener('visibilitychange', forceRemount);
-    // 'pageshow' はブラウザのBFキャッシュから復元されたときに発火 (iOSで特に重要)
     window.addEventListener('pageshow', forceRemount);
-    // 'focus' はウィンドウがフォーカスを得たときに発火
     window.addEventListener('focus', forceRemount);
 
     return () => {
+      console.log('[App] Cleaning up event listeners.');
       document.removeEventListener('visibilitychange', forceRemount);
       window.removeEventListener('pageshow', forceRemount);
       window.removeEventListener('focus', forceRemount);
@@ -174,12 +189,27 @@ function App() {
       selectCard(null);
     }
   };
+  const debugDialogProps = {
+    debugSettings: debugSettings,
+    onSetDebugSettings: setDebugSettings,
+    cardMultiplier: multiplier,
+    onSetCardMultiplier: setMultiplier,
+    players:
+      [
+        { name: 'Alien Side', currentPage: alienHandPage, maxPage: alienPageHandlers.maxPage, onNext: alienPageHandlers.handleNext, onPrev: alienPageHandlers.handlePrev },
+        { name: 'Native Side', currentPage: nativeHandPage, maxPage: nativePageHandlers.maxPage, onNext: nativePageHandlers.handleNext, onPrev: nativePageHandlers.handlePrev },
+      ],
+    isAlienHandVisible: isAlienHandVisible,
+    onToggleAlienHand: () => setAlienHandVisible(v => !v),
+    isNativeHandVisible: isNativeHandVisible,
+    onToggleNativeHand: () => setNativeHandVisible(v => !v)
+  }
 
   return (
     <>
       <GlobalStyle />
-      {/* ★修正: OnScreenConsole を追加 */}
-      <OnScreenConsole />
+      {/* <OnScreenConsole /> */}
+      {/* <DebugDialog {...debugDialogProps} /> */}
       <MainContainer>
         <CanvasContainer onClick={handleCanvasClick}>
           <Canvas camera={{ position: [0, 15, 14], fov: 70 }}>
@@ -189,7 +219,6 @@ function App() {
             <GameBoard3D fieldState={store.gameField} />
 
             <Hand3D
-              // ★修正: key を handResetKey に変更
               key={`alien-hand-${handResetKey}`}
               player="alien_side"
               cards={alienCards}
@@ -201,7 +230,6 @@ function App() {
               isInteractionLocked={isHandInteractionLocked}
             />
             <Hand3D
-              // ★修正: key を handResetKey に変更
               key={`native-hand-${handResetKey}`}
               player="native_side"
               cards={nativeCards}
@@ -229,21 +257,6 @@ function App() {
           <GameInfo />
           <button onClick={store.progressTurn} disabled={store.isGameOver || store.activePlayerId !== 'native_side'}>End Turn</button>
         </SidePanel>
-
-        <DebugDialog
-          debugSettings={debugSettings}
-          onSetDebugSettings={setDebugSettings}
-          cardMultiplier={multiplier}
-          onSetCardMultiplier={setMultiplier}
-          players={[
-            { name: 'Alien Side', currentPage: alienHandPage, maxPage: alienPageHandlers.maxPage, onNext: alienPageHandlers.handleNext, onPrev: alienPageHandlers.handlePrev },
-            { name: 'Native Side', currentPage: nativeHandPage, maxPage: nativePageHandlers.maxPage, onNext: nativePageHandlers.handleNext, onPrev: nativePageHandlers.handlePrev },
-          ]}
-          isAlienHandVisible={isAlienHandVisible}
-          onToggleAlienHand={() => setAlienHandVisible(v => !v)}
-          isNativeHandVisible={isNativeHandVisible}
-          onToggleNativeHand={() => setNativeHandVisible(v => !v)}
-        />
       </MainContainer>
     </>
   );

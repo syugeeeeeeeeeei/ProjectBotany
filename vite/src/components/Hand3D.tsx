@@ -1,3 +1,5 @@
+// syugeeeeeeeeeei/projectbotany/ProjectBotany-dev/vite/src/components/Hand3D.tsx
+
 import { animated, to, useSpring } from '@react-spring/three';
 import { Plane } from '@react-three/drei';
 import { useGesture } from '@use-gesture/react';
@@ -48,7 +50,9 @@ const Hand3D: React.FC<Hand3DProps> = ({
 
 	const bind = useGesture(
 		{
-			onDrag: ({ last, movement: [mx, my], velocity: [vx, vy], direction: [dx, dy], tap }) => {
+			onDrag: ({ last, movement: [mx, my], velocity: [vx, vy], direction: [dx, dy], tap, first }) => {
+				console.log("drag");
+				
 				if (tap || !last) return;
 
 				const absMx = Math.abs(mx);
@@ -115,6 +119,7 @@ const Hand3D: React.FC<Hand3DProps> = ({
 				rotation={[-Math.PI / 2, 0, 0]}
 				position={[0, 0, 0.1]}
 				{...bind()}
+
 			>
 				<meshStandardMaterial
 					color="red"
