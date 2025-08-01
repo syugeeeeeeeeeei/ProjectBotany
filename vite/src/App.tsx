@@ -6,6 +6,8 @@ import { DebugDialog, type DebugSettings } from './components/DebugDialog';
 import GameBoard3D from './components/GameBoard3D';
 import GameInfo from './components/GameInfo';
 import Hand3D from './components/Hand3D';
+// ★修正: OnScreenConsole をインポート
+import { OnScreenConsole } from './components/OnScreenConsole';
 import SceneController from './components/SceneController';
 import { cardMasterData, useGameStore } from './store/gameStore';
 
@@ -70,13 +72,14 @@ function App() {
   const store = useGameStore();
   const { selectedCardId, selectCard, activePlayerId } = store;
 
-  // ★追加：カード選択時に手札の操作をロックするための状態
   const [isHandInteractionLocked, setHandInteractionLocked] = useState(false);
   const [multiplier, setMultiplier] = useState(1);
   const [alienHandPage, setAlienHandPage] = useState(0);
   const [nativeHandPage, setNativeHandPage] = useState(0);
   const [isAlienHandVisible, setAlienHandVisible] = useState(true);
   const [isNativeHandVisible, setNativeHandVisible] = useState(true);
+  // ★修正: `handResetKey` にリネームして意図を明確化
+  const [handResetKey, setHandResetKey] = useState(0);
 
   const handVisibilityBeforeSelect = useRef({ alien: true, native: true });
 
@@ -88,7 +91,6 @@ function App() {
   });
 
   useEffect(() => {
-    // ★修正：カード選択状態に応じて操作ロックと表示/非表示を制御
     setHandInteractionLocked(!!selectedCardId);
     if (selectedCardId) {
       handVisibilityBeforeSelect.current = {
@@ -103,6 +105,27 @@ function App() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedCardId]);
+
+  // ★修正: アプリ復帰時のイベントリスナーを強化
+  useEffect(() => {
+    const forceRemount = () => {
+      console.log(`Event triggered: Forcing hand remount.`);
+      setHandResetKey(k => k + 1);
+    };
+
+    // 'visibilitychange' はタブの切り替えなどで発火
+    document.addEventListener('visibilitychange', forceRemount);
+    // 'pageshow' はブラウザのBFキャッシュから復元されたときに発火 (iOSで特に重要)
+    window.addEventListener('pageshow', forceRemount);
+    // 'focus' はウィンドウがフォーカスを得たときに発火
+    window.addEventListener('focus', forceRemount);
+
+    return () => {
+      document.removeEventListener('visibilitychange', forceRemount);
+      window.removeEventListener('pageshow', forceRemount);
+      window.removeEventListener('focus', forceRemount);
+    };
+  }, []);
 
 
   const { alienCards, nativeCards } = useMemo(() => {
@@ -155,6 +178,8 @@ function App() {
   return (
     <>
       <GlobalStyle />
+      {/* ★修正: OnScreenConsole を追加 */}
+      <OnScreenConsole />
       <MainContainer>
         <CanvasContainer onClick={handleCanvasClick}>
           <Canvas camera={{ position: [0, 15, 14], fov: 70 }}>
@@ -164,6 +189,8 @@ function App() {
             <GameBoard3D fieldState={store.gameField} />
 
             <Hand3D
+              // ★修正: key を handResetKey に変更
+              key={`alien-hand-${handResetKey}`}
               player="alien_side"
               cards={alienCards}
               isVisible={isAlienHandVisible}
@@ -171,9 +198,11 @@ function App() {
               currentPage={alienHandPage}
               onPageChange={setAlienHandPage}
               debugSettings={debugSettings}
-              isInteractionLocked={isHandInteractionLocked} // ★Propを渡す
+              isInteractionLocked={isHandInteractionLocked}
             />
             <Hand3D
+              // ★修正: key を handResetKey に変更
+              key={`native-hand-${handResetKey}`}
               player="native_side"
               cards={nativeCards}
               isVisible={isNativeHandVisible}
@@ -181,7 +210,7 @@ function App() {
               currentPage={nativeHandPage}
               onPageChange={setNativeHandPage}
               debugSettings={debugSettings}
-              isInteractionLocked={isHandInteractionLocked} // ★Propを渡す
+              isInteractionLocked={isHandInteractionLocked}
             />
 
             <OrbitControls makeDefault enableZoom={false} enableRotate={false} enablePan={false} />

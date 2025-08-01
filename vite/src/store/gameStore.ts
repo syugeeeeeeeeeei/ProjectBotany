@@ -167,7 +167,9 @@ export const useGameStore = create<GameStateWithSelection & GameActions>((set, g
 		const { selectedCardId, activePlayerId, playerStates, gameField, activeAlienInstances } = state;
 		if (!selectedCardId) return;
 
-		const card = cardMasterData.find(c => c.id === selectedCardId);
+		// ★修正点: selectedCardId (instanceId) から元の card.id を抽出
+		const cardId = selectedCardId.split('-instance-')[0];
+		const card = cardMasterData.find(c => c.id === cardId);
 		if (!card) return;
 
 		if (activePlayerId === 'alien_side' && card.cardType !== 'alien') {
@@ -317,4 +319,3 @@ export const useGameStore = create<GameStateWithSelection & GameActions>((set, g
 }));
 
 export { cardMasterData };
-
