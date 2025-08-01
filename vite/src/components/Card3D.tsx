@@ -1,6 +1,5 @@
 import { animated, useSpring } from '@react-spring/three';
 import { Text } from '@react-three/drei';
-// ★修正点1: ThreeEventを@react-three/fiberからインポート
 import type { ThreeEvent } from '@react-three/fiber';
 import React, { useState } from 'react';
 import { useGameStore } from '../store/gameStore';
@@ -15,24 +14,28 @@ interface Card3DProps {
 
 const Card3D: React.FC<Card3DProps> = ({ card, position, player }) => {
 	const [isHovered, setIsHovered] = useState(false);
-	const { selectCard, selectedCardId, activePlayerId } = useGameStore();
+	// ★修正: setNotificationを追加
+	const { selectCard, selectedCardId, activePlayerId, setNotification } = useGameStore();
 
 	// 選択判定は `instanceId` で行う
 	const isSelected = selectedCardId === card.instanceId;
 	const isMyTurn = activePlayerId === player;
 
 	const springProps = useSpring({
-		position: (isHovered && isMyTurn) || isSelected ? [position[0], position[1] + 0.5, position[2]] : position,
+		position: (isHovered && isMyTurn) || isSelected ? [position[0], position[1]+ 0.35, position[2]] : position,
 		scale: isSelected ? 1.1 : 1,
 		config: { tension: 300, friction: 20 },
 	});
 
-	// ★修正点2: eventの型を `ThreeEvent` に修正
 	const handleCardClick = (event: ThreeEvent<MouseEvent>) => {
 		// この一行で、クリックイベントが背景のPlaneに伝播するのを防ぎます
 		event.stopPropagation();
 
-		if (!isMyTurn) return; // 自分のターンでなければ何もしない
+		// ★修正: 相手のターンの場合に通知を出す
+		if (!isMyTurn) {
+			setNotification("相手のターンです", player);
+			return;
+		}
 
 		// カードの選択/解除も `instanceId` で行う
 		selectCard(isSelected ? null : card.instanceId);
@@ -44,7 +47,7 @@ const Card3D: React.FC<Card3DProps> = ({ card, position, player }) => {
 			scale={springProps.scale as any}
 			onPointerEnter={(e) => { e.stopPropagation(); if (isMyTurn) setIsHovered(true); }} // ホバーイベントも伝播を停止
 			onPointerLeave={(e) => { e.stopPropagation(); setIsHovered(false); }}
-			onClick={handleCardClick} // ここで修正したハンドラを渡す
+			onClick={handleCardClick}
 		>
 			<mesh>
 				<boxGeometry args={[1.5, 2.1, 0.05]} />

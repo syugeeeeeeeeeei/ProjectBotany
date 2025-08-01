@@ -59,7 +59,6 @@ const Hand3D: React.FC<Hand3DProps> = ({
 			onDrag: ({ last, movement: [mx, my], velocity: [vx, vy], direction: [dx, dy], tap }) => {
 				if (tap || !last) return;
 
-				// ★修正: 判定ロジックをピクセルベースの固定値に統一
 				const FLICK_DISTANCE_THRESHOLD = 75;
 
 				const absMx = Math.abs(mx);
@@ -71,7 +70,8 @@ const Hand3D: React.FC<Hand3DProps> = ({
 						if (newPage !== currentPage) onPageChange(newPage);
 					}
 				} else { // 縦スワイプ
-					if (absMy > FLICK_DISTANCE_THRESHOLD && Math.abs(vy) > flickVelocityThreshold) {
+					// ★修正: 縦スワイプの速度閾値を20%緩和し、より速く（敏感に）反応するように変更
+					if (absMy > FLICK_DISTANCE_THRESHOLD && Math.abs(vy) > (flickVelocityThreshold * 0.8)) {
 						const swipeUp = dy < 0;
 						if (isTopPlayer) {
 							if (swipeUp && isVisibleRef.current) onVisibilityChange(false);
@@ -102,7 +102,7 @@ const Hand3D: React.FC<Hand3DProps> = ({
 	);
 
 	const { z } = useSpring({
-		z: isVisible ? 3.5 : 5.5,
+		z: isVisible ? 3.5 : 5.8,
 		config: { tension: 200, friction: 20 },
 	});
 
@@ -121,7 +121,7 @@ const Hand3D: React.FC<Hand3DProps> = ({
 			<Plane
 				args={[PAGE_WIDTH + 2, swipeAreaHeight]}
 				rotation={[-Math.PI / 2, 0, 0]}
-				position={[0, 0, 0.1]}
+				position={[0, -0.2, 0.1]}
 				{...bind()}
 			>
 				<meshStandardMaterial

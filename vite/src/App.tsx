@@ -131,7 +131,8 @@ const TurnEndButton = styled.button`
 
 function App() {
   const store = useGameStore();
-  const { selectedCardId, notification, setNotification, resetGame } = store;
+  // ★修正: selectedAlienInstanceId を追加
+  const { selectedCardId, selectedAlienInstanceId, notification, setNotification, resetGame } = store;
 
   const [isGameStarted, setIsGameStarted] = useState(false);
   const [showTurnBanner, setShowTurnBanner] = useState(false);
@@ -148,14 +149,12 @@ function App() {
     isGestureAreaVisible: false,
     flickDistanceRatio: 0.25,
     flickVelocityThreshold: 0.2,
-    swipeAreaHeight: 3,
+    swipeAreaHeight: 3.5,
   });
 
-  // ★修正: isHandInteractionLocked関連のstateとuseEffectを削除
-
-  // ★修正: カード選択時のロジックをシンプルに戻す
+  // ★修正: カードまたはコマ選択時に手札を非表示にする
   useEffect(() => {
-    if (selectedCardId) {
+    if (selectedCardId || selectedAlienInstanceId) {
       handVisibilityBeforeSelect.current = { alien: isAlienHandVisible, native: isNativeHandVisible };
       setAlienHandVisible(false);
       setNativeHandVisible(false);
@@ -163,7 +162,7 @@ function App() {
       setAlienHandVisible(handVisibilityBeforeSelect.current.alien);
       setNativeHandVisible(handVisibilityBeforeSelect.current.native);
     }
-  }, [selectedCardId]);
+  }, [selectedCardId, selectedAlienInstanceId]);
 
   useEffect(() => {
     const forceRemount = () => setHandResetKey(k => k + 1);
@@ -288,8 +287,8 @@ function App() {
     onToggleNativeHand: onToggleNativeHand,
   }
 
-  // ★修正: isInteractionLockedはカード選択中かどうかの判定のみに
-  const isHandInteractionLocked = !!selectedCardId;
+  // ★修正: isInteractionLockedの条件にselectedAlienInstanceIdを追加
+  const isHandInteractionLocked = !!selectedCardId || !!selectedAlienInstanceId;
 
   return (
     <>
