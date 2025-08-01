@@ -21,8 +21,9 @@ const GlobalStyle = createGlobalStyle`
     margin: 0;
     padding: 0;
     width: 100%;
-    height:${isSafari ? "99%" : "100%"};
+    height:100%;
     overflow: hidden;
+    background-color: #50342bff;
   }
 
   #root {
@@ -40,7 +41,7 @@ const GlobalStyle = createGlobalStyle`
 
 const MainContainer = styled.div`
   width: 100%;
-  height: 100%;
+  height: ${isSafari ? "98%" : "100%"};
   position: relative;
 `;
 
