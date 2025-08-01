@@ -318,8 +318,9 @@ function App() {
             <ambientLight intensity={0.8} />
             <directionalLight position={[10, 10, 5]} intensity={1} />
             <GameBoard3D fieldState={store.gameField} />
-            <Hand3D key={`alien-hand-${handResetKey}`} player="alien_side" cards={alienCards} isVisible={isAlienHandVisible} onVisibilityChange={setAlienHandVisible} currentPage={alienHandPage} onPageChange={setAlienHandPage} debugSettings={debugSettings} isInteractionLocked={isHandInteractionLocked} />
-            <Hand3D key={`native-hand-${handResetKey}`} player="native_side" cards={nativeCards} isVisible={isNativeHandVisible} onVisibilityChange={setNativeHandVisible} currentPage={nativeHandPage} onPageChange={setNativeHandPage} debugSettings={debugSettings} isInteractionLocked={isHandInteractionLocked} />
+            {/* ★修正: 自分のターン以外は強制的に非表示にする */}
+            <Hand3D key={`alien-hand-${handResetKey}`} player="alien_side" cards={alienCards} isVisible={store.activePlayerId === 'alien_side' && isAlienHandVisible} onVisibilityChange={setAlienHandVisible} currentPage={alienHandPage} onPageChange={setAlienHandPage} debugSettings={debugSettings} isInteractionLocked={isHandInteractionLocked} />
+            <Hand3D key={`native-hand-${handResetKey}`} player="native_side" cards={nativeCards} isVisible={store.activePlayerId === 'native_side' && isNativeHandVisible} onVisibilityChange={setNativeHandVisible} currentPage={nativeHandPage} onPageChange={setNativeHandPage} debugSettings={debugSettings} isInteractionLocked={isHandInteractionLocked} />
             <OrbitControls makeDefault enableZoom={false} enableRotate={false} enablePan={false} />
             <SceneController />
           </Canvas>

@@ -3,8 +3,9 @@ export type PlayerId = 'native_side' | 'alien_side';
 
 // ✨ GrowthEffectとGrowthConditionの型を追加
 export interface GrowthEffect {
-  type: 'increase_invasion_power';
-  value: number;
+  type: 'increase_invasion_power' | 'change_invasion_shape';
+  value?: number;
+  newShape?: 'single' | 'cross' | 'straight' | 'range';
 }
 
 export interface GrowthCondition {
@@ -27,13 +28,16 @@ export interface CardDefinition {
   baseInvasionPower?: number;
   baseInvasionShape?: 'single' | 'cross' | 'straight' | 'range';
   canGrow?: boolean;
-  growthConditions?: GrowthCondition[]; // ✨ 追加
-  growthEffects?: GrowthEffect[];      // ✨ 追加
+  growthConditions?: GrowthCondition[];
+  growthEffects?: GrowthEffect[];
 
   // 駆除カード固有
   targetType?: 'cell' | 'alien_plant';
   removalMethod?: 'direct_n_cells' | 'range_selection' | 'target_alien_and_its_dominant_cells';
   postRemovalState?: 'empty_area' | 'recovery_pending_area';
+
+  // 回復カード固有
+  recoveryMethod?: 'direct_n_cells' | 'range_selection';
 
   // 回復・駆除カード固有
   usageLimit?: number | null;
@@ -46,7 +50,7 @@ export interface PlayerCardInstance {
   cardDefinitionId: string;
 }
 export interface PlayerState {
-  playerId: PlayerId; // ✨ 定義したPlayerId型を使用
+  playerId: PlayerId;
   playerName: string;
   currentEnvironment: number;
   maxEnvironment: number;
@@ -69,7 +73,7 @@ export interface CellState {
   x: number;
   y: number;
   cellType: 'native_area' | 'alien_core' | 'alien_invasion_area' | 'empty_area' | 'recovery_pending_area';
-  ownerId: PlayerId | null; // ✨ 定義したPlayerId型を使用
+  ownerId: PlayerId | null;
   alienInstanceId: string | null;
   dominantAlienInstanceId: string | null;
   recoveryPendingTurn: number | null;
@@ -82,7 +86,7 @@ export interface FieldState {
 export interface GameState {
   currentTurn: number;
   maximumTurns: number;
-  activePlayerId: PlayerId; // ✨ 定義したPlayerId型を使用
+  activePlayerId: PlayerId;
   gameField: FieldState;
   playerStates: {
     native_side: PlayerState;
@@ -90,6 +94,6 @@ export interface GameState {
   };
   currentPhase: 'environment_phase' | 'summon_phase' | 'activation_phase';
   isGameOver: boolean;
-  winningPlayerId: PlayerId | null; // ✨ 定義したPlayerId型を使用
+  winningPlayerId: PlayerId | null;
   activeAlienInstances: { [instanceId: string]: ActiveAlienInstance };
 }

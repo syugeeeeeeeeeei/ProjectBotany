@@ -3,12 +3,14 @@ import { create } from 'zustand';
 import type { ActiveAlienInstance, CardDefinition, CellState, FieldState, GameState, PlayerId, PlayerState } from '../types/data';
 
 const cardMasterData: CardDefinition[] = [
-	{ id: 'alien-1', name: 'オオキンケイギク', description: '召喚後2ターンで成長する。', cost: 2, cardType: 'alien', imagePath: '', baseInvasionPower: 1, baseInvasionShape: 'cross', canGrow: true, growthConditions: [{ type: 'turns_since_last_action', value: 2 }], growthEffects: [{ type: 'increase_invasion_power', value: 1 }] },
-	{ id: 'erad-1', name: '強力駆除剤', description: '指定したマスを空マスにする。', cost: 1, cardType: 'eradication', imagePath: '' },
-	{ id: 'recov-1', name: '緑の恵み', description: '空マスを在来種マスに回復する。', cost: 1, cardType: 'recovery', imagePath: '' },
-	{ id: 'alien-2', name: 'セイタカアワダチソウ', description: 'コストが高いが強力。', cost: 4, cardType: 'alien', imagePath: '', baseInvasionPower: 2, baseInvasionShape: 'cross' },
-	{ id: 'erad-2', name: '範囲駆除', description: '2x2マスを空マスにする。', cost: 3, cardType: 'eradication', imagePath: '' },
-	{ id: 'alien-3', name: 'アメリカオニアザミ', description: '低コストで素早い侵略が可能。', cost: 1, cardType: 'alien', imagePath: '', baseInvasionPower: 1, baseInvasionShape: 'cross' },
+	{ id: 'alien-1', name: 'オオキンケイギク', description: '召喚後2ターンで成長する。', cost: 2, cardType: 'alien', imagePath: 'https://www.city.kitakyushu.lg.jp/files/000115246.JPG', baseInvasionPower: 1, baseInvasionShape: 'cross', canGrow: true, growthConditions: [{ type: 'turns_since_last_action', value: 2 }], growthEffects: [{ type: 'increase_invasion_power', value: 1 }] },
+	{ id: 'erad-1', name: '強力駆除剤', description: '指定したマスを空マスにする。', cost: 1, cardType: 'eradication', imagePath: 'https://www.city.kitakyushu.lg.jp/files/000115246.JPG', removalMethod: 'direct_n_cells', postRemovalState: 'empty_area', targetType: 'cell' },
+	{ id: 'recov-1', name: '緑の恵み', description: '空マスを在来種マスに回復する。', cost: 1, cardType: 'recovery', imagePath: 'https://www.city.kitakyushu.lg.jp/files/000115246.JPG', recoveryMethod: 'direct_n_cells' },
+	{ id: 'alien-2', name: 'セイタカアワダチソウ', description: 'コストが高いが強力。', cost: 4, cardType: 'alien', imagePath: 'https://www.city.kitakyushu.lg.jp/files/000115246.JPG', baseInvasionPower: 2, baseInvasionShape: 'range' },
+	{ id: 'erad-2', name: '範囲駆除', description: '2x2マスを空マスにする。', cost: 3, cardType: 'eradication', imagePath: 'https://www.city.kitakyushu.lg.jp/files/000115246.JPG', removalMethod: 'range_selection', postRemovalState: 'empty_area', targetType: 'cell', cooldownTurns: 2 },
+	{ id: 'alien-3', name: 'アメリカオニアザミ', description: '低コストで素早い侵略が可能。', cost: 1, cardType: 'alien', imagePath: 'https://www.city.kitakyushu.lg.jp/files/000115246.JPG', baseInvasionPower: 1, baseInvasionShape: 'single' },
+	{ id: 'alien-4', name: 'オオブタクサ', description: '直線的な侵略を得意とする。', cost: 2, cardType: 'alien', imagePath: 'https://www.city.kitakyushu.lg.jp/files/000115246.JPG', baseInvasionPower: 2, baseInvasionShape: 'straight' },
+	{ id: 'erad-3', name: '大駆除作戦', description: '指定した外来種コマと、その支配マス全体を駆除する。', cost: 5, cardType: 'eradication', imagePath: 'https://www.city.kitakyushu.lg.jp/files/000115246.JPG', removalMethod: 'target_alien_and_its_dominant_cells', targetType: 'alien_plant', usageLimit: 1 },
 ];
 
 interface GameStateWithSelection extends GameState {
@@ -36,7 +38,6 @@ const createInitialGameState = (): GameStateWithSelection => ({
 	winningPlayerId: null,
 	gameField: createInitialFieldState(),
 	playerStates: {
-		// ★修正: プレイヤー名を変更
 		native_side: createInitialPlayerState('native_side', '在来種'),
 		alien_side: createInitialPlayerState('alien_side', '外来種'),
 	},
@@ -80,44 +81,123 @@ export const useGameStore = create<GameStateWithSelection & GameActions>((set, g
 	resetGame: () => set(createInitialGameState()),
 
 	progressTurn: () => set((state) => {
+		console.log(`[progressTurn開始] アクティブプレイヤー: ${state.activePlayerId}, ターン: ${state.currentTurn}`);
+		console.log(`[progressTurn開始] マス(${state.gameField.cells[5][3].x}, ${state.gameField.cells[5][3].y})のタイプ: ${state.gameField.cells[5][3].cellType}`);
+
 		if (state.isGameOver) return state;
 
 		let newCells = state.gameField.cells.map(row => row.map(cell => ({ ...cell })));
 		const newActiveAlienInstances = { ...state.activeAlienInstances };
+		const updatedPlayerStates = { ...state.playerStates };
+
+		Object.values(updatedPlayerStates).forEach(p => {
+			p.cooldownActiveCards = p.cooldownActiveCards.map(c => ({
+				...c,
+				turnsRemaining: c.turnsRemaining - 1
+			})).filter(c => c.turnsRemaining > 0);
+		});
 
 		if (state.activePlayerId === 'alien_side') {
-			Object.values(newActiveAlienInstances).forEach(alien => {
+			const sortedAliens = Object.values(newActiveAlienInstances).sort((a, b) => {
+				const costA = cardMasterData.find(c => c.id === a.cardDefinitionId)?.cost ?? 0;
+				const costB = cardMasterData.find(c => c.id === b.cardDefinitionId)?.cost ?? 0;
+				if (costA !== costB) {
+					return costB - costA;
+				}
+				return b.spawnedTurn - a.spawnedTurn;
+			});
+
+			sortedAliens.forEach(alien => {
 				const cardDef = cardMasterData.find(c => c.id === alien.cardDefinitionId);
-				if (cardDef?.canGrow && alien.currentGrowthStage < (cardDef.growthConditions?.length ?? 0)) {
+				if (!cardDef) return;
+
+				if (cardDef.canGrow && alien.currentGrowthStage < (cardDef.growthConditions?.length ?? 0)) {
 					const condition = cardDef.growthConditions?.[alien.currentGrowthStage];
 					if (condition?.type === 'turns_since_last_action' && (state.currentTurn - alien.spawnedTurn) >= condition.value) {
 						const effect = cardDef.growthEffects?.[alien.currentGrowthStage];
-						if (effect?.type === 'increase_invasion_power') {
+						if (effect && effect.type === 'increase_invasion_power' && effect.value !== undefined) {
 							alien.currentInvasionPower += effect.value;
 							alien.currentGrowthStage++;
 							console.log(`${cardDef.name} が成長！ 侵略力が ${alien.currentInvasionPower} になった！`);
 						}
 					}
 				}
-				for (let i = 1; i <= alien.currentInvasionPower; i++) {
-					const targets = [
-						{ x: alien.currentX, y: alien.currentY + i },
-						{ x: alien.currentX, y: alien.currentY - i },
-						{ x: alien.currentX + i, y: alien.currentY },
-						{ x: alien.currentX - i, y: alien.currentY },
-					];
-					targets.forEach(target => {
-						if (target.y >= 0 && target.y < state.gameField.height && target.x >= 0 && target.x < state.gameField.width) {
-							const cell = newCells[target.y][target.x];
-							if (cell.cellType !== 'alien_core') {
+
+				const targets: { x: number; y: number }[] = [];
+				const invasionPower = alien.currentInvasionPower;
+				const { width, height } = state.gameField;
+
+				switch (alien.currentInvasionShape) {
+					case 'cross':
+						for (let i = 1; i <= invasionPower; i++) {
+							targets.push({ x: alien.currentX, y: alien.currentY + i });
+							targets.push({ x: alien.currentX, y: alien.currentY - i });
+							targets.push({ x: alien.currentX + i, y: alien.currentY });
+							targets.push({ x: alien.currentX - i, y: alien.currentY });
+						}
+						break;
+					case 'straight':
+						for (let i = 1; i <= invasionPower; i++) {
+							targets.push({ x: alien.currentX, y: alien.currentY + i });
+							targets.push({ x: alien.currentX, y: alien.currentY - i });
+						}
+						break;
+					case 'range':
+						for (let y = alien.currentY - invasionPower; y <= alien.currentY + invasionPower; y++) {
+							for (let x = alien.currentX - invasionPower; x <= alien.currentX + invasionPower; x++) {
+								if (x === alien.currentX && y === alien.currentY) continue;
+								targets.push({ x, y });
+							}
+						}
+						break;
+					case 'single':
+						targets.push({ x: alien.currentX, y: alien.currentY + 1 });
+						break;
+				}
+
+				targets.forEach(target => {
+					if (target.y >= 0 && target.y < height && target.x >= 0 && target.x < width) {
+						const cell = newCells[target.y][target.x];
+						if (cell.cellType !== 'alien_core') {
+							const currentDominantAlien = cell.dominantAlienInstanceId ? newActiveAlienInstances[cell.dominantAlienInstanceId] : null;
+							const currentDominantCost = currentDominantAlien ? cardMasterData.find(c => c.id === currentDominantAlien.cardDefinitionId)?.cost ?? 0 : -1;
+							const alienCost = cardDef.cost;
+
+							if (!currentDominantAlien || alienCost > currentDominantCost || (alienCost === currentDominantCost && alien.spawnedTurn > currentDominantAlien.spawnedTurn)) {
 								cell.cellType = 'alien_invasion_area';
 								cell.ownerId = 'alien_side';
 								cell.dominantAlienInstanceId = alien.instanceId;
+								console.log(`[侵略成功] ターン${state.currentTurn}、コマ${alien.cardDefinitionId}がマス(${target.x}, ${target.y})を支配。`);
+							} else {
+								console.log(`[侵略失敗] ターン${state.currentTurn}、コマ${alien.cardDefinitionId}はマス(${target.x}, ${target.y})を支配できませんでした (より優先度の高いコマが既に支配)。`);
 							}
+						}
+					}
+				});
+			});
+
+			const dominantCounts: { [key: string]: number } = {};
+			newCells.flat().forEach(cell => {
+				if (cell.dominantAlienInstanceId) {
+					dominantCounts[cell.dominantAlienInstanceId] = (dominantCounts[cell.dominantAlienInstanceId] || 0) + 1;
+				}
+			});
+
+			Object.keys(newActiveAlienInstances).forEach(instanceId => {
+				if (!dominantCounts[instanceId] || dominantCounts[instanceId] === 0) {
+					console.log(`外来種コマ ${instanceId} (支配マス0) を除去`);
+					delete newActiveAlienInstances[instanceId];
+					newCells.flat().forEach(cell => {
+						if (cell.alienInstanceId === instanceId) {
+							cell.cellType = 'empty_area';
+							cell.ownerId = null;
+							cell.alienInstanceId = null;
+							cell.dominantAlienInstanceId = null;
 						}
 					});
 				}
 			});
+
 		} else {
 			newCells.forEach(row => row.forEach(cell => {
 				if (cell.cellType === 'recovery_pending_area') {
@@ -134,7 +214,6 @@ export const useGameStore = create<GameStateWithSelection & GameActions>((set, g
 		let nextTurn = state.currentTurn;
 		if (nextPlayerId === 'alien_side') nextTurn += 1;
 
-		const updatedPlayerStates = { ...state.playerStates };
 		Object.values(updatedPlayerStates).forEach(p => {
 			p.maxEnvironment = nextTurn;
 			p.currentEnvironment = nextTurn;
@@ -151,6 +230,16 @@ export const useGameStore = create<GameStateWithSelection & GameActions>((set, g
 			else winningPlayerId = null;
 		}
 
+		console.log(`--- ターン${state.currentTurn}終了後の盤面状態（一部）---`);
+		console.log(`マス(${newCells[5][3].x}, ${newCells[5][3].y})のタイプ: ${newCells[5][3].cellType}`);
+		console.log(`マス(${newCells[5][3].x}, ${newCells[5][3].y})の支配者: ${newCells[5][3].dominantAlienInstanceId}`);
+		if (newCells[6][3]) {
+			console.log(`マス(${newCells[6][3].x}, ${newCells[6][3].y})のタイプ: ${newCells[6][3].cellType}`);
+			console.log(`マス(${newCells[6][3].x}, ${newCells[6][3].y})の支配者: ${newCells[6][3].dominantAlienInstanceId}`);
+		}
+		console.log(`-------------------------------------------`);
+
+
 		return {
 			currentTurn: nextTurn,
 			activePlayerId: nextPlayerId,
@@ -164,9 +253,17 @@ export const useGameStore = create<GameStateWithSelection & GameActions>((set, g
 		};
 	}),
 
-	selectCard: (cardId) => set({
-		selectedCardId: cardId,
-		selectedAlienInstanceId: null
+	selectCard: (cardId) => set((state) => {
+		const card = state.playerStates[state.activePlayerId].cooldownActiveCards.find(c => c.cardId === cardId?.split('-instance-')[0]);
+		if (card) {
+			get().setNotification(`このカードはあと${card.turnsRemaining}ターン使用できません。`, state.activePlayerId);
+			return {};
+		}
+
+		return {
+			selectedCardId: cardId,
+			selectedAlienInstanceId: null
+		};
 	}),
 
 	playCard: (targetCell) => {
@@ -188,6 +285,10 @@ export const useGameStore = create<GameStateWithSelection & GameActions>((set, g
 		}
 
 		const currentPlayer = playerStates[activePlayerId];
+		if (currentPlayer.cooldownActiveCards.some(c => c.cardId === cardId)) {
+			get().setNotification("このカードはクールタイム中です。", activePlayerId);
+			return;
+		}
 		if (currentPlayer.currentEnvironment < card.cost) {
 			get().setNotification("エンバイロメントが足りません！", activePlayerId);
 			return;
@@ -196,8 +297,13 @@ export const useGameStore = create<GameStateWithSelection & GameActions>((set, g
 		const newCells = gameField.cells.map(row => row.map(cell => ({ ...cell })));
 		const newActiveAlienInstances = { ...activeAlienInstances };
 
+		const targetsToUpdate: { x: number, y: number }[] = [];
+		const { width, height } = state.gameField;
+
 		switch (card.cardType) {
 			case 'alien': {
+				console.log(`[playCard] 外来種カード ${card.name} (${card.id}) をマス(${targetCell.x}, ${targetCell.y})にプレイ`);
+
 				const newAlienInstance: ActiveAlienInstance = {
 					instanceId: nanoid(),
 					cardDefinitionId: card.id,
@@ -219,27 +325,71 @@ export const useGameStore = create<GameStateWithSelection & GameActions>((set, g
 				break;
 			}
 			case 'eradication': {
-				const cellToUpdate = newCells[targetCell.y][targetCell.x];
-				if (cellToUpdate.alienInstanceId) {
-					delete newActiveAlienInstances[cellToUpdate.alienInstanceId];
+				const method = card.removalMethod;
+				switch (method) {
+					case 'direct_n_cells': {
+						const cellToUpdate = newCells[targetCell.y][targetCell.x];
+						targetsToUpdate.push(cellToUpdate);
+						break;
+					}
+					case 'range_selection': {
+						for (let y = targetCell.y; y < targetCell.y + 2; y++) {
+							for (let x = targetCell.x; x < targetCell.x + 2; x++) {
+								if (x >= 0 && x < width && y >= 0 && y < height) {
+									targetsToUpdate.push(newCells[y][x]);
+								}
+							}
+						}
+						break;
+					}
+					case 'target_alien_and_its_dominant_cells': {
+						const targetAlienInstance = newActiveAlienInstances[targetCell.alienInstanceId!];
+						if (!targetAlienInstance) return;
+
+						targetsToUpdate.push(...newCells.flat().filter(cell => cell.dominantAlienInstanceId === targetAlienInstance.instanceId));
+						break;
+					}
 				}
-				cellToUpdate.cellType = 'empty_area';
-				cellToUpdate.ownerId = null;
-				cellToUpdate.alienInstanceId = null;
-				cellToUpdate.dominantAlienInstanceId = null;
+
+				targetsToUpdate.forEach(target => {
+					const cellToUpdate = newCells[target.y][target.x];
+					if (cellToUpdate.alienInstanceId) {
+						delete newActiveAlienInstances[cellToUpdate.alienInstanceId];
+					}
+					cellToUpdate.cellType = card.postRemovalState || 'empty_area';
+					cellToUpdate.ownerId = null;
+					cellToUpdate.alienInstanceId = null;
+					cellToUpdate.dominantAlienInstanceId = null;
+				});
 				break;
 			}
 			case 'recovery': {
-				const cellToUpdate = newCells[targetCell.y][targetCell.x];
-				if (cellToUpdate.cellType === 'empty_area') {
+				const method = card.recoveryMethod;
+				switch (method) {
+					case 'direct_n_cells':
+						if (targetCell.cellType === 'empty_area' || targetCell.cellType === 'recovery_pending_area') {
+							targetsToUpdate.push(targetCell);
+						} else {
+							get().setNotification('このマスは回復できません。', activePlayerId);
+							return;
+						}
+						break;
+				}
+
+				targetsToUpdate.forEach(target => {
+					const cellToUpdate = newCells[target.y][target.x];
 					cellToUpdate.cellType = 'native_area';
 					cellToUpdate.ownerId = 'native_side';
-				} else {
-					get().setNotification('このマスは回復できません。', activePlayerId);
-					return;
-				}
+				});
 				break;
 			}
+		}
+
+		if (card.cooldownTurns) {
+			currentPlayer.cooldownActiveCards.push({
+				cardId: cardId,
+				turnsRemaining: card.cooldownTurns
+			});
 		}
 
 		set({
@@ -254,6 +404,9 @@ export const useGameStore = create<GameStateWithSelection & GameActions>((set, g
 			activeAlienInstances: newActiveAlienInstances,
 			selectedCardId: null
 		});
+
+		const updatedState = get();
+		console.log(`[playCard終了] プレイ後、マス(${targetCell.x}, ${targetCell.y})のタイプ: ${updatedState.gameField.cells[targetCell.y][targetCell.x].cellType}`);
 	},
 
 	selectAlienInstance: (instanceId) => set((state) => {
@@ -332,3 +485,4 @@ export const useGameStore = create<GameStateWithSelection & GameActions>((set, g
 }));
 
 export { cardMasterData };
+

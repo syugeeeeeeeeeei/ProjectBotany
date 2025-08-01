@@ -65,7 +65,7 @@ const Hand3D: React.FC<Hand3DProps> = ({
 				const absMy = Math.abs(my);
 
 				if (absMx > absMy) { // 横フリック
-					if (isVisibleRef.current && absMx > FLICK_DISTANCE_THRESHOLD && Math.abs(vx) > flickVelocityThreshold) {
+					if (absMx > FLICK_DISTANCE_THRESHOLD && Math.abs(vx) > flickVelocityThreshold) {
 						const newPage = Math.max(0, Math.min(maxPage, currentPage - Math.sign(dx)));
 						if (newPage !== currentPage) onPageChange(newPage);
 					}
@@ -102,7 +102,8 @@ const Hand3D: React.FC<Hand3DProps> = ({
 	);
 
 	const { z } = useSpring({
-		z: isVisible ? 3.5 : 5.8,
+		// ★修正: isVisibleがfalseの場合、z座標をより手前にして「隠れている」状態を表現
+		z: isVisible ? 3.5 : 5.5,
 		config: { tension: 200, friction: 20 },
 	});
 
