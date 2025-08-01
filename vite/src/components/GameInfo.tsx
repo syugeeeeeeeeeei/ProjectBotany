@@ -9,38 +9,41 @@ const InfoContainer = styled.div`
   padding: 10px 5px;
   border-radius: 8px;
   display: flex;
-  flex-direction: column; /* ★修正: 縦並びに変更 */
-  gap: 10px; /* ★追加: 要素間のスペース */
-  align-items: center; /* ★追加: 中央揃え */
-  width: 100%; /* ★修正: 横幅を親要素に合わせる */
+  flex-direction: column;
+  gap: 10px;
+  align-items: center;
+  width: 100%;
 `;
 
 const InfoItem = styled.div`
   text-align: center;
-  font-size: 1.3em; /* ★修正: 少し大きく */
+  font-size: 1.3em;
   & > div:first-child {
     font-size: 0.8em;
     color: #aaa;
   }
 `;
 
-// ★修正: playerのIDを受け取るようにPropsを変更
 const GameInfo: React.FC<{ player: PlayerId }> = ({ player }) => {
-	const { playerStates } = useGameStore();
-	const playerData = playerStates[player];
+  // 新しい `environment` state を使用
+  const { environment } = useGameStore();
+  const playerData = environment[player];
 
-	return (
-		<InfoContainer>
-			<InfoItem>
-				<div>Player</div>
-				<div>{playerData.playerName}</div>
-			</InfoItem>
-			<InfoItem>
-				<div>Environment</div>
-				<div>{playerData.currentEnvironment} / {playerData.maxEnvironment}</div>
-			</InfoItem>
-		</InfoContainer>
-	);
+  return (
+    <InfoContainer>
+      <InfoItem>
+        <div>Player</div>
+        {/* playerNameはなくなったため、IDを大文字にして表示 */}
+        <div>{player.toUpperCase()}</div>
+      </InfoItem>
+      <InfoItem>
+        <div>Environment</div>
+        <div>
+          {playerData.current} / {playerData.max}
+        </div>
+      </InfoItem>
+    </InfoContainer>
+  );
 };
 
 export default GameInfo;

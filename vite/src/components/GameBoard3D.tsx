@@ -1,108 +1,75 @@
-import React, { useMemo } from 'react';
-import * as THREE from 'three'; // ★追加
+import React from 'react';
 import { useGameStore } from '../store/gameStore';
-import type { CellState, FieldState } from '../types/data';
+import { useUIStore } from '../store/uiStore'; // ★UIストアをインポート
+import type { Cell, Piece } from '../types/data';
 
-// 各セルの状態に応じた色を返すヘルパー関数
-const getCellColor = (cellType: CellState['cellType']) => {
-	switch (cellType) {
-		case 'native_area': return '#2E7D32'; // 緑
-		case 'alien_core': return '#C62828'; // 赤
-		case 'alien_invasion_area': return '#E57373'; // 薄い赤
-		case 'empty_area': return '#757575'; // 灰色
-		case 'recovery_pending_area': return '#FDD835'; // 黄色
-		default: return '#444';
+// ... (getCellColor, Piece3Dコンポーネントは変更なし)
+const getCellColor = (dominant?: 'alien' | 'native') => {
+	switch (dominant) {
+		case 'alien': return '#E57373';
+		case 'native': return '#2E7D32';
+		default: return '#757575';
 	}
 };
 
-// ★追加: 支配マスを縁取りで表示するコンポーネント
-const MoveTargetOutline: React.FC = () => {
-	const shape = useMemo(() => {
-		const s = 0.45; // 外側の四角形の半分のサイズ
-		const w = 0.05; // 縁の太さ
-		const innerS = s - w; // 内側の四角形の半分のサイズ
-
-		const newShape = new THREE.Shape();
-		// 外側の四角形
-		newShape.moveTo(-s, s);
-		newShape.lineTo(s, s);
-		newShape.lineTo(s, -s);
-		newShape.lineTo(-s, -s);
-		newShape.closePath();
-
-		// くり抜く穴
-		const hole = new THREE.Path();
-		hole.moveTo(-innerS, innerS);
-		hole.lineTo(innerS, innerS);
-		hole.lineTo(innerS, -innerS);
-		hole.lineTo(-innerS, -innerS);
-		hole.closePath();
-
-		newShape.holes.push(hole);
-		return newShape;
-	}, []);
-
+const Piece3D: React.FC<{ piece: Piece }> = ({ piece }) => {
+	const color = piece.type === 'alien' ? '#C62828' : '#1565C0';
 	return (
-		<mesh position-z={0.01}> {/* マスより少しだけ手前に表示 */}
-			<shapeGeometry args={[shape]} />
-			<meshBasicMaterial color="#87CEEB" side={THREE.DoubleSide} />
+		<mesh position-z={0.1}>
+			<cylinderGeometry args={[0.3, 0.3, 0.2, 32]} />
+			<meshStandardMaterial color={color} />
 		</mesh>
 	);
 };
 
-
-// 個々のセル（マス）を表す3Dオブジェクト
-const Cell: React.FC<{ cell: CellState }> = ({ cell }) => {
-	const { selectedAlienInstanceId, playCard, selectAlienInstance, moveAlien, selectedCardId } = useGameStore();
-
-	const isMoveTarget = useMemo(() => {
-		if (!selectedAlienInstanceId) return false;
-		return cell.cellType === 'alien_invasion_area' && cell.dominantAlienInstanceId === selectedAlienInstanceId;
-	}, [selectedAlienInstanceId, cell]);
-
+const Cell3D: React.FC<{ cell: Cell; piece?: Piece }> = ({ cell, piece }) => {
+	const { currentPlayerId, gameStatus, placePiece, useCard } = useGameStore();
+	// ★UIストアから状態とアクションを取得
+	const { selectedCardId, selectCard } = useUIStore();
 
 	const handleCellClick = () => {
-		if (selectedCardId) {
-			playCard(cell);
-			return;
+		if (gameStatus !== 'player_turn' || !selectedCardId) return;
+
+		if (currentPlayerId === 'alien') {
+			placePiece(cell.id, selectedCardId);
+		} else {
+			useCard(cell.id, selectedCardId);
 		}
-		if (selectedAlienInstanceId) {
-			if (isMoveTarget) moveAlien(cell);
-			else if (cell.alienInstanceId) selectAlienInstance(cell.alienInstanceId);
-			else selectAlienInstance(null);
-			return;
-		}
-		if (cell.alienInstanceId) {
-			selectAlienInstance(cell.alienInstanceId);
-		}
+		// ★カード使用後にUIの選択状態を解除
+		selectCard(null);
 	};
 
-	const isSelected = cell.alienInstanceId !== null && cell.alienInstanceId === selectedAlienInstanceId;
-	const position: [number, number, number] = [cell.x - 3, 0, cell.y - 4.5];
-
-	// ★修正: 支配マスのハイライト（emissive）を削除
-	const emissiveColor = isSelected ? '#4488FF' : 'black';
-	const emissiveIntensity = isSelected ? 1.5 : 0;
-
+	const position: [number, number, number] = [
+		(cell.id % 5) - 2,
+		0,
+		Math.floor(cell.id / 5) - 2,
+	];
 
 	return (
-		<group position={position} onClick={handleCellClick} rotation={[-Math.PI / 2, 0, 0]}>
+		<group
+			position={position}
+			onClick={handleCellClick}
+			rotation={[-Math.PI / 2, 0, 0]}
+		>
 			<mesh>
 				<planeGeometry args={[0.9, 0.9]} />
-				<meshStandardMaterial color={getCellColor(cell.cellType)} emissive={emissiveColor} emissiveIntensity={emissiveIntensity} />
+				<meshStandardMaterial color={getCellColor(cell.dominant)} />
 			</mesh>
-			{/* ★修正: isMoveTargetがtrueの時に縁取りコンポーネントを表示 */}
-			{isMoveTarget && <MoveTargetOutline />}
+			{piece && <Piece3D piece={piece} />}
 		</group>
 	);
 };
 
-// ゲームボード全体
-const GameBoard3D: React.FC<{ fieldState: FieldState }> = ({ fieldState }) => {
+const GameBoard3D: React.FC = () => {
+	const { cells, pieces } = useGameStore();
 	return (
 		<group>
-			{fieldState.cells.flat().map((cell) => (
-				<Cell key={`${cell.x}-${cell.y}`} cell={cell} />
+			{cells.map((cell) => (
+				<Cell3D
+					key={cell.id}
+					cell={cell}
+					piece={pieces.find((p) => p.cellId === cell.id)}
+				/>
 			))}
 		</group>
 	);

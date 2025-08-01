@@ -1,121 +1,86 @@
-import { create } from "zustand";
-import { v4 as uuidv4 } from "uuid";
+import { create } from 'zustand';
+import { devtools } from 'zustand/middleware';
+import { INITIAL_CELLS } from '../constants/game';
+import type { CardId, GameState, PlayLog } from '../types/data';
 import {
-	CARD_MASTER_DATA,
-	INITIAL_ENVIRONMENT,
-	INITIAL_FIELD_HEIGHT,
-	INITIAL_FIELD_WIDTH,
-	MAX_ENVIRONMENT,
-	MAX_TURN,
-	PLAYER_IDS,
-} from "../constants/game";
-import {
-	processCardPlay,
-	processTurnProgression,
-	processAlienMove,
-} from "../logic/gameLogic";
-import type {
-	CellState,
-	FieldState,
-	GameActions,
-	GameState,
-	GameStore,
-	PlayerId,
-} from "../types/data";
+	advanceToNextPlayer,
+	checkVictory,
+	gameReducer,
+	resolveActivationPhase,
+} from '../utils/gameLogic';
 
-// createInitialFieldは変更なし
-const createInitialField = (width: number, height: number): FieldState => {
-	const cells: CellState[][] = [];
-	for (let y = 0; y < height; y++) {
-		const row: CellState[] = [];
-		for (let x = 0; x < width; x++) {
-			row.push({
-				x,
-				y,
-				cellType: "native_area",
-				ownerId: PLAYER_IDS.NATIVE_SIDE,
-				dominantAlienInstanceId: null,
-			});
-		}
-		cells.push(row);
-	}
-	return { width, height, cells };
+// Action
+export type GameActions = {
+	placePiece: (cellId: number, cardId: CardId) => void;
+	useCard: (cellId: number, cardId: CardId) => void;
+	endTurn: () => void;
 };
-
-
-// ✨ デッキではなく、使用可能なカードIDのプールを作成する関数に変更
-const createInitialCardPool = (side: PlayerId): string[] => {
-	return Object.values(CARD_MASTER_DATA)
-		.filter((card) => {
-			if (side === PLAYER_IDS.ALIEN_SIDE) {
-				return card.cardType === "alien";
-			} else {
-				return card.cardType === "eradication" || card.cardType === "recovery";
-			}
-		})
-		.map((card) => card.id);
-};
-
-const initialAlienCardPool = createInitialCardPool(PLAYER_IDS.ALIEN_SIDE);
-const initialNativeCardPool = createInitialCardPool(PLAYER_IDS.NATIVE_SIDE);
 
 const initialState: GameState = {
-	currentTurn: 1,
-	maximumTurns: MAX_TURN,
-	activePlayerId: PLAYER_IDS.ALIEN_SIDE,
-	gameField: createInitialField(INITIAL_FIELD_WIDTH, INITIAL_FIELD_HEIGHT),
-	cardMasterData: CARD_MASTER_DATA,
-	playerStates: {
-		alien_side: {
-			playerId: PLAYER_IDS.ALIEN_SIDE,
-			playerName: "外来種サイド",
-			currentEnvironment: INITIAL_ENVIRONMENT,
-			maxEnvironment: MAX_ENVIRONMENT,
-			playableCardIds: initialAlienCardPool, // ✨ hand/deck/discardを撤廃
-			cooldownActiveCards: [],
-			limitedCardsUsedCount: {},
-		},
-		native_side: {
-			playerId: PLAYER_IDS.NATIVE_SIDE,
-			playerName: "在来種サイド",
-			currentEnvironment: INITIAL_ENVIRONMENT,
-			maxEnvironment: MAX_ENVIRONMENT,
-			playableCardIds: initialNativeCardPool, // ✨ hand/deck/discardを撤廃
-			cooldownActiveCards: [],
-			limitedCardsUsedCount: {},
-		},
+	turn: 1,
+	currentPlayerId: 'alien',
+	gameStatus: 'player_turn',
+	winner: null,
+	cells: INITIAL_CELLS,
+	pieces: [],
+	environment: {
+		alien: { current: 1, max: 1 },
+		native: { current: 1, max: 1 },
 	},
-	currentPhase: "preparation",
-	isGameOver: false,
-	winningPlayerId: null,
-	activeAlienInstances: {},
+	cooldowns: {},
+	gameLog: [],
 };
 
-const actions = (
-	set: (fn: (state: GameStore) => Partial<GameStore> | GameStore) => void,
-	get: () => GameStore
-): GameActions => ({
-	progressTurn: () => {
-		const updatedState = processTurnProgression(get());
-		set((state) => ({ ...state, ...updatedState }));
-	},
+export const useGameStore = create<GameState & GameActions>()(
+	devtools(
+		(set, get) => ({
+			...initialState,
 
-	playCard: (cardDefinitionId: string, x: number, y: number) => { // ✨ 引数を変更
-		const updatedState = processCardPlay(get(), cardDefinitionId, x, y);
-		if (updatedState) {
-			set((state) => ({ ...state, ...updatedState }));
-		}
-	},
+			// ----------------------------------------------------------------
+			// Actions
+			// ----------------------------------------------------------------
 
-	moveAlien: (instanceId: string, targetX: number, targetY: number) => {
-		const updatedState = processAlienMove(get(), instanceId, targetX, targetY);
-		if (updatedState) {
-			set((state) => ({ ...state, ...updatedState }));
-		}
-	},
-});
+			placePiece: (cellId, cardId) => {
+				const log: PlayLog = {
+					type: 'PLACE_PIECE',
+					payload: { playerId: get().currentPlayerId, cardId, cellId },
+				};
+				const nextState = gameReducer(get(), log);
+				set((state) => ({
+					...nextState,
+					gameLog: [...state.gameLog, log],
+				}));
+			},
 
-export const useGameStore = create<GameStore>((set, get) => ({
-	...initialState,
-	...actions(set, get),
-}));
+			useCard: (cellId, cardId) => {
+				const log: PlayLog = {
+					type: 'USE_CARD',
+					payload: { playerId: get().currentPlayerId, cardId, cellId },
+				};
+				const nextState = gameReducer(get(), log);
+				set((state) => ({
+					...nextState,
+					gameLog: [...state.gameLog, log],
+				}));
+			},
+
+			endTurn: () => {
+				if (get().gameStatus !== 'player_turn') return;
+				set({ gameStatus: 'resolving' });
+
+				const stateAfterActivation = resolveActivationPhase(get());
+				set(stateAfterActivation);
+
+				let victoryState = checkVictory(get());
+				if (victoryState) {
+					set(victoryState);
+					return;
+				}
+
+				const stateAfterAdvance = advanceToNextPlayer(get());
+				set(stateAfterAdvance);
+			},
+		}),
+		{ name: 'GameStore' },
+	),
+);

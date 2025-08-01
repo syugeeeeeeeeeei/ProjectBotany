@@ -4,28 +4,28 @@ import { animated, to, useSpring } from '@react-spring/three';
 import { Plane } from '@react-three/drei';
 import { useGesture } from '@use-gesture/react';
 import React, { useEffect, useMemo, useRef } from 'react';
-import { useGameStore } from '../store/gameStore';
-import type { CardDefinition, PlayerId } from '../types/data';
+import { useUIStore } from '../store/uiStore'; // ★UIストアをインポート
+import type { CardMaster, PlayerId } from '../types/data'; // ★型をCardMasterに変更
 import Card3D from './Card3D';
 import type { DebugSettings } from './DebugDialog';
 
-type CardWithInstanceId = CardDefinition & { instanceId: string };
-
+// ★型をCardMasterに変更
 interface Hand3DProps {
 	player: PlayerId;
-	cards: CardWithInstanceId[];
+	cards: CardMaster[];
 	isVisible: boolean;
 	onVisibilityChange: (visible: boolean) => void;
 	currentPage: number;
 	onPageChange: (page: number) => void;
 	debugSettings: DebugSettings;
 	isInteractionLocked: boolean;
-};
+}
 
 const CARDS_PER_PAGE = 3;
 const CARD_WIDTH = 2.2;
 const CARD_SPACING = 0.2;
-const PAGE_WIDTH = (CARDS_PER_PAGE * CARD_WIDTH) + ((CARDS_PER_PAGE - 1) * CARD_SPACING);
+const PAGE_WIDTH =
+	CARDS_PER_PAGE * CARD_WIDTH + (CARDS_PER_PAGE - 1) * CARD_SPACING;
 
 const Hand3D: React.FC<Hand3DProps> = ({
 	player,
@@ -35,19 +35,21 @@ const Hand3D: React.FC<Hand3DProps> = ({
 	currentPage,
 	onPageChange,
 	debugSettings,
-	isInteractionLocked
+	isInteractionLocked,
 }) => {
-	const { isGestureAreaVisible, flickVelocityThreshold, swipeAreaHeight } = debugSettings;
-	const { selectCard, selectedCardId } = useGameStore();
+	const { isGestureAreaVisible, flickVelocityThreshold, swipeAreaHeight } =
+		debugSettings;
+	// ★UIストアから選択状態とアクションを取得
+	const { selectedCardId, selectCard } = useUIStore();
 
-	const isTopPlayer = player === 'native_side';
+	// ★PlayerIdの値を新しい定義に合わせる
+	const isTopPlayer = player === 'native';
 	const maxPage = Math.ceil(cards.length / CARDS_PER_PAGE) - 1;
 
 	const isVisibleRef = useRef(isVisible);
 	useEffect(() => {
 		isVisibleRef.current = isVisible;
 	}, [isVisible]);
-
 
 	const { x } = useSpring({
 		x: -currentPage * (PAGE_WIDTH + 1),
@@ -56,7 +58,13 @@ const Hand3D: React.FC<Hand3DProps> = ({
 
 	const bind = useGesture(
 		{
-			onDrag: ({ last, movement: [mx, my], velocity: [vx, vy], direction: [dx, dy], tap }) => {
+			onDrag: ({
+				last,
+				movement: [mx, my],
+				velocity: [vx, vy],
+				direction: [dx, dy],
+				tap,
+			}) => {
 				if (tap || !last) return;
 
 				const FLICK_DISTANCE_THRESHOLD = 75;
@@ -64,14 +72,25 @@ const Hand3D: React.FC<Hand3DProps> = ({
 				const absMx = Math.abs(mx);
 				const absMy = Math.abs(my);
 
-				if (absMx > absMy) { // 横フリック
-					if (isVisibleRef.current && absMx > FLICK_DISTANCE_THRESHOLD && Math.abs(vx) > flickVelocityThreshold) {
-						const newPage = Math.max(0, Math.min(maxPage, currentPage - Math.sign(dx)));
+				if (absMx > absMy) {
+					// 横フリック
+					if (
+						isVisibleRef.current &&
+						absMx > FLICK_DISTANCE_THRESHOLD &&
+						Math.abs(vx) > flickVelocityThreshold
+					) {
+						const newPage = Math.max(
+							0,
+							Math.min(maxPage, currentPage - Math.sign(dx)),
+						);
 						if (newPage !== currentPage) onPageChange(newPage);
 					}
-				} else { // 縦スワイプ
-					// ★修正: 縦スワイプの速度閾値を20%緩和し、より速く（敏感に）反応するように変更
-					if (absMy > FLICK_DISTANCE_THRESHOLD && Math.abs(vy) > (flickVelocityThreshold * 0.8)) {
+				} else {
+					// 縦スワイプ
+					if (
+						absMy > FLICK_DISTANCE_THRESHOLD &&
+						Math.abs(vy) > flickVelocityThreshold * 0.8
+					) {
 						const swipeUp = dy < 0;
 						if (isTopPlayer) {
 							if (swipeUp && isVisibleRef.current) onVisibilityChange(false);
@@ -98,7 +117,7 @@ const Hand3D: React.FC<Hand3DProps> = ({
 				filterTaps: true,
 				threshold: 10,
 			},
-		}
+		},
 	);
 
 	const { z } = useSpring({
@@ -109,7 +128,7 @@ const Hand3D: React.FC<Hand3DProps> = ({
 	const positionY = 2.2;
 
 	const pages = useMemo(() => {
-		const result: CardWithInstanceId[][] = [];
+		const result: CardMaster[][] = [];
 		for (let i = 0; i < cards.length; i += CARDS_PER_PAGE) {
 			result.push(cards.slice(i, i + CARDS_PER_PAGE));
 		}
@@ -117,7 +136,9 @@ const Hand3D: React.FC<Hand3DProps> = ({
 	}, [cards]);
 
 	return (
-		<animated.group position={to([z], (zVal) => [0, positionY, isTopPlayer ? -zVal : zVal])}>
+		<animated.group
+			position={to([z], (zVal) => [0, positionY, isTopPlayer ? -zVal : zVal])}
+		>
 			<Plane
 				args={[PAGE_WIDTH + 2, swipeAreaHeight]}
 				rotation={[-Math.PI / 2, 0, 0]}
@@ -137,7 +158,7 @@ const Hand3D: React.FC<Hand3DProps> = ({
 					<group key={pageIndex} position={[pageIndex * (PAGE_WIDTH + 1), 0, 0]}>
 						{pageCards.map((card, cardIndex) => (
 							<CardInLine
-								key={card.instanceId}
+								key={card.id} // ★instanceIdからidに変更
 								card={card}
 								index={cardIndex}
 								total={pageCards.length}
@@ -153,13 +174,13 @@ const Hand3D: React.FC<Hand3DProps> = ({
 };
 
 const CardInLine: React.FC<{
-	card: CardWithInstanceId;
+	card: CardMaster; // ★型をCardMasterに変更
 	index: number;
 	total: number;
 	player: PlayerId;
 	isTopPlayer: boolean;
 }> = ({ card, index, total, player, isTopPlayer }) => {
-	const totalWidth = (total * CARD_WIDTH) + (Math.max(0, total - 1) * CARD_SPACING);
+	const totalWidth = total * CARD_WIDTH + Math.max(0, total - 1) * CARD_SPACING;
 	const startX = -totalWidth / 2;
 	const xPos = startX + index * (CARD_WIDTH + CARD_SPACING) + CARD_WIDTH / 2;
 	const tiltAngle = isTopPlayer ? Math.PI / 2.2 : -Math.PI / 2.2;
