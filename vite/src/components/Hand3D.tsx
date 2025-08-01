@@ -2,18 +2,18 @@ import { animated, to, useSpring } from '@react-spring/three';
 import { Plane } from '@react-three/drei';
 import { useGesture } from '@use-gesture/react';
 import React, { useMemo } from 'react';
+import { useGameStore } from '../store/gameStore';
 import type { CardDefinition } from '../types/data';
 import Card3D from './Card3D';
-import type { DebugSettings } from './DebugDialog'; // ✨ 型をインポート
-
+import type { DebugSettings } from './DebugDialog';
 
 type CardWithInstanceId = CardDefinition & { instanceId: string };
 
-// ✨ Propsの型をオブジェクトを受け取るように変更
 interface Hand3DProps {
 	player: 'native_side' | 'alien_side';
 	cards: CardWithInstanceId[];
 	isVisible: boolean;
+	onVisibilityChange: (visible: boolean) => void;
 	currentPage: number;
 	onPageChange: (page: number) => void;
 	debugSettings: DebugSettings;
@@ -28,12 +28,13 @@ const Hand3D: React.FC<Hand3DProps> = ({
 	player,
 	cards,
 	isVisible,
+	onVisibilityChange,
 	currentPage,
 	onPageChange,
-	debugSettings // ✨ オブジェクトとして受け取る
+	debugSettings
 }) => {
-	// ✨ オブジェクトから設定値を分割代入
 	const { isGestureAreaVisible, flickDistanceRatio, flickVelocityThreshold, swipeAreaHeight } = debugSettings;
+	const { selectCard } = useGameStore();
 
 	const isTopPlayer = player === 'native_side';
 	const maxPage = Math.ceil(cards.length / CARDS_PER_PAGE) - 1;
@@ -45,23 +46,44 @@ const Hand3D: React.FC<Hand3DProps> = ({
 
 	const bind = useGesture(
 		{
-			onDrag: (state) => {
-				const { down, movement: [mx], direction: [dx], velocity: [vx] } = state;
-				if (!down && Math.abs(mx) > PAGE_WIDTH * flickDistanceRatio && Math.abs(vx) > flickVelocityThreshold) {
-					const newPage = Math.max(0, Math.min(maxPage, currentPage - Math.sign(dx)));
-					onPageChange(newPage);
+			onDrag: ({ last, movement: [mx, my], velocity: [vx, vy], direction: [dx, dy], tap }) => {
+				if (tap || !last) return; // タップやドラッグ中は無視し、ドラッグ終了時のみ判定
+
+				const absMx = Math.abs(mx);
+				const absMy = Math.abs(my);
+
+				if (absMx > absMy) { // 横方向のフリック
+					if (absMx > PAGE_WIDTH * flickDistanceRatio && Math.abs(vx) > flickVelocityThreshold) {
+						const newPage = Math.max(0, Math.min(maxPage, currentPage - Math.sign(dx)));
+						if (newPage !== currentPage) onPageChange(newPage);
+					}
+				} else { // 縦方向のスワイプ
+					if (absMy > 50 && Math.abs(vy) > 0.2) {
+						const swipeUp = dy < 0;
+						// 修正：下にスワイプで非表示、上にスワイプで表示
+						if (swipeUp) { // 上スワイプ
+							if (!isVisible) onVisibilityChange(true); // Hide状態ならShowへ
+						} else { // 下スワイプ
+							if (isVisible) onVisibilityChange(false); // Show状態ならHideへ
+						}
+					}
+				}
+			},
+			onClick: ({ event }) => {
+				// カード以外の背景部分をタップしたら選択解除
+				event.stopPropagation();
+				if (useGameStore.getState().selectedCardId) {
+					selectCard(null);
 				}
 			},
 		},
 		{
-			eventOptions: { passive: false },
 			drag: {
-				axis: 'x',
 				filterTaps: true,
+				threshold: 10,
 			},
 		}
 	);
-
 
 	const { z } = useSpring({
 		z: isVisible ? 4 : 5.5,
@@ -78,11 +100,20 @@ const Hand3D: React.FC<Hand3DProps> = ({
 		return result;
 	}, [cards]);
 
-
 	return (
 		<animated.group position={to([z], (zVal) => [0, positionY, isTopPlayer ? -zVal : zVal])}>
-			<Plane {...bind()} args={[PAGE_WIDTH + 2, swipeAreaHeight]} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 0.1]}>
-				<meshStandardMaterial color="red" transparent opacity={0.3} visible={isGestureAreaVisible} />
+			<Plane
+				args={[PAGE_WIDTH + 2, swipeAreaHeight]}
+				rotation={[-Math.PI / 2, 0, 0]}
+				position={[0, 0, 0.1]}
+				{...bind()}
+			>
+				<meshStandardMaterial
+					color="red"
+					transparent
+					opacity={0.3}
+					visible={isGestureAreaVisible}
+				/>
 			</Plane>
 
 			<animated.group position-x={x}>

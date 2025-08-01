@@ -1,13 +1,23 @@
 import { OrbitControls } from '@react-three/drei';
 import { Canvas } from '@react-three/fiber';
-import { useMemo, useState } from 'react';
-import styled from 'styled-components';
-import { DebugDialog, type DebugSettings } from './components/DebugDialog'; // ✨ 型をインポート
+import { useEffect, useMemo, useRef, useState } from 'react';
+import styled, { createGlobalStyle } from 'styled-components';
+import { DebugDialog, type DebugSettings } from './components/DebugDialog';
 import GameBoard3D from './components/GameBoard3D';
 import GameInfo from './components/GameInfo';
 import Hand3D from './components/Hand3D';
 import SceneController from './components/SceneController';
 import { cardMasterData, useGameStore } from './store/gameStore';
+
+// グローバルスタイルを追加してテキスト選択を無効化
+const GlobalStyle = createGlobalStyle`
+  body {
+    user-select: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+  }
+`;
 
 const MainContainer = styled.div`
   width: 100vw;
@@ -59,6 +69,7 @@ const GameOverScreen = styled.div`
 
 function App() {
   const store = useGameStore();
+  const { selectedCardId, selectCard, activePlayerId } = store;
 
   const [multiplier, setMultiplier] = useState(1);
   const [alienHandPage, setAlienHandPage] = useState(0);
@@ -66,13 +77,34 @@ function App() {
   const [isAlienHandVisible, setAlienHandVisible] = useState(true);
   const [isNativeHandVisible, setNativeHandVisible] = useState(true);
 
-  // ✨ デバッグ設定をオブジェクトで一元管理
+  const handVisibilityBeforeSelect = useRef({ alien: true, native: true });
+
   const [debugSettings, setDebugSettings] = useState<DebugSettings>({
     isGestureAreaVisible: true,
     flickDistanceRatio: 0.25,
     flickVelocityThreshold: 0.2,
-    swipeAreaHeight: 4,
+    swipeAreaHeight: 3,
   });
+
+  // カード選択状態に応じて手札の表示/非表示を制御
+  useEffect(() => {
+    // カードが選択された場合
+    if (selectedCardId) {
+      // 選択される直前の表示状態を保存
+      handVisibilityBeforeSelect.current = {
+        alien: isAlienHandVisible,
+        native: isNativeHandVisible,
+      };
+      // 両方の手札を強制的に非表示にする
+      setAlienHandVisible(false);
+      setNativeHandVisible(false);
+    } else {
+      // 選択が解除された場合、保存しておいた表示状態に戻す
+      setAlienHandVisible(handVisibilityBeforeSelect.current.alien);
+      setNativeHandVisible(handVisibilityBeforeSelect.current.native);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedCardId]);
 
 
   const { alienCards, nativeCards } = useMemo(() => {
@@ -115,69 +147,79 @@ function App() {
   const alienPageHandlers = createPageHandlers(alienHandPage, setAlienHandPage, alienCards.length);
   const nativePageHandlers = createPageHandlers(nativeHandPage, setNativeHandPage, nativeCards.length);
 
+  // Canvasの何もない部分をクリックしたらカード選択を解除
+  const handleCanvasClick = (event: React.MouseEvent<HTMLDivElement>) => {
+    // 3Dオブジェクト上のクリックは無視（Card3D側で処理されるため）
+    if (event.target !== event.currentTarget) return;
+    if (selectedCardId) {
+      selectCard(null);
+    }
+  };
+
 
   return (
-    <MainContainer>
-      <CanvasContainer>
-        <Canvas camera={{ position: [0, 15, 14], fov: 70 }}>
-          <color attach="background" args={['#5d4037']} />
-          <ambientLight intensity={0.8} />
-          <directionalLight position={[10, 10, 5]} intensity={1} />
-          <GameBoard3D fieldState={store.gameField} />
+    <>
+      <GlobalStyle />
+      <MainContainer>
+        <CanvasContainer onClick={handleCanvasClick}>
+          <Canvas camera={{ position: [0, 15, 14], fov: 70 }}>
+            <color attach="background" args={['#5d4037']} />
+            <ambientLight intensity={0.8} />
+            <directionalLight position={[10, 10, 5]} intensity={1} />
+            <GameBoard3D fieldState={store.gameField} />
 
-          {/* ✨ debugSettingsオブジェクトを渡す */}
-          <Hand3D
-            player="alien_side"
-            cards={alienCards}
-            isVisible={isAlienHandVisible}
-            currentPage={alienHandPage}
-            onPageChange={setAlienHandPage}
-            debugSettings={debugSettings}
-          />
-          <Hand3D
-            player="native_side"
-            cards={nativeCards}
-            isVisible={isNativeHandVisible}
-            currentPage={nativeHandPage}
-            onPageChange={setNativeHandPage}
-            debugSettings={debugSettings}
-          />
+            <Hand3D
+              player="alien_side"
+              cards={alienCards}
+              isVisible={isAlienHandVisible}
+              onVisibilityChange={setAlienHandVisible}
+              currentPage={alienHandPage}
+              onPageChange={setAlienHandPage}
+              debugSettings={debugSettings}
+            />
+            <Hand3D
+              player="native_side"
+              cards={nativeCards}
+              isVisible={isNativeHandVisible}
+              onVisibilityChange={setNativeHandVisible}
+              currentPage={nativeHandPage}
+              onPageChange={setNativeHandPage}
+              debugSettings={debugSettings}
+            />
 
-          <OrbitControls makeDefault enableZoom={false} enableRotate={false} enablePan={false} />
-          <SceneController />
-        </Canvas>
-      </CanvasContainer>
+            <OrbitControls makeDefault enableZoom={false} enableRotate={false} enablePan={false} />
+            <SceneController />
+          </Canvas>
+        </CanvasContainer>
 
-      {store.isGameOver && <GameOverScreen><h2>Game Over</h2><p>{getWinnerText()}</p></GameOverScreen>}
+        {store.isGameOver && <GameOverScreen><h2>Game Over</h2><p>{getWinnerText()}</p></GameOverScreen>}
 
-      <SidePanel className="right">
-        <GameInfo />
-        <button onClick={() => setAlienHandVisible(v => !v)}>
-          {isAlienHandVisible ? 'Hide Hand' : 'Show Hand'}
-        </button>
-        <button onClick={store.progressTurn} disabled={store.isGameOver || store.activePlayerId !== 'alien_side'}>End Turn</button>
-      </SidePanel>
+        <SidePanel className="right">
+          <GameInfo />
+          <button onClick={store.progressTurn} disabled={store.isGameOver || store.activePlayerId !== 'alien_side'}>End Turn</button>
+        </SidePanel>
 
-      <SidePanel className="left">
-        <GameInfo />
-        <button onClick={() => setNativeHandVisible(v => !v)}>
-          {isNativeHandVisible ? 'Hide Hand' : 'Show Hand'}
-        </button>
-        <button onClick={store.progressTurn} disabled={store.isGameOver || store.activePlayerId !== 'native_side'}>End Turn</button>
-      </SidePanel>
+        <SidePanel className="left">
+          <GameInfo />
+          <button onClick={store.progressTurn} disabled={store.isGameOver || store.activePlayerId !== 'native_side'}>End Turn</button>
+        </SidePanel>
 
-      {/* ✨ debugSettingsオブジェクトとセッターを渡す */}
-      <DebugDialog
-        debugSettings={debugSettings}
-        onSetDebugSettings={setDebugSettings}
-        cardMultiplier={multiplier}
-        onSetCardMultiplier={setMultiplier}
-        players={[
-          { name: 'Alien Side', currentPage: alienHandPage, maxPage: alienPageHandlers.maxPage, onNext: alienPageHandlers.handleNext, onPrev: alienPageHandlers.handlePrev },
-          { name: 'Native Side', currentPage: nativeHandPage, maxPage: nativePageHandlers.maxPage, onNext: nativePageHandlers.handleNext, onPrev: nativePageHandlers.handlePrev },
-        ]}
-      />
-    </MainContainer>
+        <DebugDialog
+          debugSettings={debugSettings}
+          onSetDebugSettings={setDebugSettings}
+          cardMultiplier={multiplier}
+          onSetCardMultiplier={setMultiplier}
+          players={[
+            { name: 'Alien Side', currentPage: alienHandPage, maxPage: alienPageHandlers.maxPage, onNext: alienPageHandlers.handleNext, onPrev: alienPageHandlers.handlePrev },
+            { name: 'Native Side', currentPage: nativeHandPage, maxPage: nativePageHandlers.maxPage, onNext: nativePageHandlers.handleNext, onPrev: nativePageHandlers.handlePrev },
+          ]}
+          isAlienHandVisible={isAlienHandVisible}
+          onToggleAlienHand={() => setAlienHandVisible(v => !v)}
+          isNativeHandVisible={isNativeHandVisible}
+          onToggleNativeHand={() => setNativeHandVisible(v => !v)}
+        />
+      </MainContainer>
+    </>
   );
 }
 

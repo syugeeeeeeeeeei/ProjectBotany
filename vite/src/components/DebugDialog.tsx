@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import styled from 'styled-components';
 
-// --- Styled Components (変更なし) ---
+// --- Styled Components ---
 const DialogContainer = styled.div<{ $isOpen: boolean }>`
   position: fixed; bottom: 75px; right: 20px; background-color: #1c1c1ee6;
   color: white; border: 1px solid #444; border-radius: 8px;
@@ -33,8 +33,7 @@ const PlayerControlsContainer = styled.div`
   display: flex; flex-direction: column; gap: 10px;
 `;
 
-
-// --- コンポーネント定義 (変更あり) ---
+// --- Component Definitions ---
 
 type PlayerControlProps = {
 	name: string; currentPage: number; maxPage: number;
@@ -52,7 +51,6 @@ const PlayerControls: React.FC<PlayerControlProps> = ({ name, currentPage, maxPa
 	</ControlRow>
 );
 
-// ✨ デバッグ設定の型をエクスポート
 export type DebugSettings = {
 	isGestureAreaVisible: boolean;
 	flickDistanceRatio: number;
@@ -60,13 +58,17 @@ export type DebugSettings = {
 	swipeAreaHeight: number;
 };
 
-// ✨ Propsの型をオブジェクトを受け取るように変更
 interface DebugDialogProps {
 	debugSettings: DebugSettings;
 	onSetDebugSettings: (updater: (prev: DebugSettings) => DebugSettings) => void;
 	cardMultiplier: number;
 	onSetCardMultiplier: (updater: (prev: number) => number) => void;
 	players: PlayerControlProps[];
+	// 手札表示制御用のPropsを追加
+	isAlienHandVisible: boolean;
+	onToggleAlienHand: () => void;
+	isNativeHandVisible: boolean;
+	onToggleNativeHand: () => void;
 }
 
 export const DebugDialog: React.FC<DebugDialogProps> = ({
@@ -75,6 +77,11 @@ export const DebugDialog: React.FC<DebugDialogProps> = ({
 	cardMultiplier,
 	onSetCardMultiplier,
 	players,
+	// Propsを受け取る
+	isAlienHandVisible,
+	onToggleAlienHand,
+	isNativeHandVisible,
+	onToggleNativeHand,
 }) => {
 	const [isOpen, setIsOpen] = useState(true);
 	const {
@@ -97,8 +104,24 @@ export const DebugDialog: React.FC<DebugDialogProps> = ({
 						<input
 							type="checkbox" id="toggle-gesture-area"
 							checked={isGestureAreaVisible}
-							// ✨ 更新ロジックを変更
 							onChange={() => onSetDebugSettings(s => ({ ...s, isGestureAreaVisible: !s.isGestureAreaVisible }))}
+						/>
+					</ControlRow>
+					{/* 手札表示切り替えUIを追加 */}
+					<ControlRow>
+						<label htmlFor="toggle-alien-hand">エイリアン手札表示</label>
+						<input
+							type="checkbox" id="toggle-alien-hand"
+							checked={isAlienHandVisible}
+							onChange={onToggleAlienHand}
+						/>
+					</ControlRow>
+					<ControlRow>
+						<label htmlFor="toggle-native-hand">ネイティブ手札表示</label>
+						<input
+							type="checkbox" id="toggle-native-hand"
+							checked={isNativeHandVisible}
+							onChange={onToggleNativeHand}
 						/>
 					</ControlRow>
 					<SliderRow>
@@ -107,7 +130,6 @@ export const DebugDialog: React.FC<DebugDialogProps> = ({
 						<input
 							type="range" min="1" max="10" step="0.5"
 							value={swipeAreaHeight}
-							// ✨ 更新ロジックを変更
 							onChange={(e) => onSetDebugSettings(s => ({ ...s, swipeAreaHeight: parseFloat(e.target.value) }))}
 							style={{ gridColumn: '1 / -1' }}
 						/>
@@ -121,7 +143,6 @@ export const DebugDialog: React.FC<DebugDialogProps> = ({
 						<input
 							type="range" min="0.1" max="0.8" step="0.05"
 							value={flickDistanceRatio}
-							// ✨ 更新ロジックを変更
 							onChange={(e) => onSetDebugSettings(s => ({ ...s, flickDistanceRatio: parseFloat(e.target.value) }))}
 							style={{ gridColumn: '1 / -1' }}
 						/>
@@ -132,7 +153,6 @@ export const DebugDialog: React.FC<DebugDialogProps> = ({
 						<input
 							type="range" min="0.1" max="1.5" step="0.05"
 							value={flickVelocityThreshold}
-							// ✨ 更新ロジックを変更
 							onChange={(e) => onSetDebugSettings(s => ({ ...s, flickVelocityThreshold: parseFloat(e.target.value) }))}
 							style={{ gridColumn: '1 / -1' }}
 						/>

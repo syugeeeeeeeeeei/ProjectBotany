@@ -1,3 +1,6 @@
+// ✨ 新しくPlayerId型を定義・エクスポート
+export type PlayerId = 'native_side' | 'alien_side';
+
 // ✨ GrowthEffectとGrowthConditionの型を追加
 export interface GrowthEffect {
   type: 'increase_invasion_power';
@@ -25,7 +28,7 @@ export interface CardDefinition {
   baseInvasionShape?: 'single' | 'cross' | 'straight' | 'range';
   canGrow?: boolean;
   growthConditions?: GrowthCondition[]; // ✨ 追加
-  growthEffects?: GrowthEffect[];     // ✨ 追加
+  growthEffects?: GrowthEffect[];      // ✨ 追加
 
   // 駆除カード固有
   targetType?: 'cell' | 'alien_plant';
@@ -39,11 +42,11 @@ export interface CardDefinition {
 
 // ... 以降の型定義は変更なし ...
 export interface PlayerCardInstance {
-    instanceId: string;
-    cardDefinitionId: string;
+  instanceId: string;
+  cardDefinitionId: string;
 }
 export interface PlayerState {
-  playerId: 'native_side' | 'alien_side';
+  playerId: PlayerId; // ✨ 定義したPlayerId型を使用
   playerName: string;
   currentEnvironment: number;
   maxEnvironment: number;
@@ -66,7 +69,7 @@ export interface CellState {
   x: number;
   y: number;
   cellType: 'native_area' | 'alien_core' | 'alien_invasion_area' | 'empty_area' | 'recovery_pending_area';
-  ownerId: 'native_side' | 'alien_side' | null;
+  ownerId: PlayerId | null; // ✨ 定義したPlayerId型を使用
   alienInstanceId: string | null;
   dominantAlienInstanceId: string | null;
   recoveryPendingTurn: number | null;
@@ -79,7 +82,7 @@ export interface FieldState {
 export interface GameState {
   currentTurn: number;
   maximumTurns: number;
-  activePlayerId: 'native_side' | 'alien_side';
+  activePlayerId: PlayerId; // ✨ 定義したPlayerId型を使用
   gameField: FieldState;
   playerStates: {
     native_side: PlayerState;
@@ -87,6 +90,6 @@ export interface GameState {
   };
   currentPhase: 'environment_phase' | 'summon_phase' | 'activation_phase';
   isGameOver: boolean;
-  winningPlayerId: 'native_side' | 'alien_side' | null;
+  winningPlayerId: PlayerId | null; // ✨ 定義したPlayerId型を使用
   activeAlienInstances: { [instanceId: string]: ActiveAlienInstance };
 }

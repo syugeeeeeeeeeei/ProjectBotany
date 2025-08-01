@@ -1,21 +1,25 @@
 import { animated, useSpring } from '@react-spring/three';
 import { Text } from '@react-three/drei';
+// ★修正点1: ThreeEventを@react-three/fiberからインポート
+import type { ThreeEvent } from '@react-three/fiber';
 import React, { useState } from 'react';
 import { useGameStore } from '../store/gameStore';
-import type { CardDefinition } from '../types/data';
+import type { CardDefinition, PlayerId } from '../types/data';
 
+// 親コンポーネントから渡される型に instanceId を含める
 interface Card3DProps {
-	card: CardDefinition;
+	card: CardDefinition & { instanceId: string };
 	position: [number, number, number];
-	player: 'native_side' | 'alien_side'; // ✨ どちらのプレイヤーのカードかを受け取る
+	player: PlayerId;
 }
 
 const Card3D: React.FC<Card3DProps> = ({ card, position, player }) => {
 	const [isHovered, setIsHovered] = useState(false);
 	const { selectCard, selectedCardId, activePlayerId } = useGameStore();
 
-	const isSelected = selectedCardId === card.id;
-	const isMyTurn = activePlayerId === player; // ✨ 自分のターンか判定
+	// 選択判定は `instanceId` で行う
+	const isSelected = selectedCardId === card.instanceId;
+	const isMyTurn = activePlayerId === player;
 
 	const springProps = useSpring({
 		position: (isHovered && isMyTurn) || isSelected ? [position[0], position[1] + 0.5, position[2]] : position,
@@ -23,22 +27,27 @@ const Card3D: React.FC<Card3DProps> = ({ card, position, player }) => {
 		config: { tension: 300, friction: 20 },
 	});
 
-	const handleCardClick = () => {
+	// ★修正点2: eventの型を `ThreeEvent` に修正
+	const handleCardClick = (event: ThreeEvent<MouseEvent>) => {
+		// この一行で、クリックイベントが背景のPlaneに伝播するのを防ぎます
+		event.stopPropagation();
+
 		if (!isMyTurn) return; // 自分のターンでなければ何もしない
-		selectCard(isSelected ? null : card.id);
+
+		// カードの選択/解除も `instanceId` で行う
+		selectCard(isSelected ? null : card.instanceId);
 	};
 
 	return (
 		<animated.group
 			position={springProps.position as any}
 			scale={springProps.scale as any}
-			onPointerEnter={() => isMyTurn && setIsHovered(true)} // ✨ 自分のターン中のみホバー
-			onPointerLeave={() => setIsHovered(false)}
-			onClick={handleCardClick}
+			onPointerEnter={(e) => { e.stopPropagation(); if (isMyTurn) setIsHovered(true); }} // ホバーイベントも伝播を停止
+			onPointerLeave={(e) => { e.stopPropagation(); setIsHovered(false); }}
+			onClick={handleCardClick} // ここで修正したハンドラを渡す
 		>
 			<mesh>
 				<boxGeometry args={[1.5, 2.1, 0.05]} />
-				{/* ✨ 相手のターン中は少し暗くする */}
 				<meshStandardMaterial color={isMyTurn ? '#2a2a2a' : '#1a1a1a'} />
 			</mesh>
 			<mesh>
