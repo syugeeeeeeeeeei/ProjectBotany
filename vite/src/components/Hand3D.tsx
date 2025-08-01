@@ -17,6 +17,7 @@ interface Hand3DProps {
 	currentPage: number;
 	onPageChange: (page: number) => void;
 	debugSettings: DebugSettings;
+	isInteractionLocked: boolean; // ★Propを受け取る
 };
 
 const CARDS_PER_PAGE = 4;
@@ -31,10 +32,11 @@ const Hand3D: React.FC<Hand3DProps> = ({
 	onVisibilityChange,
 	currentPage,
 	onPageChange,
-	debugSettings
+	debugSettings,
+	isInteractionLocked // ★Propを受け取る
 }) => {
 	const { isGestureAreaVisible, flickDistanceRatio, flickVelocityThreshold, swipeAreaHeight } = debugSettings;
-	const { selectCard } = useGameStore();
+	const { selectCard, selectedCardId } = useGameStore();
 
 	const isTopPlayer = player === 'native_side';
 	const maxPage = Math.ceil(cards.length / CARDS_PER_PAGE) - 1;
@@ -52,22 +54,19 @@ const Hand3D: React.FC<Hand3DProps> = ({
 				const absMx = Math.abs(mx);
 				const absMy = Math.abs(my);
 
-				if (absMx > absMy) {
-					if (absMx > PAGE_WIDTH * flickDistanceRatio && Math.abs(vx) > flickVelocityThreshold) {
+				if (absMx > absMy) { // 横フリック
+					// ★手札が表示されている時のみページめくり
+					if (isVisible && absMx > PAGE_WIDTH * flickDistanceRatio && Math.abs(vx) > flickVelocityThreshold) {
 						const newPage = Math.max(0, Math.min(maxPage, currentPage - Math.sign(dx)));
 						if (newPage !== currentPage) onPageChange(newPage);
 					}
-				} else {
+				} else { // 縦スワイプ
 					if (absMy > 50 && Math.abs(vy) > 0.2) {
 						const swipeUp = dy < 0;
-
-						// ★修正点: プレイヤーの位置に応じてスワイプ操作を反転
 						if (isTopPlayer) {
-							// 相手側（上プレイヤー）: 上スワイプでHide, 下スワイプでShow
 							if (swipeUp && isVisible) onVisibilityChange(false);
 							if (!swipeUp && !isVisible) onVisibilityChange(true);
 						} else {
-							// 自分側（下プレイヤー）: 上スワイプでShow, 下スワイプでHide
 							if (swipeUp && !isVisible) onVisibilityChange(true);
 							if (!swipeUp && isVisible) onVisibilityChange(false);
 						}
@@ -75,13 +74,18 @@ const Hand3D: React.FC<Hand3DProps> = ({
 				}
 			},
 			onClick: ({ event }) => {
-				event.stopPropagation();
-				if (useGameStore.getState().selectedCardId) {
-					selectCard(null);
+				// ★手札表示中のみ、Planeのクリックで選択解除
+				if (isVisible) {
+					event.stopPropagation();
+					if (selectedCardId) {
+						selectCard(null);
+					}
 				}
 			},
 		},
 		{
+			// ★修正：isInteractionLockedがfalseの時のみジェスチャーを有効化
+			enabled: !isInteractionLocked,
 			drag: {
 				filterTaps: true,
 				threshold: 10,

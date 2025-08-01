@@ -9,7 +9,6 @@ import Hand3D from './components/Hand3D';
 import SceneController from './components/SceneController';
 import { cardMasterData, useGameStore } from './store/gameStore';
 
-// グローバルスタイルを追加してテキスト選択を無効化
 const GlobalStyle = createGlobalStyle`
   body {
     user-select: none;
@@ -71,6 +70,8 @@ function App() {
   const store = useGameStore();
   const { selectedCardId, selectCard, activePlayerId } = store;
 
+  // ★追加：カード選択時に手札の操作をロックするための状態
+  const [isHandInteractionLocked, setHandInteractionLocked] = useState(false);
   const [multiplier, setMultiplier] = useState(1);
   const [alienHandPage, setAlienHandPage] = useState(0);
   const [nativeHandPage, setNativeHandPage] = useState(0);
@@ -86,20 +87,17 @@ function App() {
     swipeAreaHeight: 3,
   });
 
-  // カード選択状態に応じて手札の表示/非表示を制御
   useEffect(() => {
-    // カードが選択された場合
+    // ★修正：カード選択状態に応じて操作ロックと表示/非表示を制御
+    setHandInteractionLocked(!!selectedCardId);
     if (selectedCardId) {
-      // 選択される直前の表示状態を保存
       handVisibilityBeforeSelect.current = {
         alien: isAlienHandVisible,
         native: isNativeHandVisible,
       };
-      // 両方の手札を強制的に非表示にする
       setAlienHandVisible(false);
       setNativeHandVisible(false);
     } else {
-      // 選択が解除された場合、保存しておいた表示状態に戻す
       setAlienHandVisible(handVisibilityBeforeSelect.current.alien);
       setNativeHandVisible(handVisibilityBeforeSelect.current.native);
     }
@@ -147,15 +145,12 @@ function App() {
   const alienPageHandlers = createPageHandlers(alienHandPage, setAlienHandPage, alienCards.length);
   const nativePageHandlers = createPageHandlers(nativeHandPage, setNativeHandPage, nativeCards.length);
 
-  // Canvasの何もない部分をクリックしたらカード選択を解除
   const handleCanvasClick = (event: React.MouseEvent<HTMLDivElement>) => {
-    // 3Dオブジェクト上のクリックは無視（Card3D側で処理されるため）
     if (event.target !== event.currentTarget) return;
     if (selectedCardId) {
       selectCard(null);
     }
   };
-
 
   return (
     <>
@@ -176,6 +171,7 @@ function App() {
               currentPage={alienHandPage}
               onPageChange={setAlienHandPage}
               debugSettings={debugSettings}
+              isInteractionLocked={isHandInteractionLocked} // ★Propを渡す
             />
             <Hand3D
               player="native_side"
@@ -185,6 +181,7 @@ function App() {
               currentPage={nativeHandPage}
               onPageChange={setNativeHandPage}
               debugSettings={debugSettings}
+              isInteractionLocked={isHandInteractionLocked} // ★Propを渡す
             />
 
             <OrbitControls makeDefault enableZoom={false} enableRotate={false} enablePan={false} />
