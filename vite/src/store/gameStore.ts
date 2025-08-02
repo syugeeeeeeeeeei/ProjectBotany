@@ -3,14 +3,32 @@ import { create } from 'zustand';
 import type { ActiveAlienInstance, CardDefinition, CellState, FieldState, GameState, PlayerId, PlayerState } from '../types/data';
 
 const cardMasterData: CardDefinition[] = [
-	{ id: 'alien-1', name: 'オオキンケイギク', description: '召喚後2ターンで成長する。', cost: 2, cardType: 'alien', imagePath: 'https://www.city.kitakyushu.lg.jp/files/000115246.JPG', baseInvasionPower: 1, baseInvasionShape: 'cross', canGrow: true, growthConditions: [{ type: 'turns_since_last_action', value: 2 }], growthEffects: [{ type: 'increase_invasion_power', value: 1 }] },
-	{ id: 'erad-1', name: '強力駆除剤', description: '指定したマスを空マスにする。', cost: 1, cardType: 'eradication', imagePath: 'https://www.city.kitakyushu.lg.jp/files/000115246.JPG', removalMethod: 'direct_n_cells', postRemovalState: 'empty_area', targetType: 'cell' },
-	{ id: 'recov-1', name: '緑の恵み', description: '空マスを在来種マスに回復する。', cost: 1, cardType: 'recovery', imagePath: 'https://www.city.kitakyushu.lg.jp/files/000115246.JPG', recoveryMethod: 'direct_n_cells' },
-	{ id: 'alien-2', name: 'セイタカアワダチソウ', description: 'コストが高いが強力。', cost: 4, cardType: 'alien', imagePath: 'https://www.city.kitakyushu.lg.jp/files/000115246.JPG', baseInvasionPower: 2, baseInvasionShape: 'range' },
-	{ id: 'erad-2', name: '範囲駆除', description: '2x2マスを空マスにする。', cost: 3, cardType: 'eradication', imagePath: 'https://www.city.kitakyushu.lg.jp/files/000115246.JPG', removalMethod: 'range_selection', postRemovalState: 'empty_area', targetType: 'cell', cooldownTurns: 2 },
-	{ id: 'alien-3', name: 'アメリカオニアザミ', description: '低コストで素早い侵略が可能。', cost: 1, cardType: 'alien', imagePath: 'https://www.city.kitakyushu.lg.jp/files/000115246.JPG', baseInvasionPower: 1, baseInvasionShape: 'single' },
-	{ id: 'alien-4', name: 'オオブタクサ', description: '直線的な侵略を得意とする。', cost: 2, cardType: 'alien', imagePath: 'https://www.city.kitakyushu.lg.jp/files/000115246.JPG', baseInvasionPower: 2, baseInvasionShape: 'straight' },
-	{ id: 'erad-3', name: '大駆除作戦', description: '指定した外来種コマと、その支配マス全体を駆除する。', cost: 5, cardType: 'eradication', imagePath: 'https://www.city.kitakyushu.lg.jp/files/000115246.JPG', removalMethod: 'target_alien_and_its_dominant_cells', targetType: 'alien_plant', usageLimit: 1 },
+	// 外来種カード (9枚)
+	{ id: 'alien-1', name: 'ブラジルチドメクサ', description: '水路で繁殖する外来種。茎から増えるため、少ないコストで連鎖的に侵略できる。直線状に侵略する。', cost: 1, cardType: 'alien', imagePath: 'https://placehold.co/100x60', baseInvasionPower: 1, baseInvasionShape: 'straight', canGrow: false },
+	{ id: 'alien-2', name: 'ナガミヒナゲシ', description: '繁殖力が高く、徐々に勢力を拡大する外来種。あまり警戒されていないことが脅威となる。十字状に侵略する。', cost: 1, cardType: 'alien', imagePath: 'https://placehold.co/100x60', baseInvasionPower: 1, baseInvasionShape: 'cross', canGrow: false },
+	{ id: 'alien-3', name: 'オオキンケイギク', description: '繁殖・拡散速度が速い特定外来生物。召喚後2ターンで侵略力が上昇し、脅威度が増す。十字状に侵略する。', cost: 2, cardType: 'alien', imagePath: 'https://placehold.co/100x60', baseInvasionPower: 1, baseInvasionShape: 'cross', canGrow: true, growthConditions: [{ type: 'turns_since_last_action', value: 2 }], growthEffects: [{ type: 'increase_invasion_power', value: 1 }] },
+	// { id: 'alien-4', name: 'ブラジルチドメクサ', description: '水路で繁殖する外来種。茎から増えるため、少ないコストで連鎖的に侵略できる。直線状に侵略する。', cost: 1, cardType: 'alien', imagePath: 'https://placehold.co/100x60', baseInvasionPower: 1, baseInvasionShape: 'straight', canGrow: false },
+	// { id: 'alien-5', name: 'ナガミヒナゲシ', description: '繁殖力が高く、徐々に勢力を拡大する外来種。あまり警戒されていないことが脅威となる。十字状に侵略する。', cost: 1, cardType: 'alien', imagePath: 'https://placehold.co/100x60', baseInvasionPower: 1, baseInvasionShape: 'cross', canGrow: false },
+	// { id: 'alien-6', name: 'オオキンケイギク', description: '繁殖・拡散速度が速い特定外来生物。召喚後2ターンで侵略力が上昇し、脅威度が増す。十字状に侵略する。', cost: 2, cardType: 'alien', imagePath: 'https://placehold.co/100x60', baseInvasionPower: 1, baseInvasionShape: 'cross', canGrow: true, growthConditions: [{ type: 'turns_since_last_action', value: 2 }], growthEffects: [{ type: 'increase_invasion_power', value: 1 }] },
+	// { id: 'alien-7', name: 'ミズバショウ', description: '諏訪地域では外来種。大きな葉で広範囲の植物の生育面積を奪う。安易な駆除はできないため、戦略的な対応が求められる。範囲侵略を得意とする。', cost: 3, cardType: 'alien', imagePath: 'https://placehold.co/100x60', baseInvasionPower: 2, baseInvasionShape: 'range', canGrow: false },
+	// { id: 'alien-8', name: 'オオハンゴンソウ', description: '低木と競合するほどの強い生命力を持つ特定外来生物。最初から高い侵略力を持つため、対処が遅れると危険。十字状に侵略する。', cost: 4, cardType: 'alien', imagePath: 'https://placehold.co/100x60', baseInvasionPower: 3, baseInvasionShape: 'cross', canGrow: false },
+	// { id: 'alien-9', name: 'アレチウリ', description: '樹木などを覆い尽くす強力なつる性外来種。召喚後2ターンで侵略力が上昇し、広範囲に脅威を広げる。範囲侵略を得意とする。', cost: 5, cardType: 'alien', imagePath: 'https://placehold.co/100x60', baseInvasionPower: 1, baseInvasionShape: 'range', canGrow: true, growthConditions: [{ type: 'turns_since_last_action', value: 2 }], growthEffects: [{ type: 'increase_invasion_power', value: 1 }] },
+
+	// 駆除カード (6枚)
+	// { id: 'erad-1', name: '単一駆除剤', description: '指定した1マスを空マスにする。', cost: 1, cardType: 'eradication', imagePath: 'https://placehold.co/100x60', removalMethod: 'direct_n_cells', postRemovalState: 'empty_area', targetType: 'cell' },
+	// { id: 'erad-2', name: '単一駆除剤', description: '指定した1マスを空マスにする。', cost: 1, cardType: 'eradication', imagePath: 'https://placehold.co/100x60', removalMethod: 'direct_n_cells', postRemovalState: 'empty_area', targetType: 'cell' },
+	// { id: 'erad-3', name: '範囲駆除剤', description: '指定したマスを含む2x2マスを空マスにする。', cost: 3, cardType: 'eradication', imagePath: 'https://placehold.co/100x60', removalMethod: 'range_selection', postRemovalState: 'empty_area', targetType: 'cell' },
+	// { id: 'erad-4', name: '範囲駆除剤', description: '指定したマスを含む2x2マスを空マスにする。', cost: 3, cardType: 'eradication', imagePath: 'https://placehold.co/100x60', removalMethod: 'range_selection', postRemovalState: 'empty_area', targetType: 'cell' },
+	// { id: 'erad-5', name: '全体駆除作戦', description: '指定した外来種コマと、その支配マス全体を駆除する。', cost: 5, cardType: 'eradication', imagePath: 'https://placehold.co/100x60', removalMethod: 'target_alien_and_its_dominant_cells', targetType: 'alien_plant', usageLimit: 1 },
+	// { id: 'erad-6', name: '全体駆除作戦', description: '指定した外来種コマと、その支配マス全体を駆除する。', cost: 5, cardType: 'eradication', imagePath: 'https://placehold.co/100x60', removalMethod: 'target_alien_and_its_dominant_cells', targetType: 'alien_plant', usageLimit: 1 },
+
+	// 回復カード (6枚)
+	{ id: 'recov-1', name: '単一回復剤', description: '指定した1マスを在来種マスに回復する。', cost: 1, cardType: 'recovery', imagePath: 'https://placehold.co/100x60', recoveryMethod: 'direct_n_cells' },
+	{ id: 'recov-2', name: '単一回復剤', description: '指定した1マスを在来種マスに回復する。', cost: 1, cardType: 'recovery', imagePath: 'https://placehold.co/100x60', recoveryMethod: 'direct_n_cells' },
+	{ id: 'recov-3', name: '範囲回復剤', description: '指定したマスを含む2x2マスを回復する。', cost: 3, cardType: 'recovery', imagePath: 'https://placehold.co/100x60', recoveryMethod: 'range_selection' },
+	{ id: 'recov-4', name: '範囲回復剤', description: '指定したマスを含む2x2マスを回復する。', cost: 3, cardType: 'recovery', imagePath: 'https://placehold.co/100x60', recoveryMethod: 'range_selection' },
+	{ id: 'recov-5', name: '緊急再生作戦', description: '広範囲の空マスを再生待機マスに変化させる。', cost: 4, cardType: 'recovery', imagePath: 'https://placehold.co/100x60', recoveryMethod: 'range_selection', usageLimit: 1 },
+	{ id: 'recov-6', name: '緊急再生作戦', description: '広範囲の空マスを再生待機マスに変化させる。', cost: 4, cardType: 'recovery', imagePath: 'https://placehold.co/100x60', recoveryMethod: 'range_selection', usageLimit: 1 },
 ];
 
 interface GameStateWithSelection extends GameState {

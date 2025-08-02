@@ -59,7 +59,7 @@ const Hand3D: React.FC<Hand3DProps> = ({
 			onDrag: ({ last, movement: [mx, my], velocity: [vx, vy], direction: [dx, dy], tap }) => {
 				if (tap || !last) return;
 
-				const FLICK_DISTANCE_THRESHOLD = 75;
+				const FLICK_DISTANCE_THRESHOLD = 45;
 
 				const absMx = Math.abs(mx);
 				const absMy = Math.abs(my);
@@ -103,8 +103,8 @@ const Hand3D: React.FC<Hand3DProps> = ({
 
 	const { z } = useSpring({
 		// ★修正: isVisibleがfalseの場合、z座標をより手前にして「隠れている」状態を表現
-		z: isVisible ? 3.5 : 5.5,
-		config: { tension: 200, friction: 20 },
+		z: isVisible ? 3.5 : 6,
+		config: { tension: 300, friction: 20 },
 	});
 
 	const positionY = 2.2;

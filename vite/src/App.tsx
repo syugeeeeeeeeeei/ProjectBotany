@@ -1,4 +1,4 @@
-import { OrbitControls, Stage } from '@react-three/drei';
+import { OrbitControls } from '@react-three/drei';
 import { Canvas } from '@react-three/fiber';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import styled, { createGlobalStyle } from 'styled-components';
@@ -154,7 +154,7 @@ function App() {
     isGestureAreaVisible: false,
     flickDistanceRatio: 0.25,
     flickVelocityThreshold: 0.2,
-    swipeAreaHeight: 3.5,
+    swipeAreaHeight: 4,
   });
 
   // ★修正: カードまたはコマ選択時に手札を非表示にする

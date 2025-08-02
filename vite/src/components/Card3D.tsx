@@ -8,7 +8,7 @@ import { useGameStore } from '../store/gameStore';
 import type { CardDefinition, PlayerId } from '../types/data';
 
 // ★ このフラグで回転機能のON/OFFを切り替え
-const IS_DEBUG_ROTATION_ENABLED = true;
+const IS_DEBUG_ROTATION_ENABLED = false;
 
 // 親コンポーネントから渡される型に instanceId を含める
 interface Card3DProps {
@@ -40,12 +40,22 @@ const Card3D: React.FC<Card3DProps> = ({ card, position, player, width }) => {
 	const isPlayable = isMyTurn && !isCooldown;
 
 	// ★ 修正: springにrotationを追加し、制御用のapiを取得
-	const [springProps, api] = useSpring(() => ({
-		position: (isHovered && isPlayable) || isSelected ? [position?.[0] || 0, (position?.[1] || 0) + 0.35, position?.[2] || 0] : [position?.[0] || 0, position?.[1] || 0, position?.[2] || 0],
-		scale: isSelected ? 1.1 : 1,
-		rotation: [0, 0, 0],
-		config: { tension: 300, friction: 20 },
-	}));
+	const [springProps, api] = useSpring(() => {
+		// 選択中またはホバー中のカードのY座標のオフセットを計算
+		const hoverOffset = (isHovered && isPlayable) || isSelected ? 0.35 : 0;
+		const targetY = (position?.[1] || 0) + hoverOffset;
+
+		// 選択中のカードのスケールを計算
+		const targetScale = isSelected ? 1.1 : 1;
+
+		return {
+			// 更新された位置とスケールを適用
+			position: [position?.[0] || 0, targetY, position?.[2] || 0],
+			scale: targetScale,
+			rotation: [0, 0, 0],
+			config: { tension: 300, friction: 20 },
+		};
+	});
 
 	// ★ 追加: useDragでドラッグとクリックをまとめて処理
 	const bind = useDrag(
@@ -189,7 +199,16 @@ const Card3D: React.FC<Card3DProps> = ({ card, position, player, width }) => {
 
 
 				{/* 説明テキスト */}
-				<Text position={[0, 0.05, 0.01]} fontSize={0.1} color="black" anchorX="center" anchorY="middle" maxWidth={CARD_WIDTH * 0.8}>
+				<Text
+					position={[0, 0.3, 0.01]} // y座標を調整
+					fontSize={0.1}
+					color="black"
+					anchorX="center"
+					anchorY="top" // 上揃えに変更
+					maxWidth={CARD_WIDTH * 0.9} // maxWidthを広げる
+					lineHeight={1.2} // 行間を設定
+					whiteSpace="overflowWrap" // 改行と自動折り返しを有効にする
+				>
 					{card.description}
 				</Text>
 			</group>
