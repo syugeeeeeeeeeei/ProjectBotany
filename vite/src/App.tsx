@@ -1,12 +1,12 @@
-import { OrbitControls } from '@react-three/drei';
+import { GizmoHelper, GizmoViewport, OrbitControls } from '@react-three/drei';
 import { Canvas } from '@react-three/fiber';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import styled, { createGlobalStyle } from 'styled-components';
+import * as THREE from 'three';
 import { DebugDialog, type DebugSettings } from './components/DebugDialog';
 import GameBoard3D from './components/GameBoard3D';
 import GameInfo from './components/GameInfo';
 import Hand3D from './components/Hand3D';
-import SceneController from './components/SceneController';
 import UIOverlay from './components/UIOverlay';
 import { cardMasterData, useGameStore } from './store/gameStore';
 import type { PlayerId } from './types/data';
@@ -42,7 +42,6 @@ const SidePanel = styled.div`
   top: 50%;
   transform: translateY(-50%);
   width: 120px;
-  // padding: 20px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -83,18 +82,16 @@ const DebugContainer = styled.div`
   }
 `;
 
-// ★追加: 画面全体を覆うロック用のオーバーレイ
 const ScreenLockOverlay = styled.div`
   position: absolute;
   top: 0;
   left: 0;
   width: 100%;
   height: 100%;
-  z-index: 999; /* 最前面に表示して全てをブロック */
-  background-color: transparent; /* 見た目は透明 */
+  z-index: 999;
+  background-color: transparent;
 `;
 
-// ★追加: ターン終了ボタンのスタイル
 const TurnEndButton = styled.button`
   background: linear-gradient(145deg, #81c784, #4caf50);
   color: white;
@@ -107,7 +104,7 @@ const TurnEndButton = styled.button`
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
   transition: all 0.2s ease-in-out;
   text-shadow: 1px 1px 2px rgba(0,0,0,0.4);
-  width: 100%; /* 親要素の幅に合わせる */
+  width: 100%;
 
   &:hover:not(:disabled) {
     box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
@@ -120,7 +117,7 @@ const TurnEndButton = styled.button`
   }
 
   &:disabled {
-    background: #757575; /* グレーアウト */
+    background: #757575;
     color: #bdbdbd;
     cursor: not-allowed;
     box-shadow: none;
@@ -131,7 +128,6 @@ const TurnEndButton = styled.button`
 
 function App() {
   const store = useGameStore();
-  // ★修正: selectedAlienInstanceId を追加
   const { selectedCardId, selectedAlienInstanceId, notification, setNotification, resetGame } = store;
 
   const [isGameStarted, setIsGameStarted] = useState(false);
@@ -151,8 +147,8 @@ function App() {
     flickVelocityThreshold: 0.2,
     swipeAreaHeight: 3.5,
   });
+  const [showGizmo, setShowGizmo] = useState(true);
 
-  // ★修正: カードまたはコマ選択時に手札を非表示にする
   useEffect(() => {
     if (selectedCardId || selectedAlienInstanceId) {
       handVisibilityBeforeSelect.current = { alien: isAlienHandVisible, native: isNativeHandVisible };
@@ -270,7 +266,6 @@ function App() {
     handVisibilityBeforeSelect.current.native = newVisibility;
   };
 
-
   const debugDialogProps = {
     debugSettings: debugSettings,
     onSetDebugSettings: setDebugSettings,
@@ -285,15 +280,15 @@ function App() {
     onToggleAlienHand: onToggleAlienHand,
     isNativeHandVisible: isNativeHandVisible,
     onToggleNativeHand: onToggleNativeHand,
+    showGizmo: showGizmo,
+    onToggleGizmo: () => setShowGizmo(prev => !prev),
   }
 
-  // ★修正: isInteractionLockedの条件にselectedAlienInstanceIdを追加
   const isHandInteractionLocked = !!selectedCardId || !!selectedAlienInstanceId;
 
   return (
     <>
       <GlobalStyle />
-      {/* ★追加: isStartingTurnがtrueの間、画面全体をロック */}
       {isStartingTurn && <ScreenLockOverlay />}
 
       <DebugContainer>
@@ -313,16 +308,25 @@ function App() {
         />
 
         <CanvasContainer>
-          <Canvas camera={{ position: [0, 15, 14], fov: 70 }}>
+          <Canvas shadows camera={{ position: [0, 10, 0.1], fov: 70 }}>
             <color attach="background" args={['#5d4037']} />
             <ambientLight intensity={0.8} />
             <directionalLight position={[10, 10, 5]} intensity={1} />
+
+            <GizmoHelper
+              alignment="top-left"
+              margin={[80, 80]}
+              onTarget={() => new THREE.Vector3(0, 0, 0)}
+              visible={showGizmo}
+            >
+              <GizmoViewport axisColors={['#ff0000', '#00ff00', '#0000ff']} labelColor="white" />
+            </GizmoHelper>
+
             <GameBoard3D fieldState={store.gameField} />
-            {/* ★修正: 自分のターン以外は強制的に非表示にする */}
             <Hand3D key={`alien-hand-${handResetKey}`} player="alien_side" cards={alienCards} isVisible={store.activePlayerId === 'alien_side' && isAlienHandVisible} onVisibilityChange={setAlienHandVisible} currentPage={alienHandPage} onPageChange={setAlienHandPage} debugSettings={debugSettings} isInteractionLocked={isHandInteractionLocked} />
             <Hand3D key={`native-hand-${handResetKey}`} player="native_side" cards={nativeCards} isVisible={store.activePlayerId === 'native_side' && isNativeHandVisible} onVisibilityChange={setNativeHandVisible} currentPage={nativeHandPage} onPageChange={setNativeHandPage} debugSettings={debugSettings} isInteractionLocked={isHandInteractionLocked} />
+
             <OrbitControls makeDefault enableZoom={false} enableRotate={false} enablePan={false} />
-            <SceneController />
           </Canvas>
         </CanvasContainer>
 
