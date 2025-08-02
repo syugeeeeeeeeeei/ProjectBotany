@@ -13,8 +13,13 @@ import type { PlayerId } from './types/data';
 
 const GlobalStyle = createGlobalStyle`
   html, body {
-    margin: 0; padding: 0; width: 100%; height:100%;
-    overflow: hidden; background-color: #50342bff;
+    margin: 0; 
+    padding: 0; 
+    width: 100%; 
+    height:100%;
+    overflow: hidden; 
+    background-color: #50342bff;
+    overscroll-behavior: none;
   }
   #root { width: 100%; height: 100%; }
   body { user-select: none; -webkit-user-select: none; }
