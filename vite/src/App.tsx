@@ -1,8 +1,4 @@
-<<<<<<< HEAD
 import { GizmoHelper, GizmoViewport, OrbitControls } from '@react-three/drei';
-=======
-import { OrbitControls, Stage } from '@react-three/drei';
->>>>>>> cfe042d658f34b8504a3303491989af60ba851b2
 import { Canvas } from '@react-three/fiber';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import styled, { createGlobalStyle } from 'styled-components';
@@ -312,7 +308,6 @@ function App() {
         />
 
         <CanvasContainer>
-<<<<<<< HEAD
           <Canvas shadows camera={{ position: [0, 10, 0.1], fov: 70 }}>
             <color attach="background" args={['#5d4037']} />
             <ambientLight intensity={0.8} />
@@ -331,16 +326,6 @@ function App() {
             <Hand3D key={`alien-hand-${handResetKey}`} player="alien_side" cards={alienCards} isVisible={store.activePlayerId === 'alien_side' && isAlienHandVisible} onVisibilityChange={setAlienHandVisible} currentPage={alienHandPage} onPageChange={setAlienHandPage} debugSettings={debugSettings} isInteractionLocked={isHandInteractionLocked} />
             <Hand3D key={`native-hand-${handResetKey}`} player="native_side" cards={nativeCards} isVisible={store.activePlayerId === 'native_side' && isNativeHandVisible} onVisibilityChange={setNativeHandVisible} currentPage={nativeHandPage} onPageChange={setNativeHandPage} debugSettings={debugSettings} isInteractionLocked={isHandInteractionLocked} />
 
-=======
-          <Canvas shadows camera={{ position: [0, 15, 14], fov: 70 }}>
-            <color attach="background" args={['#5d4037']} />
-
-            <Stage preset="rembrandt" intensity={1.5} environment="city" adjustCamera={false}>
-              <GameBoard3D fieldState={store.gameField} />
-              <Hand3D key={`alien-hand-${handResetKey}`} player="alien_side" cards={alienCards} isVisible={store.activePlayerId === 'alien_side' && isAlienHandVisible} onVisibilityChange={setAlienHandVisible} currentPage={alienHandPage} onPageChange={setAlienHandPage} debugSettings={debugSettings} isInteractionLocked={isHandInteractionLocked} />
-              <Hand3D key={`native-hand-${handResetKey}`} player="native_side" cards={nativeCards} isVisible={store.activePlayerId === 'native_side' && isNativeHandVisible} onVisibilityChange={setNativeHandVisible} currentPage={nativeHandPage} onPageChange={setNativeHandPage} debugSettings={debugSettings} isInteractionLocked={isHandInteractionLocked} />
-            </Stage>
->>>>>>> cfe042d658f34b8504a3303491989af60ba851b2
             <OrbitControls makeDefault enableZoom={false} enableRotate={false} enablePan={false} />
           </Canvas>
         </CanvasContainer>
