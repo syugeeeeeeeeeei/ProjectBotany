@@ -1,4 +1,4 @@
-import { OrbitControls } from '@react-three/drei';
+import { OrbitControls, Stage } from '@react-three/drei';
 import { Canvas } from '@react-three/fiber';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import styled, { createGlobalStyle } from 'styled-components';
@@ -313,7 +313,7 @@ function App() {
         />
 
         <CanvasContainer>
-          <Canvas camera={{ position: [0, 15, 14], fov: 70 }}>
+          <Canvas shadows camera={{ position: [0, 15, 14], fov: 70 }}>
             <color attach="background" args={['#5d4037']} />
             <ambientLight intensity={0.8} />
             <directionalLight position={[10, 10, 5]} intensity={1} />
