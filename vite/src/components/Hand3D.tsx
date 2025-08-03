@@ -1,5 +1,3 @@
-// syugeeeeeeeeeei/projectbotany/ProjectBotany-dev/vite/src/components/Hand3D.tsx
-
 import { animated, to, useSpring } from '@react-spring/three';
 import { Plane } from '@react-three/drei';
 import { useGesture } from '@use-gesture/react';
@@ -24,7 +22,7 @@ interface Hand3DProps {
 
 const CARDS_PER_PAGE = 3;
 const CARD_WIDTH = 1.8;
-const CARD_SPACING =0.9;
+const CARD_SPACING = 0.8;
 const PAGE_WIDTH = (CARDS_PER_PAGE * CARD_WIDTH) + ((CARDS_PER_PAGE - 1) * CARD_SPACING);
 
 const Hand3D: React.FC<Hand3DProps> = ({
@@ -56,39 +54,36 @@ const Hand3D: React.FC<Hand3DProps> = ({
 
 	const bind = useGesture(
 		{
-			onDrag: ({ last, movement: [mx, my], velocity: [vx, vy], direction: [dx, dy], tap }) => {
+			onDrag: ({ last, movement: [mx, my], velocity: [vx, vy], direction: [dx, dy], tap, event }) => {
 				if (tap || !last) return;
 
-				const FLICK_DISTANCE_THRESHOLD = 45;
+				event.stopPropagation();
 
+				const FLICK_DISTANCE_THRESHOLD = 30;
 				const absMx = Math.abs(mx);
 				const absMy = Math.abs(my);
 
-				if (absMx > absMy) { // 横フリック
-					if (absMx > FLICK_DISTANCE_THRESHOLD && Math.abs(vx) > flickVelocityThreshold) {
-						const newPage = Math.max(0, Math.min(maxPage, currentPage - Math.sign(dx)));
-						if (newPage !== currentPage) onPageChange(newPage);
-					}
-				} else { // 縦スワイプ
-					// ★修正: 縦スワイプの速度閾値を20%緩和し、より速く（敏感に）反応するように変更
-					if (absMy > FLICK_DISTANCE_THRESHOLD && Math.abs(vy) > (flickVelocityThreshold * 0.8)) {
-						const swipeUp = dy < 0;
-						if (isTopPlayer) {
-							if (swipeUp && isVisibleRef.current) onVisibilityChange(false);
-							if (!swipeUp && !isVisibleRef.current) onVisibilityChange(true);
-						} else {
-							if (swipeUp && !isVisibleRef.current) onVisibilityChange(true);
-							if (!swipeUp && isVisibleRef.current) onVisibilityChange(false);
-						}
+				if (absMx > absMy && absMx > FLICK_DISTANCE_THRESHOLD && Math.abs(vx) > flickVelocityThreshold) {
+					const newPage = Math.max(0, Math.min(maxPage, currentPage - Math.sign(dx)));
+					if (newPage !== currentPage) onPageChange(newPage);
+					return;
+				}
+
+				if (absMy > absMx && absMy > FLICK_DISTANCE_THRESHOLD && Math.abs(vy) > (flickVelocityThreshold * 0.5)) {
+					const swipeUp = dy < 0;
+					if (isTopPlayer) {
+						if (swipeUp && isVisibleRef.current) onVisibilityChange(false);
+						if (!swipeUp && !isVisibleRef.current) onVisibilityChange(true);
+					} else {
+						if (swipeUp && !isVisibleRef.current) onVisibilityChange(true);
+						if (!swipeUp && isVisibleRef.current) onVisibilityChange(false);
 					}
 				}
 			},
 			onClick: ({ event }) => {
-				if (isVisibleRef.current) {
-					event.stopPropagation();
-					if (selectedCardId) {
-						selectCard(null);
-					}
+				event.stopPropagation();
+				if (isVisibleRef.current && selectedCardId) {
+					selectCard(null);
 				}
 			},
 		},
@@ -102,7 +97,6 @@ const Hand3D: React.FC<Hand3DProps> = ({
 	);
 
 	const { z } = useSpring({
-		// ★修正: isVisibleがfalseの場合、z座標をより手前にして「隠れている」状態を表現
 		z: isVisible ? 3.5 : 6,
 		config: { tension: 300, friction: 20 },
 	});
@@ -120,7 +114,7 @@ const Hand3D: React.FC<Hand3DProps> = ({
 	return (
 		<animated.group position={to([z], (zVal) => [0, positionY, isTopPlayer ? -zVal : zVal])}>
 			<Plane
-				args={[PAGE_WIDTH + 2, swipeAreaHeight]}
+				args={[PAGE_WIDTH + 4, swipeAreaHeight]}
 				rotation={[-Math.PI / 2, 0, 0]}
 				position={[0, -0.2, 0.1]}
 				{...bind()}
@@ -141,9 +135,11 @@ const Hand3D: React.FC<Hand3DProps> = ({
 								key={card.instanceId}
 								card={card}
 								index={cardIndex}
-								total={pageCards.length}
 								player={player}
 								isTopPlayer={isTopPlayer}
+								isSelected={selectedCardId === card.instanceId}
+								isListVisible={isVisible}
+								selectedCardIdInList={selectedCardId}
 							/>
 						))}
 					</group>
@@ -153,25 +149,45 @@ const Hand3D: React.FC<Hand3DProps> = ({
 	);
 };
 
-const CardInLine: React.FC<{
+interface CardInLineProps {
 	card: CardWithInstanceId;
 	index: number;
-	total: number;
 	player: PlayerId;
 	isTopPlayer: boolean;
-}> = ({ card, index, total, player, isTopPlayer }) => {
-	const totalWidth = (total * CARD_WIDTH) + (Math.max(0, total - 1) * CARD_SPACING);
+	isSelected: boolean;
+	isListVisible: boolean;
+	selectedCardIdInList: string | null;
+}
+
+const CardInLine: React.FC<CardInLineProps> = ({ card, index, player, isTopPlayer, isSelected, isListVisible, selectedCardIdInList }) => {
+	const totalWidth = (CARDS_PER_PAGE * CARD_WIDTH) + (Math.max(0, CARDS_PER_PAGE - 1) * CARD_SPACING);
 	const startX = -totalWidth / 2;
 	const xPos = startX + index * (CARD_WIDTH + CARD_SPACING) + CARD_WIDTH / 2;
 	const tiltAngle = isTopPlayer ? Math.PI / 2.2 : -Math.PI / 2.2;
 	const yRotation = isTopPlayer ? Math.PI : 0;
 
+	const isAnyCardSelected = selectedCardIdInList !== null;
+
+	const { z, opacity } = useSpring({
+		// ★修正: 状態管理ロジックをシンプルに
+		// 選択されたカードはZ=0に、選択されていない他のカードは奥(Z=-1)に移動
+		z: isSelected ? -0.5 : 0,
+		opacity: isListVisible ? 1 : (isSelected ? 1 : 0.5),
+		config: { tension: 300, friction: 20 }
+	});
+
 	return (
-		<group position={[xPos, 0, 0]}>
-			<group rotation={[tiltAngle, yRotation, 0]} scale={1.3}>
-				<Card3D card={card} position={[0, 0, 0]} player={player} width={CARD_WIDTH} />
+		<animated.group position-x={xPos} position-z={z}>
+			<group rotation={[tiltAngle, yRotation, 0]} scale={1.25}>
+				<Card3D
+					card={card}
+					position={[0, 0, 0]}
+					player={player}
+					width={CARD_WIDTH}
+					opacity={opacity}
+				/>
 			</group>
-		</group>
+		</animated.group>
 	);
 };
 

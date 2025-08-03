@@ -88,18 +88,16 @@ const DebugContainer = styled.div`
   }
 `;
 
-// ★追加: 画面全体を覆うロック用のオーバーレイ
 const ScreenLockOverlay = styled.div`
   position: absolute;
   top: 0;
   left: 0;
   width: 100%;
   height: 100%;
-  z-index: 999; /* 最前面に表示して全てをブロック */
-  background-color: transparent; /* 見た目は透明 */
+  z-index: 999;
+  background-color: transparent;
 `;
 
-// ★追加: ターン終了ボタンのスタイル
 const TurnEndButton = styled.button`
   background: linear-gradient(145deg, #81c784, #4caf50);
   color: white;
@@ -112,7 +110,7 @@ const TurnEndButton = styled.button`
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
   transition: all 0.2s ease-in-out;
   text-shadow: 1px 1px 2px rgba(0,0,0,0.4);
-  width: 100%; /* 親要素の幅に合わせる */
+  width: 100%;
 
   &:hover:not(:disabled) {
     box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
@@ -125,7 +123,7 @@ const TurnEndButton = styled.button`
   }
 
   &:disabled {
-    background: #757575; /* グレーアウト */
+    background: #757575;
     color: #bdbdbd;
     cursor: not-allowed;
     box-shadow: none;
@@ -136,7 +134,6 @@ const TurnEndButton = styled.button`
 
 function App() {
   const store = useGameStore();
-  // ★修正: selectedAlienInstanceId を追加
   const { selectedCardId, selectedAlienInstanceId, notification, setNotification, resetGame } = store;
 
   const [isGameStarted, setIsGameStarted] = useState(false);
@@ -150,6 +147,10 @@ function App() {
   const [isNativeHandVisible, setNativeHandVisible] = useState(true);
   const [handResetKey, setHandResetKey] = useState(0);
   const handVisibilityBeforeSelect = useRef({ alien: true, native: true });
+
+  // ★追加: 前回のselectedCardIdを追跡するためのref
+  const prevSelectedCardId = useRef<string | null>(null);
+
   const [debugSettings, setDebugSettings] = useState<DebugSettings>({
     isGestureAreaVisible: false,
     flickDistanceRatio: 0.25,
@@ -157,13 +158,23 @@ function App() {
     swipeAreaHeight: 4,
   });
 
-  // ★修正: カードまたはコマ選択時に手札を非表示にする
+  // ★修正: 指定されたロジックでuseEffectを再実装
   useEffect(() => {
-    if (selectedCardId || selectedAlienInstanceId) {
+    // 何も選択されていなかった状態から、初めてカードが選択された瞬間を検知
+    if (!prevSelectedCardId.current && selectedCardId) {
+      // その瞬間の表示状態を保存
       handVisibilityBeforeSelect.current = { alien: isAlienHandVisible, native: isNativeHandVisible };
+    }
+
+    // 現在のカード選択状態を保存して、次回のレンダリングで比較できるようにする
+    prevSelectedCardId.current = selectedCardId;
+
+    if (selectedCardId || selectedAlienInstanceId) {
+      // 何か選択されている場合は、手札を非表示にする
       setAlienHandVisible(false);
       setNativeHandVisible(false);
     } else {
+      // 何も選択されていない場合は、保存しておいた表示状態に戻す
       setAlienHandVisible(handVisibilityBeforeSelect.current.alien);
       setNativeHandVisible(handVisibilityBeforeSelect.current.native);
     }
@@ -263,17 +274,9 @@ function App() {
   const alienPageHandlers = createPageHandlers(alienHandPage, setAlienHandPage, alienCards.length);
   const nativePageHandlers = createPageHandlers(nativeHandPage, setNativeHandPage, nativeCards.length);
 
-  const onToggleAlienHand = () => {
-    const newVisibility = !isAlienHandVisible;
-    setAlienHandVisible(newVisibility);
-    handVisibilityBeforeSelect.current.alien = newVisibility;
-  };
-
-  const onToggleNativeHand = () => {
-    const newVisibility = !isNativeHandVisible;
-    setNativeHandVisible(newVisibility);
-    handVisibilityBeforeSelect.current.native = newVisibility;
-  };
+  // ★修正: onToggle...系の関数を簡潔に
+  const onToggleAlienHand = () => setAlienHandVisible(v => !v);
+  const onToggleNativeHand = () => setNativeHandVisible(v => !v);
 
 
   const debugDialogProps = {
@@ -292,13 +295,11 @@ function App() {
     onToggleNativeHand: onToggleNativeHand,
   }
 
-  // ★修正: isInteractionLockedの条件にselectedAlienInstanceIdを追加
   const isHandInteractionLocked = !!selectedCardId || !!selectedAlienInstanceId;
 
   return (
     <>
       <GlobalStyle />
-      {/* ★追加: isStartingTurnがtrueの間、画面全体をロック */}
       {isStartingTurn && <ScreenLockOverlay />}
 
       <DebugContainer>

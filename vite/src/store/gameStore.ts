@@ -322,6 +322,17 @@ export const useGameStore = create<GameStateWithSelection & GameActions>((set, g
 			case 'alien': {
 				console.log(`[playCard] 外来種カード ${card.name} (${card.id}) をマス(${targetCell.x}, ${targetCell.y})にプレイ`);
 
+				// ★追加: 配置できないマスを指定した場合のガード節
+				if (targetCell.cellType === 'empty_area' || targetCell.cellType === 'recovery_pending_area') {
+					get().setNotification("このマスには配置できません", activePlayerId);
+					return;
+				}
+				if (targetCell.cellType === 'alien_core') {
+					get().setNotification("他の外来種がいるマスには配置できません", activePlayerId);
+					return;
+				}
+
+
 				const newAlienInstance: ActiveAlienInstance = {
 					instanceId: nanoid(),
 					cardDefinitionId: card.id,
@@ -503,4 +514,3 @@ export const useGameStore = create<GameStateWithSelection & GameActions>((set, g
 }));
 
 export { cardMasterData };
-
