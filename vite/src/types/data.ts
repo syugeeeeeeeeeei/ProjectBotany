@@ -23,6 +23,7 @@ export interface CardDefinition {
   cost: number;
   cardType: 'alien' | 'eradication' | 'recovery';
   imagePath: string;
+  deckCount?: number; // ★★★ エラー修正: デッキ枚数用のプロパティを追加 ★★★
 
   // 外来種カード固有
   baseInvasionPower?: number;

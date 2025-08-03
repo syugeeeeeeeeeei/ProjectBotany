@@ -5,12 +5,15 @@ services:
     restart: unless-stopped
     command: sh -c "yarn start"
     networks:
-      - external_network # Network for Caddy
+      - fukaya-lab-network
     labels:
-      caddy: your_domain.com
-      caddy.reverse_proxy: "{{.Name}}:8080" # Port for serve
+      caddy: project-botany.app.fukaya-sus.lab
+      caddy.reverse_proxy: "{{upstreams 8080}}"
+      caddy.tls: "internal"
+    tty: true
+    stdin_open: true
 
 networks:
-  external_network:
+  fukaya-lab-network:
     external: true
-    name: your_external_network # Existing network name for Caddy
+    name: fukaya-lab-network

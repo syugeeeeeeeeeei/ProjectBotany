@@ -1,5 +1,38 @@
-import React, { useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import styled, { keyframes } from 'styled-components';
+
+// --- 定数定義 ---
+
+/** アニメーション設定 */
+const ANIMATIONS = {
+	APPEAR_DURATION: '0.2s',
+	EXIT_DURATION: '0.5s',
+	TIMING_FUNCTION: 'ease-in-out',
+};
+
+/** レイアウト・スタイル設定 */
+const STYLES = {
+	BACKGROUND_COLOR: 'rgba(0, 0, 0, 0.8)',
+	BORDER_TOP: '4px solid lightgray',
+	Z_INDEX: 100,
+	BUTTON_COLOR: '#4CAF50',
+	BUTTON_HOVER_COLOR: '#45a049',
+};
+
+/** フォントサイズ設定 (メッセージの長さに応じて変動) */
+const FONT_SIZES = {
+	small: '1.5em',
+	medium: '2.0em',
+	large: '2.5em',
+};
+
+/** フォントサイズを決定する文字数のしきい値 */
+const FONT_SIZE_THRESHOLDS = {
+	small: 30,
+	medium: 20,
+};
+
+// --- Keyframes ---
 
 const quickAppear = keyframes`
   from { opacity: 0; }
@@ -11,41 +44,43 @@ const fadeOut = keyframes`
   to { opacity: 0; }
 `;
 
+
+// --- Styled Components ---
+
 const OverlayContainer = styled.div<{ $isExiting: boolean; side: 'top' | 'bottom' }>`
   position: absolute;
   left: 0;
   width: 100%;
   height: 50%;
-  
-  /* ★修正: ご指定のスタイルに更新 */
-  border-top: 4px solid lightgray;
   box-sizing: border-box;
+  border-top: ${STYLES.BORDER_TOP};
 
+  /* プレイヤーサイドに応じて上下に配置し、上部プレイヤーは180度回転 */
   ${({ side }) => side === 'top' ? 'top: 0;' : 'bottom: 0;'}
   ${({ side }) => side === 'top' && 'transform: rotate(180deg);'}
 
-  background-color: rgba(0, 0, 0, 0.8);
+  background-color: ${STYLES.BACKGROUND_COLOR};
   color: white;
   display: flex;
   justify-content: center;
   align-items: center;
   flex-direction: column;
-  z-index: 100;
+  z-index: ${STYLES.Z_INDEX};
   font-family: sans-serif;
   text-align: center;
   white-space: pre-wrap;
   pointer-events: all;
-  
+
+  /* 表示/非表示状態に応じてアニメーションを適用 */
   animation-name: ${({ $isExiting }) => ($isExiting ? fadeOut : quickAppear)};
-  animation-duration: ${({ $isExiting }) => ($isExiting ? '0.5s' : '0.2s')};
-  animation-timing-function: ease-in-out;
+  animation-duration: ${({ $isExiting }) => ($isExiting ? ANIMATIONS.EXIT_DURATION : ANIMATIONS.APPEAR_DURATION)};
+  animation-timing-function: ${ANIMATIONS.TIMING_FUNCTION};
   animation-fill-mode: forwards;
 `;
 
-// ★修正: フォントサイズを動的に受け取るように変更
 const Message = styled.h2<{ $fontSize: string }>`
   font-size: ${({ $fontSize }) => $fontSize};
-  margin: 0 20px; /* 左右に余白を追加 */
+  margin: 0 20px;
   text-shadow: 0 0 10px #000;
 `;
 
@@ -61,16 +96,17 @@ const ActionButton = styled.button`
   border-radius: 10px;
   border: none;
   cursor: pointer;
-  background-color: #4CAF50;
+  background-color: ${STYLES.BUTTON_COLOR};
   color: white;
   transition: all 0.2s;
 
   &:hover {
-    background-color: #45a049;
+    background-color: ${STYLES.BUTTON_HOVER_COLOR};
   }
 `;
 
-// ★修正: PropsにisDismissibleとonDismissを追加
+// --- Component ---
+
 interface UIOverlayProps {
 	show: boolean;
 	message: string;
@@ -82,6 +118,10 @@ interface UIOverlayProps {
 	onDismiss?: () => void;
 }
 
+/**
+ * ゲームの情報を画面半分に表示するオーバーレイコンポーネント。
+ * ターン表示、通知、ゲーム開始/終了画面などに使用される。
+ */
 const UIOverlay: React.FC<UIOverlayProps> = ({
 	show,
 	message,
@@ -92,39 +132,49 @@ const UIOverlay: React.FC<UIOverlayProps> = ({
 	isDismissible,
 	onDismiss,
 }) => {
-	const [isRendered, setIsRendered] = React.useState(show);
+	const [isRendered, setIsRendered] = useState(show);
 
-	// ★追加: 文字数に応じてフォントサイズを計算
+	/**
+	 * メッセージの文字数に応じて動的にフォントサイズを決定する。
+	 * 長いメッセージは小さく、短いメッセージは大きく表示する。
+	 */
 	const fontSize = useMemo(() => {
 		const len = message.length;
-		if (len > 30) return '1.5em';
-		if (len > 20) return '2.0em';
-		return '2.5em';
+		if (len > FONT_SIZE_THRESHOLDS.small) return FONT_SIZES.small;
+		if (len > FONT_SIZE_THRESHOLDS.medium) return FONT_SIZES.medium;
+		return FONT_SIZES.large;
 	}, [message]);
 
+	/**
+	 * `show` propの変更を監視し、フェードアウトアニメーションのためのレンダリング遅延を管理する。
+	 * `show`が`false`になっても、アニメーションが終わるまでコンポーネントをDOMに保持する。
+	 */
 	useEffect(() => {
-		let timer: NodeJS.Timeout;
+		let timer: ReturnType<typeof setTimeout>;
 		if (show) {
 			setIsRendered(true);
 		} else {
-			timer = setTimeout(() => setIsRendered(false), 500);
+			timer = setTimeout(() => setIsRendered(false), parseFloat(ANIMATIONS.EXIT_DURATION) * 1000);
 		}
 		return () => clearTimeout(timer);
 	}, [show]);
 
-	if (!isRendered) {
-		return null;
-	}
-
-	// ★追加: タップで即時終了するためのハンドラ
+	/**
+	 * オーバーレイ自体がクリックされたときに、即座に非表示にするためのハンドラ。
+	 * `isDismissible`がtrueの場合にのみ機能する。
+	 */
 	const handleContainerClick = (e: React.MouseEvent<HTMLDivElement>) => {
-		// ボタン自身がクリックされた場合は、コンテナのクリックイベントを発火させない
+		// ボタンなど子要素のクリックイベントは無視
 		if (e.target !== e.currentTarget) return;
-
 		if (isDismissible && onDismiss) {
 			onDismiss();
 		}
 	};
+
+	// レンダリングが不要な場合はnullを返す
+	if (!isRendered) {
+		return null;
+	}
 
 	return (
 		<OverlayContainer $isExiting={!show} side={side} onClick={handleContainerClick}>

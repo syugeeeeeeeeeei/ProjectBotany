@@ -1,42 +1,30 @@
 import { nanoid } from 'nanoid';
 import { create } from 'zustand';
-import type { ActiveAlienInstance, CardDefinition, CellState, FieldState, GameState, PlayerId, PlayerState } from '../types/data';
+import { immer } from 'zustand/middleware/immer';
+import type { ActiveAlienInstance, CellState, FieldState, GameState, PlayerId, PlayerState } from '../types/data';
+import cardMasterData from './cardMasterData'; // cardMasterDataを外部ファイルからインポート
 
-const cardMasterData: CardDefinition[] = [
-	// 外来種カード (9枚)
-	{ id: 'alien-1', name: 'ブラジルチドメクサ', description: '水路で繁殖する外来種。茎から増えるため、少ないコストで連鎖的に侵略できる。直線状に侵略する。', cost: 1, cardType: 'alien', imagePath: 'https://placehold.co/100x60', baseInvasionPower: 1, baseInvasionShape: 'straight', canGrow: false },
-	{ id: 'alien-2', name: 'ナガミヒナゲシ', description: '繁殖力が高く、徐々に勢力を拡大する外来種。あまり警戒されていないことが脅威となる。十字状に侵略する。', cost: 1, cardType: 'alien', imagePath: 'https://placehold.co/100x60', baseInvasionPower: 1, baseInvasionShape: 'cross', canGrow: false },
-	{ id: 'alien-3', name: 'オオキンケイギク', description: '繁殖・拡散速度が速い特定外来生物。召喚後2ターンで侵略力が上昇し、脅威度が増す。十字状に侵略する。', cost: 2, cardType: 'alien', imagePath: 'https://placehold.co/100x60', baseInvasionPower: 1, baseInvasionShape: 'cross', canGrow: true, growthConditions: [{ type: 'turns_since_last_action', value: 2 }], growthEffects: [{ type: 'increase_invasion_power', value: 1 }] },
-	// { id: 'alien-4', name: 'ブラジルチドメクサ', description: '水路で繁殖する外来種。茎から増えるため、少ないコストで連鎖的に侵略できる。直線状に侵略する。', cost: 1, cardType: 'alien', imagePath: 'https://placehold.co/100x60', baseInvasionPower: 1, baseInvasionShape: 'straight', canGrow: false },
-	// { id: 'alien-5', name: 'ナガミヒナゲシ', description: '繁殖力が高く、徐々に勢力を拡大する外来種。あまり警戒されていないことが脅威となる。十字状に侵略する。', cost: 1, cardType: 'alien', imagePath: 'https://placehold.co/100x60', baseInvasionPower: 1, baseInvasionShape: 'cross', canGrow: false },
-	// { id: 'alien-6', name: 'オオキンケイギク', description: '繁殖・拡散速度が速い特定外来生物。召喚後2ターンで侵略力が上昇し、脅威度が増す。十字状に侵略する。', cost: 2, cardType: 'alien', imagePath: 'https://placehold.co/100x60', baseInvasionPower: 1, baseInvasionShape: 'cross', canGrow: true, growthConditions: [{ type: 'turns_since_last_action', value: 2 }], growthEffects: [{ type: 'increase_invasion_power', value: 1 }] },
-	// { id: 'alien-7', name: 'ミズバショウ', description: '諏訪地域では外来種。大きな葉で広範囲の植物の生育面積を奪う。安易な駆除はできないため、戦略的な対応が求められる。範囲侵略を得意とする。', cost: 3, cardType: 'alien', imagePath: 'https://placehold.co/100x60', baseInvasionPower: 2, baseInvasionShape: 'range', canGrow: false },
-	// { id: 'alien-8', name: 'オオハンゴンソウ', description: '低木と競合するほどの強い生命力を持つ特定外来生物。最初から高い侵略力を持つため、対処が遅れると危険。十字状に侵略する。', cost: 4, cardType: 'alien', imagePath: 'https://placehold.co/100x60', baseInvasionPower: 3, baseInvasionShape: 'cross', canGrow: false },
-	// { id: 'alien-9', name: 'アレチウリ', description: '樹木などを覆い尽くす強力なつる性外来種。召喚後2ターンで侵略力が上昇し、広範囲に脅威を広げる。範囲侵略を得意とする。', cost: 5, cardType: 'alien', imagePath: 'https://placehold.co/100x60', baseInvasionPower: 1, baseInvasionShape: 'range', canGrow: true, growthConditions: [{ type: 'turns_since_last_action', value: 2 }], growthEffects: [{ type: 'increase_invasion_power', value: 1 }] },
+// --- 定数定義 ---
 
-	// 駆除カード (6枚)
-	// { id: 'erad-1', name: '単一駆除剤', description: '指定した1マスを空マスにする。', cost: 1, cardType: 'eradication', imagePath: 'https://placehold.co/100x60', removalMethod: 'direct_n_cells', postRemovalState: 'empty_area', targetType: 'cell' },
-	// { id: 'erad-2', name: '単一駆除剤', description: '指定した1マスを空マスにする。', cost: 1, cardType: 'eradication', imagePath: 'https://placehold.co/100x60', removalMethod: 'direct_n_cells', postRemovalState: 'empty_area', targetType: 'cell' },
-	// { id: 'erad-3', name: '範囲駆除剤', description: '指定したマスを含む2x2マスを空マスにする。', cost: 3, cardType: 'eradication', imagePath: 'https://placehold.co/100x60', removalMethod: 'range_selection', postRemovalState: 'empty_area', targetType: 'cell' },
-	// { id: 'erad-4', name: '範囲駆除剤', description: '指定したマスを含む2x2マスを空マスにする。', cost: 3, cardType: 'eradication', imagePath: 'https://placehold.co/100x60', removalMethod: 'range_selection', postRemovalState: 'empty_area', targetType: 'cell' },
-	// { id: 'erad-5', name: '全体駆除作戦', description: '指定した外来種コマと、その支配マス全体を駆除する。', cost: 5, cardType: 'eradication', imagePath: 'https://placehold.co/100x60', removalMethod: 'target_alien_and_its_dominant_cells', targetType: 'alien_plant', usageLimit: 1 },
-	// { id: 'erad-6', name: '全体駆除作戦', description: '指定した外来種コマと、その支配マス全体を駆除する。', cost: 5, cardType: 'eradication', imagePath: 'https://placehold.co/100x60', removalMethod: 'target_alien_and_its_dominant_cells', targetType: 'alien_plant', usageLimit: 1 },
+/**
+ * ゲームの基本設定。盤面のサイズ、ターン数など、ゲームの根幹に関わる不変の値を定義する。
+ */
+const GAME_SETTINGS = {
+	FIELD_WIDTH: 7,
+	FIELD_HEIGHT: 10,
+	MAXIMUM_TURNS: 8,
+};
 
-	// 回復カード (6枚)
-	{ id: 'recov-1', name: '単一回復剤', description: '指定した1マスを在来種マスに回復する。', cost: 1, cardType: 'recovery', imagePath: 'https://placehold.co/100x60', recoveryMethod: 'direct_n_cells' },
-	{ id: 'recov-2', name: '単一回復剤', description: '指定した1マスを在来種マスに回復する。', cost: 1, cardType: 'recovery', imagePath: 'https://placehold.co/100x60', recoveryMethod: 'direct_n_cells' },
-	{ id: 'recov-3', name: '範囲回復剤', description: '指定したマスを含む2x2マスを回復する。', cost: 3, cardType: 'recovery', imagePath: 'https://placehold.co/100x60', recoveryMethod: 'range_selection' },
-	{ id: 'recov-4', name: '範囲回復剤', description: '指定したマスを含む2x2マスを回復する。', cost: 3, cardType: 'recovery', imagePath: 'https://placehold.co/100x60', recoveryMethod: 'range_selection' },
-	{ id: 'recov-5', name: '緊急再生作戦', description: '広範囲の空マスを再生待機マスに変化させる。', cost: 4, cardType: 'recovery', imagePath: 'https://placehold.co/100x60', recoveryMethod: 'range_selection', usageLimit: 1 },
-	{ id: 'recov-6', name: '緊急再生作戦', description: '広範囲の空マスを再生待機マスに変化させる。', cost: 4, cardType: 'recovery', imagePath: 'https://placehold.co/100x60', recoveryMethod: 'range_selection', usageLimit: 1 },
-];
+// --- 型定義 ---
 
+// UIの状態を含む、ゲーム全体のstateの型
 interface GameStateWithSelection extends GameState {
-	selectedCardId: string | null;
-	selectedAlienInstanceId: string | null;
-	notification: { message: string; forPlayer: PlayerId } | null;
+	selectedCardId: string | null;            // 現在選択中のカードインスタンスID
+	selectedAlienInstanceId: string | null; // 現在選択中の外来種インスタンスID
+	notification: { message: string; forPlayer: PlayerId } | null; // プレイヤーへの通知
 }
 
+// ゲームの状態を変更するためのアクション（関数）の型
 interface GameActions {
 	progressTurn: () => void;
 	selectCard: (cardId: string | null) => void;
@@ -47,9 +35,12 @@ interface GameActions {
 	resetGame: () => void;
 }
 
+// --- 初期状態生成関数 ---
+
+/** ゲーム全体の初期状態を生成する */
 const createInitialGameState = (): GameStateWithSelection => ({
 	currentTurn: 1,
-	maximumTurns: 8,
+	maximumTurns: GAME_SETTINGS.MAXIMUM_TURNS,
 	activePlayerId: 'alien_side',
 	currentPhase: 'summon_phase',
 	isGameOver: false,
@@ -65,23 +56,23 @@ const createInitialGameState = (): GameStateWithSelection => ({
 	notification: null,
 });
 
-const createInitialPlayerState = (id: 'native_side' | 'alien_side', name: string): PlayerState => ({
+/** プレイヤー一人の初期状態を生成する */
+const createInitialPlayerState = (id: PlayerId, name: string): PlayerState => ({
 	playerId: id,
 	playerName: name,
 	currentEnvironment: 1,
 	maxEnvironment: 1,
-	cardLibrary: [],
+	cardLibrary: [], // App.tsxで動的に生成
 	cooldownActiveCards: [],
 	limitedCardsUsedCount: {},
 });
 
+/** フィールド（盤面）の初期状態を生成する（全て在来種マス） */
 const createInitialFieldState = (): FieldState => {
-	const width = 7;
-	const height = 10;
-	const cells = Array.from({ length: height }, (_, y) =>
-		Array.from({ length: width }, (_, x): CellState => ({
-			x,
-			y,
+	const { FIELD_WIDTH, FIELD_HEIGHT } = GAME_SETTINGS;
+	const cells = Array.from({ length: FIELD_HEIGHT }, (_, y) =>
+		Array.from({ length: FIELD_WIDTH }, (_, x): CellState => ({
+			x, y,
 			cellType: 'native_area',
 			ownerId: 'native_side',
 			alienInstanceId: null,
@@ -89,428 +80,386 @@ const createInitialFieldState = (): FieldState => {
 			recoveryPendingTurn: null,
 		}))
 	);
-	return { width, height, cells };
+	return { width: FIELD_WIDTH, height: FIELD_HEIGHT, cells };
 };
 
+// --- Zustand Store ---
 
-export const useGameStore = create<GameStateWithSelection & GameActions>((set, get) => ({
-	...createInitialGameState(),
+export const useGameStore = create(
+	// immerミドルウェアでラップすることで、set関数内でstateを直接変更できるようになる
+	immer<GameStateWithSelection & GameActions>((set) => ({
+		// 初期stateを設定
+		...createInitialGameState(),
 
-	resetGame: () => set(createInitialGameState()),
+		/** ゲームを完全に初期状態に戻す */
+		resetGame: () => set(createInitialGameState()),
 
-	progressTurn: () => set((state) => {
-		console.log(`[progressTurn開始] アクティブプレイヤー: ${state.activePlayerId}, ターン: ${state.currentTurn}`);
-		console.log(`[progressTurn開始] マス(${state.gameField.cells[5][3].x}, ${state.gameField.cells[5][3].y})のタイプ: ${state.gameField.cells[5][3].cellType}`);
+		/** ターンを進行させる（活性フェーズの処理とプレイヤー交代） */
+		progressTurn: () => set((state) => {
+			// immerがstateをdraftとして扱うため、直接変更が可能。ディープコピーは不要。
 
-		if (state.isGameOver) return state;
+			// ゲーム終了後は何も処理しない
+			if (state.isGameOver) return;
 
-		let newCells = state.gameField.cells.map(row => row.map(cell => ({ ...cell })));
-		const newActiveAlienInstances = { ...state.activeAlienInstances };
-		const updatedPlayerStates = { ...state.playerStates };
-
-		Object.values(updatedPlayerStates).forEach(p => {
-			p.cooldownActiveCards = p.cooldownActiveCards.map(c => ({
-				...c,
-				turnsRemaining: c.turnsRemaining - 1
-			})).filter(c => c.turnsRemaining > 0);
-		});
-
-		if (state.activePlayerId === 'alien_side') {
-			const sortedAliens = Object.values(newActiveAlienInstances).sort((a, b) => {
-				const costA = cardMasterData.find(c => c.id === a.cardDefinitionId)?.cost ?? 0;
-				const costB = cardMasterData.find(c => c.id === b.cardDefinitionId)?.cost ?? 0;
-				if (costA !== costB) {
-					return costB - costA;
-				}
-				return b.spawnedTurn - a.spawnedTurn;
+			// [共通処理] 全プレイヤーのクールダウン中のカードの残りターンを1減らす
+			(Object.keys(state.playerStates) as PlayerId[]).forEach(playerId => {
+				const player = state.playerStates[playerId];
+				player.cooldownActiveCards = player.cooldownActiveCards
+					.map(c => ({ ...c, turnsRemaining: c.turnsRemaining - 1 }))
+					.filter(c => c.turnsRemaining > 0);
 			});
 
-			sortedAliens.forEach(alien => {
-				const cardDef = cardMasterData.find(c => c.id === alien.cardDefinitionId);
-				if (!cardDef) return;
+			// [活性フェーズ] アクティブプレイヤーに応じた自動処理
+			if (state.activePlayerId === 'alien_side') {
+				// --- 外来種サイドの自動処理 ---
 
-				if (cardDef.canGrow && alien.currentGrowthStage < (cardDef.growthConditions?.length ?? 0)) {
-					const condition = cardDef.growthConditions?.[alien.currentGrowthStage];
-					if (condition?.type === 'turns_since_last_action' && (state.currentTurn - alien.spawnedTurn) >= condition.value) {
-						const effect = cardDef.growthEffects?.[alien.currentGrowthStage];
-						if (effect && effect.type === 'increase_invasion_power' && effect.value !== undefined) {
-							alien.currentInvasionPower += effect.value;
-							alien.currentGrowthStage++;
-							console.log(`${cardDef.name} が成長！ 侵略力が ${alien.currentInvasionPower} になった！`);
-						}
-					}
-				}
-
-				const targets: { x: number; y: number }[] = [];
-				const invasionPower = alien.currentInvasionPower;
-				const { width, height } = state.gameField;
-
-				switch (alien.currentInvasionShape) {
-					case 'cross':
-						for (let i = 1; i <= invasionPower; i++) {
-							targets.push({ x: alien.currentX, y: alien.currentY + i });
-							targets.push({ x: alien.currentX, y: alien.currentY - i });
-							targets.push({ x: alien.currentX + i, y: alien.currentY });
-							targets.push({ x: alien.currentX - i, y: alien.currentY });
-						}
-						break;
-					case 'straight':
-						for (let i = 1; i <= invasionPower; i++) {
-							targets.push({ x: alien.currentX, y: alien.currentY + i });
-							targets.push({ x: alien.currentX, y: alien.currentY - i });
-						}
-						break;
-					case 'range':
-						for (let y = alien.currentY - invasionPower; y <= alien.currentY + invasionPower; y++) {
-							for (let x = alien.currentX - invasionPower; x <= alien.currentX + invasionPower; x++) {
-								if (x === alien.currentX && y === alien.currentY) continue;
-								targets.push({ x, y });
-							}
-						}
-						break;
-					case 'single':
-						targets.push({ x: alien.currentX, y: alien.currentY + 1 });
-						break;
-				}
-
-				targets.forEach(target => {
-					if (target.y >= 0 && target.y < height && target.x >= 0 && target.x < width) {
-						const cell = newCells[target.y][target.x];
-						if (cell.cellType !== 'alien_core') {
-							const currentDominantAlien = cell.dominantAlienInstanceId ? newActiveAlienInstances[cell.dominantAlienInstanceId] : null;
-							const currentDominantCost = currentDominantAlien ? cardMasterData.find(c => c.id === currentDominantAlien.cardDefinitionId)?.cost ?? 0 : -1;
-							const alienCost = cardDef.cost;
-
-							if (!currentDominantAlien || alienCost > currentDominantCost || (alienCost === currentDominantCost && alien.spawnedTurn > currentDominantAlien.spawnedTurn)) {
-								cell.cellType = 'alien_invasion_area';
-								cell.ownerId = 'alien_side';
-								cell.dominantAlienInstanceId = alien.instanceId;
-								console.log(`[侵略成功] ターン${state.currentTurn}、コマ${alien.cardDefinitionId}がマス(${target.x}, ${target.y})を支配。`);
-							} else {
-								console.log(`[侵略失敗] ターン${state.currentTurn}、コマ${alien.cardDefinitionId}はマス(${target.x}, ${target.y})を支配できませんでした (より優先度の高いコマが既に支配)。`);
-							}
-						}
-					}
+				// 1. 侵略優先度（コスト高 > 召喚ターン新）に基づいて外来種をソート
+				const sortedAliens: ActiveAlienInstance[] = Object.values(state.activeAlienInstances).sort((a, b) => {
+					const costA = cardMasterData.find(c => c.id === a.cardDefinitionId)?.cost ?? 0;
+					const costB = cardMasterData.find(c => c.id === b.cardDefinitionId)?.cost ?? 0;
+					if (costA !== costB) return costB - costA;
+					return b.spawnedTurn - a.spawnedTurn;
 				});
-			});
 
-			const dominantCounts: { [key: string]: number } = {};
-			newCells.flat().forEach(cell => {
-				if (cell.dominantAlienInstanceId) {
-					dominantCounts[cell.dominantAlienInstanceId] = (dominantCounts[cell.dominantAlienInstanceId] || 0) + 1;
-				}
-			});
+				// 2. ソートされた順に各外来種の処理を行う
+				sortedAliens.forEach(alien => {
+					// 外来種が何らかの理由で既に削除されている場合はスキップ
+					if (!state.activeAlienInstances[alien.instanceId]) return;
 
-			Object.keys(newActiveAlienInstances).forEach(instanceId => {
-				if (!dominantCounts[instanceId] || dominantCounts[instanceId] === 0) {
-					console.log(`外来種コマ ${instanceId} (支配マス0) を除去`);
-					delete newActiveAlienInstances[instanceId];
-					newCells.flat().forEach(cell => {
-						if (cell.alienInstanceId === instanceId) {
-							cell.cellType = 'empty_area';
-							cell.ownerId = null;
-							cell.alienInstanceId = null;
-							cell.dominantAlienInstanceId = null;
+					const cardDef = cardMasterData.find(c => c.id === alien.cardDefinitionId);
+					if (!cardDef) return;
+
+					// 2-1. [成長処理] 条件を満たしているかチェック
+					if (cardDef.canGrow && cardDef.growthConditions && cardDef.growthEffects && alien.currentGrowthStage < cardDef.growthConditions.length) {
+						const condition = cardDef.growthConditions[alien.currentGrowthStage];
+						// 条件タイプが「最終アクションからのターン経過」の場合
+						if (condition.type === 'turns_since_last_action' && (state.currentTurn - alien.spawnedTurn) >= condition.value) {
+							const effect = cardDef.growthEffects[alien.currentGrowthStage];
+							// 効果タイプが「侵略力増加」の場合
+							if (effect && effect.type === 'increase_invasion_power' && effect.value !== undefined) {
+								alien.currentInvasionPower += effect.value;
+								alien.currentGrowthStage++;
+								// TODO: 成長したことをユーザーに通知する手段を追加しても良い
+							}
 						}
-					});
-				}
-			});
-
-		} else {
-			newCells.forEach(row => row.forEach(cell => {
-				if (cell.cellType === 'recovery_pending_area') {
-					cell.cellType = 'native_area';
-					cell.ownerId = 'native_side';
-				}
-			}));
-			newCells.forEach(row => row.forEach(cell => {
-				if (cell.cellType === 'empty_area') cell.cellType = 'recovery_pending_area';
-			}));
-		}
-
-		const nextPlayerId = state.activePlayerId === 'alien_side' ? 'native_side' : 'alien_side';
-		let nextTurn = state.currentTurn;
-		if (nextPlayerId === 'alien_side') nextTurn += 1;
-
-		Object.values(updatedPlayerStates).forEach(p => {
-			p.maxEnvironment = nextTurn;
-			p.currentEnvironment = nextTurn;
-		});
-
-		let isGameOver = nextTurn > state.maximumTurns;
-		let winningPlayerId = state.winningPlayerId;
-		if (isGameOver && !state.isGameOver) {
-			const nativeScore = newCells.flat().filter(c => c.ownerId === 'native_side').length;
-			const alienScore = newCells.flat().filter(c => c.ownerId === 'alien_side').length;
-			console.log(`ゲーム終了！ 在来種: ${nativeScore}, 外来種: ${alienScore}`);
-			if (nativeScore > alienScore) winningPlayerId = 'native_side';
-			else if (alienScore > nativeScore) winningPlayerId = 'alien_side';
-			else winningPlayerId = null;
-		}
-
-		console.log(`--- ターン${state.currentTurn}終了後の盤面状態（一部）---`);
-		console.log(`マス(${newCells[5][3].x}, ${newCells[5][3].y})のタイプ: ${newCells[5][3].cellType}`);
-		console.log(`マス(${newCells[5][3].x}, ${newCells[5][3].y})の支配者: ${newCells[5][3].dominantAlienInstanceId}`);
-		if (newCells[6][3]) {
-			console.log(`マス(${newCells[6][3].x}, ${newCells[6][3].y})のタイプ: ${newCells[6][3].cellType}`);
-			console.log(`マス(${newCells[6][3].x}, ${newCells[6][3].y})の支配者: ${newCells[6][3].dominantAlienInstanceId}`);
-		}
-		console.log(`-------------------------------------------`);
-
-
-		return {
-			currentTurn: nextTurn,
-			activePlayerId: nextPlayerId,
-			playerStates: updatedPlayerStates,
-			isGameOver,
-			winningPlayerId,
-			selectedCardId: null,
-			selectedAlienInstanceId: null,
-			gameField: { ...state.gameField, cells: newCells },
-			activeAlienInstances: newActiveAlienInstances
-		};
-	}),
-
-	selectCard: (cardId) => set((state) => {
-		const card = state.playerStates[state.activePlayerId].cooldownActiveCards.find(c => c.cardId === cardId?.split('-instance-')[0]);
-		if (card) {
-			get().setNotification(`このカードはあと${card.turnsRemaining}ターン使用できません。`, state.activePlayerId);
-			return {};
-		}
-
-		return {
-			selectedCardId: cardId,
-			selectedAlienInstanceId: null
-		};
-	}),
-
-	playCard: (targetCell) => {
-		const state = get();
-		const { selectedCardId, activePlayerId, playerStates, gameField, activeAlienInstances } = state;
-		if (!selectedCardId) return;
-
-		const cardId = selectedCardId.split('-instance-')[0];
-		const card = cardMasterData.find(c => c.id === cardId);
-		if (!card) return;
-
-		if (activePlayerId === 'alien_side' && card.cardType !== 'alien') {
-			get().setNotification("外来種カードしか使用できません", activePlayerId);
-			return;
-		}
-		if (activePlayerId === 'native_side' && card.cardType === 'alien') {
-			get().setNotification("外来種カードは使用できません", activePlayerId);
-			return;
-		}
-
-		const currentPlayer = playerStates[activePlayerId];
-		if (currentPlayer.cooldownActiveCards.some(c => c.cardId === cardId)) {
-			get().setNotification("このカードはクールタイム中です。", activePlayerId);
-			return;
-		}
-		if (currentPlayer.currentEnvironment < card.cost) {
-			get().setNotification("エンバイロメントが足りません！", activePlayerId);
-			return;
-		}
-
-		const newCells = gameField.cells.map(row => row.map(cell => ({ ...cell })));
-		const newActiveAlienInstances = { ...activeAlienInstances };
-
-		const targetsToUpdate: { x: number, y: number }[] = [];
-		const { width, height } = state.gameField;
-
-		switch (card.cardType) {
-			case 'alien': {
-				console.log(`[playCard] 外来種カード ${card.name} (${card.id}) をマス(${targetCell.x}, ${targetCell.y})にプレイ`);
-
-				// ★追加: 配置できないマスを指定した場合のガード節
-				if (targetCell.cellType === 'empty_area' || targetCell.cellType === 'recovery_pending_area') {
-					get().setNotification("このマスには配置できません", activePlayerId);
-					return;
-				}
-				if (targetCell.cellType === 'alien_core') {
-					get().setNotification("他の外来種がいるマスには配置できません", activePlayerId);
-					return;
-				}
-
-
-				const newAlienInstance: ActiveAlienInstance = {
-					instanceId: nanoid(),
-					cardDefinitionId: card.id,
-					spawnedTurn: state.currentTurn,
-					currentX: targetCell.x,
-					currentY: targetCell.y,
-					currentGrowthStage: 0,
-					currentInvasionPower: card.baseInvasionPower ?? 1,
-					currentInvasionShape: card.baseInvasionShape ?? 'single',
-					turnsSinceLastAction: 0
-				};
-				newActiveAlienInstances[newAlienInstance.instanceId] = newAlienInstance;
-
-				const cellToUpdate = newCells[targetCell.y][targetCell.x];
-				cellToUpdate.cellType = 'alien_core';
-				cellToUpdate.ownerId = 'alien_side';
-				cellToUpdate.alienInstanceId = newAlienInstance.instanceId;
-				cellToUpdate.dominantAlienInstanceId = newAlienInstance.instanceId;
-				break;
-			}
-			case 'eradication': {
-				const method = card.removalMethod;
-				switch (method) {
-					case 'direct_n_cells': {
-						const cellToUpdate = newCells[targetCell.y][targetCell.x];
-						targetsToUpdate.push(cellToUpdate);
-						break;
 					}
-					case 'range_selection': {
-						for (let y = targetCell.y; y < targetCell.y + 2; y++) {
-							for (let x = targetCell.x; x < targetCell.x + 2; x++) {
-								if (x >= 0 && x < width && y >= 0 && y < height) {
-									targetsToUpdate.push(newCells[y][x]);
+
+					// 2-2. [侵略処理] 侵略対象となるマスを計算
+					const invasionTargets: { x: number; y: number }[] = [];
+					const { width, height } = state.gameField;
+					const { currentX, currentY, currentInvasionPower, currentInvasionShape } = alien;
+
+					switch (currentInvasionShape) {
+						case 'cross':
+							for (let i = 1; i <= currentInvasionPower; i++) {
+								invasionTargets.push({ x: currentX, y: currentY + i });
+								invasionTargets.push({ x: currentX, y: currentY - i });
+								invasionTargets.push({ x: currentX + i, y: currentY });
+								invasionTargets.push({ x: currentX - i, y: currentY });
+							}
+							break;
+						case 'straight':
+							for (let i = 1; i <= currentInvasionPower; i++) {
+								invasionTargets.push({ x: currentX, y: currentY + i });
+								invasionTargets.push({ x: currentX, y: currentY - i });
+							}
+							break;
+						case 'range':
+							for (let y = currentY - currentInvasionPower; y <= currentY + currentInvasionPower; y++) {
+								for (let x = currentX - currentInvasionPower; x <= currentX + currentInvasionPower; x++) {
+									if (x === currentX && y === currentY) continue; // 自分自身のマスは除く
+									invasionTargets.push({ x, y });
 								}
 							}
+							break;
+						case 'single':
+							// 'single'は本来侵略しないが、念のため定義
+							break;
+					}
+
+					// 2-3. 各侵略対象マスについて、支配権を更新
+					invasionTargets.forEach(target => {
+						// 盤面の範囲外は無視
+						if (target.y < 0 || target.y >= height || target.x < 0 || target.x >= width) return;
+
+						const cell = state.gameField.cells[target.y][target.x];
+
+						// 他の外来種のコアマスには侵略できない
+						if (cell.cellType === 'alien_core') return;
+
+						// 支配権の競合を解決する
+						const existingDominantAlien = cell.dominantAlienInstanceId ? state.activeAlienInstances[cell.dominantAlienInstanceId] : null;
+						const existingDominantCost = existingDominantAlien ? (cardMasterData.find(c => c.id === existingDominantAlien.cardDefinitionId)?.cost ?? 0) : -1;
+						const newAlienCost = cardDef.cost;
+
+						// 新しい外来種の方が優先度が高い、またはまだ誰も支配していない場合、支配権を獲得
+						if (!existingDominantAlien || newAlienCost > existingDominantCost || (newAlienCost === existingDominantCost && alien.spawnedTurn > existingDominantAlien.spawnedTurn)) {
+							cell.cellType = 'alien_invasion_area';
+							cell.ownerId = 'alien_side';
+							cell.dominantAlienInstanceId = alien.instanceId;
 						}
-						break;
-					}
-					case 'target_alien_and_its_dominant_cells': {
-						const targetAlienInstance = newActiveAlienInstances[targetCell.alienInstanceId!];
-						if (!targetAlienInstance) return;
-
-						targetsToUpdate.push(...newCells.flat().filter(cell => cell.dominantAlienInstanceId === targetAlienInstance.instanceId));
-						break;
-					}
-				}
-
-				targetsToUpdate.forEach(target => {
-					const cellToUpdate = newCells[target.y][target.x];
-					if (cellToUpdate.alienInstanceId) {
-						delete newActiveAlienInstances[cellToUpdate.alienInstanceId];
-					}
-					cellToUpdate.cellType = card.postRemovalState || 'empty_area';
-					cellToUpdate.ownerId = null;
-					cellToUpdate.alienInstanceId = null;
-					cellToUpdate.dominantAlienInstanceId = null;
+					});
 				});
-				break;
-			}
-			case 'recovery': {
-				const method = card.recoveryMethod;
-				switch (method) {
-					case 'direct_n_cells':
-						if (targetCell.cellType === 'empty_area' || targetCell.cellType === 'recovery_pending_area') {
-							targetsToUpdate.push(targetCell);
-						} else {
-							get().setNotification('このマスは回復できません。', activePlayerId);
-							return;
+
+				// 3. [クリンナップ処理] 侵略後の結果を判定し、支配マスを失った外来種を消滅させる
+				// 3-1. 各外来種の現在の支配マス数をカウント
+				const dominantCounts: { [key: string]: number } = {};
+				state.gameField.cells.flat().forEach(cell => {
+					if (cell.dominantAlienInstanceId) {
+						dominantCounts[cell.dominantAlienInstanceId] = (dominantCounts[cell.dominantAlienInstanceId] || 0) + 1;
+					}
+				});
+				// 3-2. 支配マスが0になった外来種（コアマス自身を除く）を盤上から除去
+				Object.keys(state.activeAlienInstances).forEach(instanceId => {
+					// コア自身の1マス分を除いて、支配マス数が0なら除去
+					if (!dominantCounts[instanceId] || dominantCounts[instanceId] <= 1) {
+						const alienToRemove = state.activeAlienInstances[instanceId];
+						if (alienToRemove) {
+							// コアがあったマスを空き地に戻す
+							const coreCell = state.gameField.cells[alienToRemove.currentY][alienToRemove.currentX];
+							if (coreCell.alienInstanceId === instanceId) {
+								coreCell.cellType = 'empty_area';
+								coreCell.ownerId = null;
+								coreCell.alienInstanceId = null;
+								coreCell.dominantAlienInstanceId = null;
+							}
+							// アクティブな外来種リストから削除
+							delete state.activeAlienInstances[instanceId];
 						}
-						break;
-				}
-
-				targetsToUpdate.forEach(target => {
-					const cellToUpdate = newCells[target.y][target.x];
-					cellToUpdate.cellType = 'native_area';
-					cellToUpdate.ownerId = 'native_side';
+					}
 				});
-				break;
-			}
-		}
 
-		if (card.cooldownTurns) {
-			currentPlayer.cooldownActiveCards.push({
-				cardId: cardId,
-				turnsRemaining: card.cooldownTurns
+			} else {
+				// --- 在来種サイドの自動処理 ---
+				// 1. 再生待機(黄) -> 在来種(緑) に変化
+				state.gameField.cells.flat().forEach(cell => {
+					if (cell.cellType === 'recovery_pending_area') {
+						cell.cellType = 'native_area';
+						cell.ownerId = 'native_side';
+					}
+				});
+				// 2. 空(灰) -> 再生待機(黄) に変化
+				state.gameField.cells.flat().forEach(cell => {
+					if (cell.cellType === 'empty_area') {
+						cell.cellType = 'recovery_pending_area';
+					}
+				});
+			}
+
+			// [ターン終了処理]
+			// 1. 次のプレイヤーを決定
+			const nextPlayerId = state.activePlayerId === 'alien_side' ? 'native_side' : 'alien_side';
+			// 2. 外来種サイドのターンが始まる時にターン数を進める
+			const isNewTurnStarting = nextPlayerId === 'alien_side';
+			const nextTurn = isNewTurnStarting ? state.currentTurn + 1 : state.currentTurn;
+
+			// 3. 全プレイヤーのエンバイロメントを最大値まで回復・更新
+			(Object.keys(state.playerStates) as PlayerId[]).forEach(playerId => {
+				const player = state.playerStates[playerId];
+				player.maxEnvironment = nextTurn;
+				player.currentEnvironment = nextTurn;
 			});
-		}
 
-		set({
-			playerStates: {
-				...playerStates,
-				[activePlayerId]: {
-					...currentPlayer,
-					currentEnvironment: currentPlayer.currentEnvironment - card.cost
+			// [勝敗判定]
+			const isGameOver = nextTurn > GAME_SETTINGS.MAXIMUM_TURNS;
+			if (isGameOver && !state.isGameOver) {
+				const nativeScore = state.gameField.cells.flat().filter(c => c.ownerId === 'native_side').length;
+				const alienScore = state.gameField.cells.flat().filter(c => c.ownerId === 'alien_side').length;
+				if (nativeScore > alienScore) {
+					state.winningPlayerId = 'native_side';
+				} else if (alienScore > nativeScore) {
+					state.winningPlayerId = 'alien_side';
+				} else {
+					state.winningPlayerId = null; // 引き分け
 				}
-			},
-			gameField: { ...gameField, cells: newCells },
-			activeAlienInstances: newActiveAlienInstances,
-			selectedCardId: null
-		});
+			}
 
-		const updatedState = get();
-		console.log(`[playCard終了] プレイ後、マス(${targetCell.x}, ${targetCell.y})のタイプ: ${updatedState.gameField.cells[targetCell.y][targetCell.x].cellType}`);
-	},
+			// [Stateの更新]
+			state.currentTurn = nextTurn;
+			state.activePlayerId = nextPlayerId;
+			state.isGameOver = isGameOver;
+			state.selectedCardId = null; // ターン終了時にカード選択は解除
+			state.selectedAlienInstanceId = null; // ターン終了時に外来種選択は解除
+		}),
 
-	selectAlienInstance: (instanceId) => set((state) => {
-		if (state.activePlayerId !== 'alien_side') {
-			get().setNotification("外来種サイドのターンではありません。", 'alien_side');
-			return {};
-		}
-		if (state.selectedAlienInstanceId === instanceId) {
-			return { selectedAlienInstanceId: null };
-		}
-		return {
-			selectedCardId: null,
-			selectedAlienInstanceId: instanceId
-		};
-	}),
+		/** プレイヤーが手札のカードを選択/選択解除する */
+		selectCard: (cardId) => set((state) => {
+			const cardDefId = cardId?.split('-instance-')[0];
+			// クールダウン中のカードは選択不可
+			if (state.playerStates[state.activePlayerId].cooldownActiveCards.some(c => c.cardId === cardDefId)) {
+				state.notification = { message: `このカードはクールタイム中です。`, forPlayer: state.activePlayerId };
+				return;
+			}
+			// カードを選択し、外来種の選択は解除する
+			state.selectedCardId = cardId;
+			state.selectedAlienInstanceId = null;
+		}),
 
-	moveAlien: (targetCell) => {
-		const state = get();
-		const { selectedAlienInstanceId, activePlayerId, playerStates, activeAlienInstances, gameField } = state;
-		if (!selectedAlienInstanceId) return;
+		/** 選択中のカードを対象のセルに使用する */
+		playCard: (targetCell) => set((state) => {
+			const { selectedCardId, activePlayerId } = state;
+			if (!selectedCardId) return; // カードが選択されていなければ何もしない
 
-		const alien = activeAlienInstances[selectedAlienInstanceId];
-		if (!alien) return;
+			const cardId = selectedCardId.split('-instance-')[0];
+			const card = cardMasterData.find(c => c.id === cardId);
+			if (!card) return; // マスターデータにカードがなければ何もしない
 
-		const originalCard = cardMasterData.find(c => c.id === alien.cardDefinitionId);
-		if (!originalCard) return;
+			// コストが足りているかチェック
+			const currentPlayer = state.playerStates[activePlayerId];
+			if (currentPlayer.currentEnvironment < card.cost) {
+				state.notification = { message: "エンバイロメントが足りません！", forPlayer: activePlayerId };
+				return;
+			}
 
-		const moveCost = originalCard.cost;
-		const currentPlayer = playerStates[activePlayerId];
-		if (currentPlayer.currentEnvironment < moveCost) {
-			get().setNotification("移動のためのエンバイロメントが足りません！", activePlayerId);
-			return;
-		}
+			const targetsToUpdate: CellState[] = [];
+			const { width, height } = state.gameField;
 
-		if (targetCell.cellType !== 'alien_invasion_area' || targetCell.dominantAlienInstanceId !== alien.instanceId) {
-			get().setNotification("自身の侵略マスにしか移動できません", activePlayerId);
-			return;
-		}
-
-		const newCells = gameField.cells.map(row => row.map(cell => ({ ...cell })));
-		const newActiveAlienInstances = { ...activeAlienInstances };
-
-		const originalCell = newCells[alien.currentY][alien.currentX];
-		originalCell.cellType = 'alien_invasion_area';
-		originalCell.alienInstanceId = null;
-
-		const newCell = newCells[targetCell.y][targetCell.x];
-		newCell.cellType = 'alien_core';
-		newCell.ownerId = 'alien_side';
-		newCell.alienInstanceId = alien.instanceId;
-		newCell.dominantAlienInstanceId = alien.instanceId;
-
-		const updatedAlien = { ...alien, currentX: targetCell.x, currentY: targetCell.y };
-		newActiveAlienInstances[alien.instanceId] = updatedAlien;
-
-		set({
-			playerStates: {
-				...playerStates,
-				[activePlayerId]: {
-					...currentPlayer,
-					currentEnvironment: currentPlayer.currentEnvironment - moveCost
+			// カードの種類に応じて処理を分岐
+			switch (card.cardType) {
+				case 'alien': {
+					// 配置できないマス（空、再生待機、他のコア）を指定した場合は通知を出して中断
+					if (targetCell.cellType === 'empty_area' || targetCell.cellType === 'recovery_pending_area' || targetCell.cellType === 'alien_core') {
+						state.notification = { message: "このマスには配置できません", forPlayer: activePlayerId };
+						return;
+					}
+					// 新しい外来種のインスタンスを作成
+					const newAlienInstance: ActiveAlienInstance = {
+						instanceId: nanoid(), cardDefinitionId: card.id, spawnedTurn: state.currentTurn,
+						currentX: targetCell.x, currentY: targetCell.y, currentGrowthStage: 0,
+						currentInvasionPower: card.baseInvasionPower ?? 1, currentInvasionShape: card.baseInvasionShape ?? 'single',
+						turnsSinceLastAction: 0
+					};
+					state.activeAlienInstances[newAlienInstance.instanceId] = newAlienInstance;
+					// 配置したマスの状態を「外来種コア」に更新
+					const cellToUpdate = state.gameField.cells[targetCell.y][targetCell.x];
+					cellToUpdate.cellType = 'alien_core';
+					cellToUpdate.ownerId = 'alien_side';
+					cellToUpdate.alienInstanceId = newAlienInstance.instanceId;
+					cellToUpdate.dominantAlienInstanceId = newAlienInstance.instanceId;
+					break;
 				}
-			},
-			gameField: { ...gameField, cells: newCells },
-			activeAlienInstances: newActiveAlienInstances,
-			selectedAlienInstanceId: null
-		});
-	},
-	setNotification: (message, forPlayer) => {
-		if (message && forPlayer) {
-			set({ notification: { message, forPlayer } });
-		} else {
-			set({ notification: null });
-		}
-	},
-}));
+				case 'eradication': {
+					const method = card.removalMethod;
+					switch (method) {
+						case 'direct_n_cells': // 1マスを直接指定
+							targetsToUpdate.push(state.gameField.cells[targetCell.y][targetCell.x]);
+							break;
+						case 'range_selection': // 範囲を指定（現在は2x2で固定）
+							for (let y = targetCell.y; y < targetCell.y + 2; y++) {
+								for (let x = targetCell.x; x < targetCell.x + 2; x++) {
+									if (x >= 0 && x < width && y >= 0 && y < height) {
+										targetsToUpdate.push(state.gameField.cells[y][x]);
+									}
+								}
+							}
+							break;
+						case 'target_alien_and_its_dominant_cells': // 特定の外来種とその支配マス全てが対象
+							const dominantId = state.gameField.cells[targetCell.y][targetCell.x].dominantAlienInstanceId;
+							if (!dominantId) return; // 支配者がいないマスなら何もしない
+							state.gameField.cells.flat().forEach(cell => {
+								if (cell.dominantAlienInstanceId === dominantId) targetsToUpdate.push(cell);
+							});
+							break;
+					}
+					// 決定した対象マス全てを駆除後の状態に更新
+					targetsToUpdate.forEach(target => {
+						const cellToUpdate = state.gameField.cells[target.y][target.x];
+						if (cellToUpdate.alienInstanceId) delete state.activeAlienInstances[cellToUpdate.alienInstanceId];
+						cellToUpdate.cellType = card.postRemovalState || 'empty_area';
+						cellToUpdate.ownerId = null;
+						cellToUpdate.alienInstanceId = null;
+						cellToUpdate.dominantAlienInstanceId = null;
+					});
+					break;
+				}
+				case 'recovery': {
+					if (targetCell.cellType === 'empty_area' || targetCell.cellType === 'recovery_pending_area') {
+						const cellToUpdate = state.gameField.cells[targetCell.y][targetCell.x];
+						cellToUpdate.cellType = 'native_area';
+						cellToUpdate.ownerId = 'native_side';
+					} else {
+						state.notification = { message: 'このマスは回復できません。', forPlayer: activePlayerId };
+						return;
+					}
+					break;
+				}
+			}
 
-export { cardMasterData };
+			// [共通の後処理]
+			// クールダウンが設定されていれば、リストに追加
+			if (card.cooldownTurns) {
+				currentPlayer.cooldownActiveCards.push({ cardId, turnsRemaining: card.cooldownTurns });
+			}
+			// コストを消費し、カード選択を解除
+			currentPlayer.currentEnvironment -= card.cost;
+			state.selectedCardId = null;
+		}),
+
+		/** フィールド上の外来種を選択/選択解除する */
+		selectAlienInstance: (instanceId) => set((state) => {
+			// 外来種サイドでなければ選択不可
+			if (state.activePlayerId !== 'alien_side') {
+				state.notification = { message: "外来種サイドのターンではありません。", forPlayer: 'native_side' };
+				return;
+			}
+			// 既に選択中の外来種をクリックした場合は選択解除
+			if (state.selectedAlienInstanceId === instanceId) {
+				state.selectedAlienInstanceId = null;
+				return;
+			}
+			// 外来種を選択し、カード選択は解除
+			state.selectedAlienInstanceId = instanceId;
+			state.selectedCardId = null;
+		}),
+
+		/** 選択中の外来種を対象のセルに移動させる */
+		moveAlien: (targetCell) => set((state) => {
+			const { selectedAlienInstanceId, activePlayerId } = state;
+			if (!selectedAlienInstanceId) return;
+
+			const alien = state.activeAlienInstances[selectedAlienInstanceId];
+			if (!alien) return;
+
+			const originalCard = cardMasterData.find(c => c.id === alien.cardDefinitionId);
+			if (!originalCard) return;
+
+			const moveCost = originalCard.cost;
+			const currentPlayer = state.playerStates[activePlayerId];
+			// コストチェック
+			if (currentPlayer.currentEnvironment < moveCost) {
+				state.notification = { message: "移動のためのエンバイロメントが足りません！", forPlayer: activePlayerId };
+				return;
+			}
+			// 移動は自身の侵略マスにしかできない
+			if (targetCell.cellType !== 'alien_invasion_area' || targetCell.dominantAlienInstanceId !== alien.instanceId) {
+				state.notification = { message: "自身の侵略マスにしか移動できません", forPlayer: activePlayerId };
+				return;
+			}
+
+			// 元いたマスの外来種情報をクリア
+			state.gameField.cells[alien.currentY][alien.currentX].alienInstanceId = null;
+			// 移動先のマスを新しいコアにする
+			const targetCellToUpdate = state.gameField.cells[targetCell.y][targetCell.x];
+			targetCellToUpdate.cellType = 'alien_core';
+			targetCellToUpdate.alienInstanceId = alien.instanceId;
+
+			// 外来種インスタンス自体の座標を更新
+			alien.currentX = targetCell.x;
+			alien.currentY = targetCell.y;
+			alien.turnsSinceLastAction = 0;
+
+			// コストを消費し、選択を解除
+			currentPlayer.currentEnvironment -= moveCost;
+			state.selectedAlienInstanceId = null;
+		}),
+
+		/** 画面に通知メッセージを表示/非表示する */
+		setNotification: (message, forPlayer) => set((state) => {
+			if (message && forPlayer) {
+				state.notification = { message, forPlayer };
+			} else {
+				state.notification = null;
+			}
+		}),
+	}))
+);
