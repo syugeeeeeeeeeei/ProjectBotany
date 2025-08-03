@@ -1,6 +1,6 @@
 import React from 'react';
 import styled from 'styled-components';
-import { useGameStore } from '../store/gameStore';
+import { useUIStore } from '../store/UIStore';
 import type { PlayerId } from '../types/data';
 
 // --- 定数定義 ---
@@ -54,7 +54,7 @@ interface GameInfoProps {
  * @param player 表示対象のプレイヤーID
  */
 const GameInfo: React.FC<GameInfoProps> = ({ player }) => {
-  const { playerStates } = useGameStore();
+  const { playerStates } = useUIStore();
   const playerData = playerStates[player];
 
   // playerDataが存在しない場合は何も表示しない

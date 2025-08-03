@@ -2,7 +2,7 @@ import { animated, to, useSpring } from '@react-spring/three';
 import { Plane } from '@react-three/drei';
 import { useGesture } from '@use-gesture/react';
 import React, { useEffect, useMemo, useRef } from 'react';
-import { useGameStore } from '../store/gameStore';
+import { useUIStore } from '../store/UIStore';
 import type { CardDefinition, PlayerId } from '../types/data';
 import Card3D from './Card3D';
 import type { DebugSettings } from './DebugDialog';
@@ -26,14 +26,14 @@ interface Hand3DProps {
 
 /** 手札のレイアウトに関する設定値 */
 const HAND_LAYOUT = {
-	CARDS_PER_PAGE: 3,        // 1ページあたりのカード枚数
-	CARD_WIDTH: 1.8,          // カードの幅
-	CARD_SPACING: 0.8,        // カード間のスペース
-	get PAGE_WIDTH() {        // 1ページあたりの合計幅（カード+スペース）
+	CARDS_PER_PAGE: 3,      // 1ページあたりのカード枚数
+	CARD_WIDTH: 1.8,        // カードの幅
+	CARD_SPACING: 0.8,      // カード間のスペース
+	get PAGE_WIDTH() {      // 1ページあたりの合計幅（カード+スペース）
 		return (this.CARDS_PER_PAGE * this.CARD_WIDTH) + ((this.CARDS_PER_PAGE - 1) * this.CARD_SPACING);
 	},
 	PAGE_TRANSITION_SPACING: 1, // ページ切り替え時の追加スペース
-	POSITION_Y: 2.2,          // 手札全体のY座標
+	POSITION_Y: 2.2,        // 手札全体のY座標
 	// 手札の表示/非表示時のZ座標
 	Z_POSITIONS: {
 		VISIBLE: 3.5,
@@ -49,20 +49,20 @@ const HAND_LAYOUT = {
 		TOP_PLAYER: Math.PI,
 		BOTTOM_PLAYER: 0,
 	},
-	CARD_SCALE: 1.25,          // カードの表示スケール
+	CARD_SCALE: 1.25,       // カードの表示スケール
 	// ジェスチャーを受け取るPlaneの設定
 	GESTURE_PLANE: {
-		WIDTH_PADDING: 4,          // 幅の追加分
-		ROTATION_X: -Math.PI / 2,  // X軸回転
-		POSITION_Y: -0.2,          // Y座標
-		POSITION_Z: 0.1,           // Z座標
+		WIDTH_PADDING: 4,         // 幅の追加分
+		ROTATION_X: -Math.PI / 2, // X軸回転
+		POSITION_Y: -0.2,         // Y座標
+		POSITION_Z: 0.1,          // Z座標
 	},
 	// CardInLineコンポーネントのアニメーション設定
 	CARD_IN_LINE_ANIMATION: {
-		Z_POS_SELECTED: -0.5,        // 選択されたカードのZ座標
-		Z_POS_DEFAULT: 0,            // デフォルトのZ座標
-		OPACITY_VISIBLE: 1,          // 表示時の不透明度
-		OPACITY_HIDDEN: 0.5,         // 非表示時の不透明度（選択されていないカード）
+		Z_POS_SELECTED: -0.5,       // 選択されたカードのZ座標
+		Z_POS_DEFAULT: 0,           // デフォルトのZ座標
+		OPACITY_VISIBLE: 1,         // 表示時の不透明度
+		OPACITY_HIDDEN: 0.5,        // 非表示時の不透明度（選択されていないカード）
 		SPRING_CONFIG: { tension: 300, friction: 20 } // アニメーションの物理設定
 	},
 };
@@ -89,7 +89,7 @@ const Hand3D: React.FC<Hand3DProps> = ({
 }) => {
 	// --- StateとStore ---
 	const { isGestureAreaVisible, flickVelocityThreshold, swipeAreaHeight } = debugSettings;
-	const { selectCard, selectedCardId } = useGameStore();
+	const { deselectCard, selectedCardId } = useUIStore();
 
 	// --- 変数とロジック ---
 	const isTopPlayer = player === 'native_side';
@@ -152,7 +152,7 @@ const Hand3D: React.FC<Hand3DProps> = ({
 				event.stopPropagation();
 				// 手札が表示されていて、かつ何かしらのカードが選択されている場合に選択を解除
 				if (isVisibleRef.current && selectedCardId) {
-					selectCard(null);
+					deselectCard();
 				}
 			},
 		},
@@ -245,24 +245,21 @@ const CardInLine: React.FC<CardInLineProps> = ({ card, index, player, isTopPlaye
 
 	// --- アニメーション ---
 	const { z, opacity } = useSpring({
-		/**
-		 * 選択されたカードかどうかに応じてZ座標（奥行き）を変化させる。
-		 * - 選択されたカード (isSelected: true): 少し手前 (Z_POS_SELECTED) に移動し、視覚的に浮き上がって見えるようにする。
-		 * - 選択されていないカード (isSelected: false): デフォルトのZ座標 (Z_POS_DEFAULT) に留まる。
-		 */
+		// zプロパティ：カードのZ軸（奥行き）の位置をアニメーションさせる。
+		// isSelectedがtrue（選択中）の場合、カードを少し手前に移動させ（Z_POS_SELECTED）、視覚的に浮き上がらせる。
+		// isSelectedがfalse（非選択）の場合、デフォルトの位置（Z_POS_DEFAULT）に戻す。
 		z: isSelected ? coefficient * HAND_LAYOUT.CARD_IN_LINE_ANIMATION.Z_POS_SELECTED : coefficient * HAND_LAYOUT.CARD_IN_LINE_ANIMATION.Z_POS_DEFAULT,
-		/**
-		 * カードリストの表示状態と、カード自身の選択状態に応じて不透明度を変化させる。
-		 * - パターン1: カードリストが表示状態 (isListVisible: true)
-		 * => 全てのカードは完全不透明 (OPACITY_VISIBLE) になる。
-		 * - パターン2: カードリストが非表示状態 (isListVisible: false)
-		 * - 選択されているカード (isSelected: true): 完全不透明 (OPACITY_VISIBLE) を維持する。
-		 * - 選択されていないカード (isSelected: false): 半透明 (OPACITY_HIDDEN) になり、選択中のカードを際立たせる。
-		 */
+
+		// opacityプロパティ：カードの不透明度をアニメーションさせる。
+		// isListVisibleがtrue（手札が表示状態）の場合、全てのカードを完全不透明（OPACITY_VISIBLE）にする。
+		// isListVisibleがfalse（手札が非表示状態）の場合、三項演算子でさらに分岐させる。
+		//   - isSelectedがtrue（選択中）のカードは、非表示状態でも完全不透明を維持し、視認性を保つ。
+		//   - isSelectedがfalse（非選択）のカードは、半透明（OPACITY_HIDDEN）にし、選択中のカードを際立たせる。
 		opacity: isListVisible
 			? HAND_LAYOUT.CARD_IN_LINE_ANIMATION.OPACITY_VISIBLE
 			: (isSelected ? HAND_LAYOUT.CARD_IN_LINE_ANIMATION.OPACITY_VISIBLE : HAND_LAYOUT.CARD_IN_LINE_ANIMATION.OPACITY_HIDDEN),
-		// アニメーションの物理的な挙動（バネの硬さや摩擦）を設定
+
+		// configプロパティ：アニメーションの物理的な挙動（バネの硬さや摩擦）を設定する。
 		config: HAND_LAYOUT.CARD_IN_LINE_ANIMATION.SPRING_CONFIG,
 	});
 

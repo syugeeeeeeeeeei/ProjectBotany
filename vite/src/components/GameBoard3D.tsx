@@ -1,84 +1,69 @@
-import React, { useMemo } from 'react';
+import { type ThreeEvent, useThree } from '@react-three/fiber';
+import { useGesture } from '@use-gesture/react';
+import React, { useMemo, useRef } from 'react';
 import * as THREE from 'three';
-import { useGameStore } from '../store/gameStore';
-import type { CellState, FieldState } from '../types/data';
+import { Group } from 'three';
+import cardMasterData from '../data/cardMasterData';
+import * as logic from '../logic/gameLogic';
+import { useUIStore } from '../store/UIStore';
+import type { CardDefinition, CellState, FieldState } from '../types/data';
 
 // --- 定数定義 ---
 
-/** マスの種類ごとの色定義 */
 const CELL_COLORS = {
-	native_area: '#2E7D32',           // 在来種マス (緑)
-	alien_core: '#C62828',            // 外来種コアマス (赤)
-	alien_invasion_area: '#E57373',   // 侵略マス (薄い赤)
-	empty_area: '#757575',            // 空マス (灰色)
-	recovery_pending_area: '#FDD835', // 再生待機マス (黄色)
-	default: '#444444',               // デフォルト
+	native_area: '#2E7D32',
+	alien_core: '#C62828',
+	alien_invasion_area: '#E57373',
+	empty_area: '#757575',
+	recovery_pending_area: '#FDD835',
+	default: '#444444',
 };
-
-/** ゲームボードのレイアウト設定 */
 const BOARD_LAYOUT = {
-	CELL_GAP: 1.0,                    // セル間の距離（中心から中心まで）
-	CELL_SIZE: 0.9,                   // セルの表示サイズ
-	BOARD_WIDTH: 7,                   // ボードの幅（セル数）
-	BOARD_HEIGHT: 10,                 // ボードの高さ（セル数）
-	ROTATION_X: -Math.PI / 2,         // ボード全体のX軸回転
+	CELL_GAP: 1.0,
+	CELL_SIZE: 0.9,
+	BOARD_WIDTH: 7,
+	BOARD_HEIGHT: 10,
+	ROTATION_X: -Math.PI / 2,
 };
-
-/** 選択されたエイリアン・マスのハイライト設定 */
 const HIGHLIGHT_SETTINGS = {
-	SELECTED_COLOR: '#4488FF',        // 選択時の発光色
-	SELECTED_INTENSITY: 1.5,          // 選択時の発光強度
-	DEFAULT_COLOR: 'black',           // 非選択時の発光色
-	DEFAULT_INTENSITY: 0,             // 非選択時の発光強度
+	SELECTED_COLOR: '#4488FF',
+	SELECTED_INTENSITY: 1.5,
+	DEFAULT_COLOR: 'black',
+	DEFAULT_INTENSITY: 0,
 };
-
-/** 移動可能マスを示す縁取りのレイアウト設定 */
 const OUTLINE_LAYOUT = {
-	OUTER_SIZE: 0.45,                 // 縁取りの外側のサイズ
-	THICKNESS: 0.05,                  // 縁取りの太さ
-	COLOR: '#87CEEB',                 // 縁取りの色 (水色)
-	Z_OFFSET: 0.01,                   // マスからのZ軸オフセット（手前に表示するため）
+	OUTER_SIZE: 0.45,
+	THICKNESS: 0.05,
+	MOVE_TARGET_COLOR: '#87CEEB',
+	EFFECT_RANGE_COLOR: '#32CD32',
+	Z_OFFSET: 0.01,
+};
+const PREVIEW_PIECE_LAYOUT = {
+	COLOR: '#FFD700', // 金色
+	OPACITY: 0.7,
+	Z_OFFSET: 0.1,
 };
 
 // --- ヘルパー関数 ---
 
-/**
- * マスの種類（cellType）に応じた色を返す。
- * @param cellType マスの種類
- * @returns 色の文字列
- */
-const getCellColor = (cellType: CellState['cellType']): string => {
-	return CELL_COLORS[cellType] || CELL_COLORS.default;
-};
-
+const getCellColor = (cellType: CellState['cellType']): string => CELL_COLORS[cellType] || CELL_COLORS.default;
+const getPositionFromCoords = (x: number, y: number): [number, number, number] => [
+	(x - (BOARD_LAYOUT.BOARD_WIDTH - 1) / 2) * BOARD_LAYOUT.CELL_GAP,
+	0,
+	(y - (BOARD_LAYOUT.BOARD_HEIGHT - 1) / 2) * BOARD_LAYOUT.CELL_GAP,
+];
 
 // --- コンポーネント定義 ---
 
-/**
- * 移動可能なマスを示す縁取りの3Dオブジェクト。
- */
-const MoveTargetOutline: React.FC = () => {
-	// 縁取りの形状を一度だけ計算
+/** 範囲を示す縁取りの3Dオブジェクト */
+const Outline: React.FC<{ color: string }> = ({ color }) => {
 	const shape = useMemo(() => {
 		const s = OUTLINE_LAYOUT.OUTER_SIZE;
 		const innerS = s - OUTLINE_LAYOUT.THICKNESS;
-
 		const newShape = new THREE.Shape();
-		// 外側の四角形
-		newShape.moveTo(-s, s);
-		newShape.lineTo(s, s);
-		newShape.lineTo(s, -s);
-		newShape.lineTo(-s, -s);
-		newShape.closePath();
-
-		// くり抜く内側の四角形（穴）
+		newShape.moveTo(-s, s); newShape.lineTo(s, s); newShape.lineTo(s, -s); newShape.lineTo(-s, -s); newShape.closePath();
 		const hole = new THREE.Path();
-		hole.moveTo(-innerS, innerS);
-		hole.lineTo(innerS, innerS);
-		hole.lineTo(innerS, -innerS);
-		hole.lineTo(-innerS, -innerS);
-		hole.closePath();
-
+		hole.moveTo(-innerS, innerS); hole.lineTo(innerS, innerS); hole.lineTo(innerS, -innerS); hole.lineTo(-innerS, -innerS); hole.closePath();
 		newShape.holes.push(hole);
 		return newShape;
 	}, []);
@@ -86,66 +71,85 @@ const MoveTargetOutline: React.FC = () => {
 	return (
 		<mesh position-z={OUTLINE_LAYOUT.Z_OFFSET}>
 			<shapeGeometry args={[shape]} />
-			<meshBasicMaterial color={OUTLINE_LAYOUT.COLOR} side={THREE.DoubleSide} />
+			<meshBasicMaterial color={color} side={THREE.DoubleSide} />
 		</mesh>
 	);
 };
 
 /**
- * 個々のマス（セル）を表す3Dオブジェクト。
- * クリック時のアクションや、状態に応じた見た目の変化を担う。
+ * 「召喚準備状態」で表示される、ドラッグ可能なプレビュー用のコマ
  */
-const Cell: React.FC<{ cell: CellState }> = ({ cell }) => {
-	// --- StateとStore ---
-	const { selectedAlienInstanceId, playCard, selectAlienInstance, moveAlien, selectedCardId } = useGameStore();
+const PreviewPiece: React.FC<{ card: CardDefinition, position: { x: number, y: number }, boardRef: React.RefObject<Group|null> }> = ({ card, position, boardRef }) => {
+	const { setPreviewPlacement, playSelectedCard } = useUIStore();
+	const { size, camera, raycaster } = useThree();
 
-	// --- 変数とロジック ---
+	const bind = useGesture({
+		onDrag: ({ xy: [px, py], event }) => {
+			event.stopPropagation();
+			if (!boardRef.current) return;
 
-	// このセルが現在選択中のエイリアンの移動先かどうかを判定
+			// スクリーン座標をワールド座標に変換して、どのマス上にあるかを判定
+			const pointer = new THREE.Vector2((px / size.width) * 2 - 1, -(py / size.height) * 2 + 1);
+			raycaster.setFromCamera(pointer, camera);
+			// boardRefを使って、盤面全体のセルとの交差判定を行う
+			const intersects = raycaster.intersectObjects(boardRef.current.children, true);
+			const intersectedCell = intersects.find(i => i.object.name.startsWith('cell-plane'))?.object.parent?.userData?.cell;
+			if (intersectedCell) {
+				setPreviewPlacement({ x: intersectedCell.x, y: intersectedCell.y });
+			}
+		},
+		onClick: ({ event }) => {
+			event.stopPropagation(); // DOMイベントの伝播を止める
+			playSelectedCard(); // タップで配置を確定
+		},
+	}, { drag: { filterTaps: true } });
+
+	const pieceColor = card.cardType === 'alien' ? CELL_COLORS.alien_core : card.cardType === 'eradication' ? '#4a82a2' : '#579d5b';
+
+	return (
+		<group position={getPositionFromCoords(position.x, position.y)} {...bind()}>
+			<mesh rotation={[BOARD_LAYOUT.ROTATION_X, 0, 0]} position-z={PREVIEW_PIECE_LAYOUT.Z_OFFSET}>
+				<boxGeometry args={[BOARD_LAYOUT.CELL_SIZE, BOARD_LAYOUT.CELL_SIZE, 0.2]} />
+				<meshStandardMaterial color={pieceColor} transparent opacity={PREVIEW_PIECE_LAYOUT.OPACITY} emissive={PREVIEW_PIECE_LAYOUT.COLOR} emissiveIntensity={0.5} />
+			</mesh>
+		</group>
+	);
+};
+
+/**
+ * 個々のマス（セル）を表す3Dオブジェクト。
+ */
+const Cell: React.FC<{ cell: CellState, isEffectPreview: boolean }> = ({ cell, isEffectPreview }) => {
+	const { selectedAlienInstanceId, selectAlienInstance, moveAlien } = useUIStore();
+
 	const isMoveTarget = useMemo(() => {
 		if (!selectedAlienInstanceId) return false;
 		return cell.cellType === 'alien_invasion_area' && cell.dominantAlienInstanceId === selectedAlienInstanceId;
 	}, [selectedAlienInstanceId, cell]);
 
-	// このセルにいるエイリアンが選択されているかどうか
 	const isSelected = cell.alienInstanceId !== null && cell.alienInstanceId === selectedAlienInstanceId;
 
-	// セルの3D空間上の位置を計算
-	const position: [number, number, number] = [
-		(cell.x - (BOARD_LAYOUT.BOARD_WIDTH - 1) / 2) * BOARD_LAYOUT.CELL_GAP,
-		0,
-		(cell.y - (BOARD_LAYOUT.BOARD_HEIGHT - 1) / 2) * BOARD_LAYOUT.CELL_GAP,
-	];
-
-	// --- イベントハンドラ ---
-
-	/**
-	 * セルがクリックされたときの処理。
-	 * ゲームの状況に応じて、カードの使用、エイリアンの選択・移動などを実行する。
-	 */
-	const handleCellClick = () => {
-		// カード選択中の場合: カードプレイを試みる
-		if (selectedCardId) {
-			playCard(cell);
-			return;
-		}
-		// エイリアン選択中の場合
+	const handleCellClick = (event: ThreeEvent<MouseEvent>) => {
+		event.stopPropagation(); // R3Fのイベント伝播を止める
+		// 「召喚準備状態」のクリックはPreviewPieceが担当するため、ここでは何もしない
 		if (selectedAlienInstanceId) {
-			if (isMoveTarget) moveAlien(cell); // 移動対象マスなら移動
-			else if (cell.alienInstanceId) selectAlienInstance(cell.alienInstanceId); // 別のエイリアンがいれば選択切り替え
-			else selectAlienInstance(null); // 何もなければ選択解除
+			if (isMoveTarget) moveAlien(cell);
+			else if (cell.alienInstanceId) selectAlienInstance(cell.alienInstanceId);
+			else selectAlienInstance(null);
 			return;
 		}
-		// 何も選択されていない場合: セルにエイリアンがいれば選択
 		if (cell.alienInstanceId) {
 			selectAlienInstance(cell.alienInstanceId);
 		}
 	};
 
-	// --- レンダリング ---
 	return (
-		<group position={position} onClick={handleCellClick} rotation={[BOARD_LAYOUT.ROTATION_X, 0, 0]}>
-			<mesh>
+		<group position={getPositionFromCoords(cell.x, cell.y)} userData={{ cell }}>
+			<mesh
+				name="cell-plane"
+				rotation={[BOARD_LAYOUT.ROTATION_X, 0, 0]}
+				onClick={handleCellClick}
+			>
 				<planeGeometry args={[BOARD_LAYOUT.CELL_SIZE, BOARD_LAYOUT.CELL_SIZE]} />
 				<meshStandardMaterial
 					color={getCellColor(cell.cellType)}
@@ -153,21 +157,40 @@ const Cell: React.FC<{ cell: CellState }> = ({ cell }) => {
 					emissiveIntensity={isSelected ? HIGHLIGHT_SETTINGS.SELECTED_INTENSITY : HIGHLIGHT_SETTINGS.DEFAULT_INTENSITY}
 				/>
 			</mesh>
-			{isMoveTarget && <MoveTargetOutline />}
+			{isMoveTarget && <Outline color={OUTLINE_LAYOUT.MOVE_TARGET_COLOR} />}
+			{isEffectPreview && <Outline color={OUTLINE_LAYOUT.EFFECT_RANGE_COLOR} />}
 		</group>
 	);
 };
 
 /**
  * ゲームボード全体を表すコンポーネント。
- * 全てのセルを並べて表示する。
  */
 const GameBoard3D: React.FC<{ fieldState: FieldState }> = ({ fieldState }) => {
+	const { selectedCardId, previewPlacement } = useUIStore();
+	const boardRef = useRef<Group>(null); // ボード全体への参照
+
+	const selectedCardDef = useMemo(() => {
+		if (!selectedCardId) return null;
+		return cardMasterData.find(c => c.id === selectedCardId.split('-instance-')[0]) ?? null;
+	}, [selectedCardId]);
+
+	const effectPreviewCells = useMemo(() => {
+		if (!selectedCardDef || !previewPlacement) return new Set();
+		const targetCell = fieldState.cells[previewPlacement.y][previewPlacement.x];
+		const range = logic.getEffectRange(selectedCardDef, targetCell, fieldState);
+		return new Set(range.map(c => `${c.x}-${c.y}`));
+	}, [selectedCardDef, previewPlacement, fieldState]);
+
 	return (
-		<group>
-			{fieldState.cells.flat().map((cell) => (
-				<Cell key={`${cell.x}-${cell.y}`} cell={cell} />
-			))}
+		<group ref={boardRef}>
+			{fieldState.cells.flat().map((cell) => {
+				const isEffectPreview = effectPreviewCells.has(`${cell.x}-${cell.y}`);
+				return <Cell key={`${cell.x}-${cell.y}`} cell={cell} isEffectPreview={isEffectPreview} />;
+			})}
+			{selectedCardDef && previewPlacement && (
+				<PreviewPiece card={selectedCardDef} position={previewPlacement} boardRef={boardRef} />
+			)}
 		</group>
 	);
 };

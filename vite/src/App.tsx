@@ -8,8 +8,8 @@ import GameInfo from './components/GameInfo';
 import Hand3D from './components/Hand3D';
 import SceneController from './components/SceneController';
 import UIOverlay from './components/UIOverlay';
-import cardMasterData from './store/cardMasterData';
-import { useGameStore } from './store/gameStore';
+import cardMasterData from './data/cardMasterData';
+import { useUIStore } from './store/UIStore';
 import type { PlayerId } from './types/data';
 
 // --- 定数定義 ---
@@ -180,7 +180,7 @@ const TurnEndButton = styled.button`
  */
 function App() {
   // --- StateとStore ---
-  const store = useGameStore();
+  const store = useUIStore();
   const { selectedCardId, selectedAlienInstanceId, notification, setNotification, resetGame } = store;
 
   const [isGameStarted, setIsGameStarted] = useState(false);
