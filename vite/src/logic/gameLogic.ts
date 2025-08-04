@@ -8,6 +8,54 @@ const GAME_SETTINGS = {
 	FIELD_HEIGHT: 10,
 	MAXIMUM_TURNS: 8,
 };
+/**
+ * 外来種カードの侵略範囲を計算する（プレビュー用）
+ * @param card - プレビュー対象のカード定義
+ * @param targetCell - 配置予定の中心マス
+ * @param field - 現在のフィールド状態
+ * @returns 侵略予定のマスの配列
+ */
+const calculateInvasionPreview = (card: CardDefinition, targetCell: CellState, field: FieldState): CellState[] => {
+	const invasionCoords: { x: number, y: number }[] = [];
+	const { width, height, cells } = field;
+	const { x: currentX, y: currentY } = targetCell;
+	const invasionPower = card.baseInvasionPower ?? 1;
+	const invasionShape = card.baseInvasionShape ?? 'single';
+
+	// カードの侵略形状と侵略力に基づいて、影響を受ける座標を計算
+	switch (invasionShape) {
+		case 'cross':
+			for (let i = 1; i <= invasionPower; i++) {
+				invasionCoords.push({ x: currentX, y: currentY + i });
+				invasionCoords.push({ x: currentX, y: currentY - i });
+				invasionCoords.push({ x: currentX + i, y: currentY });
+				invasionCoords.push({ x: currentX - i, y: currentY });
+			}
+			break;
+		case 'range':
+			for (let yOffset = -invasionPower; yOffset <= invasionPower; yOffset++) {
+				for (let xOffset = -invasionPower; xOffset <= invasionPower; xOffset++) {
+					if (xOffset === 0 && yOffset === 0) continue; // 中心マスは除く
+					invasionCoords.push({ x: currentX + xOffset, y: currentY + yOffset });
+				}
+			}
+			break;
+		case 'straight':
+			// 将来的な拡張用（例：一方向への侵略）
+			for (let i = 1; i <= invasionPower; i++) {
+				invasionCoords.push({ x: currentX, y: currentY + i });
+			}
+			break;
+		case 'single':
+			// 侵略範囲なし
+			break;
+	}
+
+	// 計算した座標を、実際のCellStateオブジェクトに変換して返す
+	return invasionCoords
+		.filter(c => c.x >= 0 && c.x < width && c.y >= 0 && c.y < height)
+		.map(c => cells[c.y][c.x]);
+};
 
 // --- 公開（エクスポート）するロジック関数 ---
 
@@ -221,19 +269,25 @@ export const progressTurnLogic = (state: GameState): GameState => {
  * @returns 効果が及ぶマスの配列
  */
 export const getEffectRange = (card: CardDefinition, targetCell: CellState, field: FieldState): CellState[] => {
+	// ★★★ 不具合修正箇所 ★★★
+	// 外来種カードの場合は、侵略プレビュー範囲を計算して返す
+	if (card.cardType === 'alien') {
+		return calculateInvasionPreview(card, targetCell, field);
+	}
+
+	// 駆除・回復カードの場合のロジック
 	const targets: CellState[] = [];
 	const { width, height, cells } = field;
-	const { x: tx, y: ty } = targetCell;
+	const method = card.removalMethod || card.recoveryMethod;
 
-	const method = card.cardType === 'alien' ? 'direct_n_cells' : (card.removalMethod || card.recoveryMethod);
 	switch (method) {
 		case 'direct_n_cells':
 			targets.push(targetCell);
 			break;
 		case 'range_selection':
 			// 将来的にカードマスタに範囲定義を持たせるのが望ましい
-			for (let y = ty; y < ty + 2; y++) {
-				for (let x = tx; x < tx + 2; x++) {
+			for (let y = targetCell.y; y < targetCell.y + 2; y++) {
+				for (let x = targetCell.x; x < targetCell.x + 2; x++) {
 					if (x >= 0 && x < width && y >= 0 && y < height) {
 						targets.push(cells[y][x]);
 					}
@@ -248,7 +302,7 @@ export const getEffectRange = (card: CardDefinition, targetCell: CellState, fiel
 						targets.push(cell);
 					}
 				});
-			} else if (targetCell.alienInstanceId) { // コア自体をターゲットにした場合
+			} else if (targetCell.alienInstanceId) {
 				targets.push(targetCell);
 			}
 			break;

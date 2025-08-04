@@ -36,12 +36,12 @@ const OUTLINE_LAYOUT = {
 	THICKNESS: 0.05,
 	MOVE_TARGET_COLOR: '#87CEEB',
 	EFFECT_RANGE_COLOR: '#32CD32',
-	Z_OFFSET: 0.01,
+	Y_OFFSET: 0.1
 };
 const PREVIEW_PIECE_LAYOUT = {
 	COLOR: '#FFD700', // 金色
 	OPACITY: 0.7,
-	Z_OFFSET: 0.1,
+	Z_OFFSET: 0,
 };
 
 // --- ヘルパー関数 ---
@@ -69,7 +69,11 @@ const Outline: React.FC<{ color: string }> = ({ color }) => {
 	}, []);
 
 	return (
-		<mesh position-z={OUTLINE_LAYOUT.Z_OFFSET}>
+		// メッシュを回転させ、Y軸に少しオフセットを持たせることで、マスの上に正しく表示させる
+		<mesh
+			position={[0, OUTLINE_LAYOUT.Y_OFFSET, 0]}
+			rotation={[BOARD_LAYOUT.ROTATION_X, 0, 0]}
+		>
 			<shapeGeometry args={[shape]} />
 			<meshBasicMaterial color={color} side={THREE.DoubleSide} />
 		</mesh>
@@ -77,9 +81,9 @@ const Outline: React.FC<{ color: string }> = ({ color }) => {
 };
 
 /**
- * 「召喚準備状態」で表示される、ドラッグ可能なプレビュー用のコマ
+ * 「召喚準備状態」で表示される、ドラッグ可能なプレビュー用のコマ（召喚準備マス）
  */
-const PreviewPiece: React.FC<{ card: CardDefinition, position: { x: number, y: number }, boardRef: React.RefObject<Group|null> }> = ({ card, position, boardRef }) => {
+const PreviewPiece: React.FC<{ card: CardDefinition, position: { x: number, y: number }, boardRef: React.RefObject<Group | null> }> = ({ card, position, boardRef }) => {
 	const { setPreviewPlacement, playSelectedCard } = useUIStore();
 	const { size, camera, raycaster } = useThree();
 
@@ -108,7 +112,7 @@ const PreviewPiece: React.FC<{ card: CardDefinition, position: { x: number, y: n
 
 	return (
 		<group position={getPositionFromCoords(position.x, position.y)} {...bind()}>
-			<mesh rotation={[BOARD_LAYOUT.ROTATION_X, 0, 0]} position-z={PREVIEW_PIECE_LAYOUT.Z_OFFSET}>
+			<mesh rotation={[BOARD_LAYOUT.ROTATION_X, 0, 0]} position={[0, OUTLINE_LAYOUT.Y_OFFSET, 0]}>
 				<boxGeometry args={[BOARD_LAYOUT.CELL_SIZE, BOARD_LAYOUT.CELL_SIZE, 0.2]} />
 				<meshStandardMaterial color={pieceColor} transparent opacity={PREVIEW_PIECE_LAYOUT.OPACITY} emissive={PREVIEW_PIECE_LAYOUT.COLOR} emissiveIntensity={0.5} />
 			</mesh>
@@ -118,8 +122,9 @@ const PreviewPiece: React.FC<{ card: CardDefinition, position: { x: number, y: n
 
 /**
  * 個々のマス（セル）を表す3Dオブジェクト。
+ * 効果予定マス（isEffectPreview）の表示を担当する。
  */
-const Cell: React.FC<{ cell: CellState, isEffectPreview: boolean }> = ({ cell, isEffectPreview }) => {
+const Cell: React.FC<{ cell: CellState, isEffectPreview: boolean, isSummonTarget: boolean }> = ({ cell, isEffectPreview, isSummonTarget }) => {
 	const { selectedAlienInstanceId, selectAlienInstance, moveAlien } = useUIStore();
 
 	const isMoveTarget = useMemo(() => {
@@ -158,7 +163,8 @@ const Cell: React.FC<{ cell: CellState, isEffectPreview: boolean }> = ({ cell, i
 				/>
 			</mesh>
 			{isMoveTarget && <Outline color={OUTLINE_LAYOUT.MOVE_TARGET_COLOR} />}
-			{isEffectPreview && <Outline color={OUTLINE_LAYOUT.EFFECT_RANGE_COLOR} />}
+			{/* 召喚準備マス自体には枠線を表示せず、効果予定マスにのみ表示する */}
+			{isEffectPreview && !isSummonTarget && <Outline color={OUTLINE_LAYOUT.EFFECT_RANGE_COLOR} />}
 		</group>
 	);
 };
@@ -175,9 +181,11 @@ const GameBoard3D: React.FC<{ fieldState: FieldState }> = ({ fieldState }) => {
 		return cardMasterData.find(c => c.id === selectedCardId.split('-instance-')[0]) ?? null;
 	}, [selectedCardId]);
 
+	// 効果予定マスの座標セットを計算
 	const effectPreviewCells = useMemo(() => {
 		if (!selectedCardDef || !previewPlacement) return new Set();
 		const targetCell = fieldState.cells[previewPlacement.y][previewPlacement.x];
+		// 修正された`getEffectRange`を呼び出す
 		const range = logic.getEffectRange(selectedCardDef, targetCell, fieldState);
 		return new Set(range.map(c => `${c.x}-${c.y}`));
 	}, [selectedCardDef, previewPlacement, fieldState]);
@@ -185,9 +193,12 @@ const GameBoard3D: React.FC<{ fieldState: FieldState }> = ({ fieldState }) => {
 	return (
 		<group ref={boardRef}>
 			{fieldState.cells.flat().map((cell) => {
-				const isEffectPreview = effectPreviewCells.has(`${cell.x}-${cell.y}`);
-				return <Cell key={`${cell.x}-${cell.y}`} cell={cell} isEffectPreview={isEffectPreview} />;
+				const cellCoord = `${cell.x}-${cell.y}`;
+				const isEffectPreview = effectPreviewCells.has(cellCoord);
+				const isSummonTarget = !!previewPlacement && cell.x === previewPlacement.x && cell.y === previewPlacement.y;
+				return <Cell key={cellCoord} cell={cell} isEffectPreview={isEffectPreview} isSummonTarget={isSummonTarget} />;
 			})}
+			{/* 召喚準備状態の時のみ、ドラッグ可能なプレビュー用のコマを表示 */}
 			{selectedCardDef && previewPlacement && (
 				<PreviewPiece card={selectedCardDef} position={previewPlacement} boardRef={boardRef} />
 			)}
