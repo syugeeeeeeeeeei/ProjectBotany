@@ -88,8 +88,8 @@ const cardMasterData: CardDefinition[] = [
 			power: 3,
 			shape: "cross",
 		},
-		cooldownTurns:1,
-		usageLimit:2,
+		cooldownTurns: 1,
+		usageLimit: 2,
 		canGrow: false,
 	},
 	{
@@ -199,7 +199,7 @@ const cardMasterData: CardDefinition[] = [
 		id: "recov-1",
 		name: "在来種の種まき",
 		description:
-			"在来種の種を蒔き、生態系の再生を促す第一歩。\n指定した1マスを再生待機マスに回復する。",
+			"在来種の種を蒔き、生態系の再生を促す第一歩。\n\n[回復]：指定1マス\n[回復後状態]：再生待機マス",
 		cost: 1,
 		cardType: "recovery",
 		deckCount: 1,
@@ -214,7 +214,7 @@ const cardMasterData: CardDefinition[] = [
 		id: "recov-2",
 		name: "土壌改良",
 		description:
-			"荒れた土地に栄養を与え、在来種が育ちやすい環境を整える。\n指定した空マス1つを在来種マスに即時回復する。",
+			"荒れた土地に栄養を与え、在来種が育ちやすい環境を整える。\n\n[回復]：指定1マス\n[回復後状態]：在来種マス",
 		cost: 2,
 		cardType: "recovery",
 		deckCount: 1,
@@ -229,7 +229,7 @@ const cardMasterData: CardDefinition[] = [
 		id: "recov-3",
 		name: "植樹祭",
 		description:
-			"ボランティアを募り、地域に緑を取り戻す活動。\n指定マス中心の十字範囲を再生待機マスにする。\n使用後1ターンのクールタイムが必要。",
+			"ボランティアを募り、地域に緑を取り戻す活動。\n\n[回復]：十字1マス\n[回復後状態]：再生待機マス\n[クールタイム]：1ターン",
 		cost: 3,
 		cardType: "recovery",
 		deckCount: 1,
@@ -245,7 +245,7 @@ const cardMasterData: CardDefinition[] = [
 		id: "recov-4",
 		name: "帰化促進",
 		description:
-			"外来種の支配地域を、在来種の力で取り戻す。\n指定した外来種の支配マス全てを再生待機マスにする。\nゲーム中2回まで使用可能。",
+			"外来種の支配地域を、在来種の力で取り戻す。\n\n[回復]：1種の支配マス全て\n[回復後状態]：再生待機マス\n[使用回数]：2回",
 		cost: 4,
 		cardType: "recovery",
 		deckCount: 1,
@@ -260,7 +260,7 @@ const cardMasterData: CardDefinition[] = [
 		id: "recov-5",
 		name: "大地の恵み",
 		description:
-			"生態系が持つ本来の回復力が、奇跡的な再生を引き起こす。\n指定マス中心の2x2マスを在来種マスに即時回復する。\nゲーム中1回しか使えない切り札。",
+			"生態系が持つ本来の回復力が、奇跡的な再生を引き起こす。\n\n[回復]：周囲1マス範囲\n[回復後状態]：在来種マス\n[使用回数]：1回",
 		cost: 5,
 		cardType: "recovery",
 		deckCount: 1,
