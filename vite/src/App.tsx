@@ -1,6 +1,6 @@
 import { OrbitControls } from '@react-three/drei';
 import { Canvas } from '@react-three/fiber';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import styled, { createGlobalStyle } from 'styled-components';
 import { DebugDialog, type DebugSettings } from './components/DebugDialog';
 import GameBoard3D from './components/GameBoard3D';
@@ -10,45 +10,34 @@ import SceneController from './components/SceneController';
 import UIOverlay from './components/UIOverlay';
 import cardMasterData from './data/cardMasterData';
 import { useUIStore } from './store/UIStore';
-import type { PlayerId } from './types/data';
+import type { CardDefinition, PlayerType } from './types/data';
 
 // --- 定数定義 ---
 
-/** グローバルスタイル設定 */
 const GLOBAL_STYLES = {
   BACKGROUND_COLOR: '#50342b',
 };
-
-/** UIレイアウト設定 */
 const LAYOUT = {
   SIDE_PANEL_WIDTH: '120px',
   SIDE_PANEL_GAP: '20px',
   SIDE_PANEL_OFFSET: '5px',
 };
-
-/** カメラ設定 */
 const CAMERA_SETTINGS = {
   POSITION: [0, 15, 14] as [number, number, number],
   FOV: 70,
 };
-
-/** ライト設定 */
 const LIGHT_SETTINGS = {
   AMBIENT_INTENSITY: 0.8,
   DIRECTIONAL_POSITION: [10, 10, 5] as [number, number, number],
   DIRECTIONAL_INTENSITY: 1,
 };
-
-/** ゲームロジック・アニメーション関連のタイマー設定 (ms) */
 const TIMERS = {
   TURN_BANNER_DELAY: 1000,
   TURN_BANNER_DURATION: 2000,
   NOTIFICATION_DURATION: 3000,
 };
-
-/** 手札のページング設定 */
 const HAND_PAGING = {
-  CARDS_PER_PAGE: 4,
+  CARDS_PER_PAGE: 3,
 };
 
 
@@ -140,12 +129,12 @@ const ScreenLockOverlay = styled.div`
   background-color: transparent;
 `;
 
-const TurnEndButton = styled.button`
-  background: linear-gradient(145deg, #81c784, #4caf50);
+const BaseActionButton = styled.button`
+  flex-grow: 1;
   color: white;
   border: none;
   border-radius: 12px;
-  padding: 12px 15px;
+  padding: 12px 10px;
   font-size: 1.2em;
   font-weight: bold;
   cursor: pointer;
@@ -174,25 +163,48 @@ const TurnEndButton = styled.button`
   }
 `;
 
+const TurnEndButton = styled(BaseActionButton)`
+  background: linear-gradient(145deg, #81c784, #4caf50);
+`;
+
+const ActionButtonContainer = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+`;
+const SummonButton = styled(BaseActionButton)`
+  background: linear-gradient(145deg, #ffc107, #ff8f00);
+  font-size: 1em;
+`;
+const CancelButton = styled(BaseActionButton)`
+  background: linear-gradient(145deg, #9e9e9e, #616161);
+  font-size: 1em;
+`;
+
+
 /**
  * アプリケーションのメインコンポーネント。
- * 全体のレイアウト、状態管理、3Dシーンのレンダリングを担当する。
  */
 function App() {
-  // --- StateとStore ---
   const store = useUIStore();
-  const { selectedCardId, selectedAlienInstanceId, notification, setNotification, resetGame } = store;
+  const {
+    activePlayerId, selectedCardId, selectedAlienInstanceId, notification, setNotification,
+    resetGame, isCardPreview, playSelectedCard, deselectCard
+  } = store;
 
   const [isGameStarted, setIsGameStarted] = useState(false);
   const [showTurnBanner, setShowTurnBanner] = useState(false);
   const [isStartingTurn, setIsStartingTurn] = useState(false);
 
-  // --- Debug関連State ---
-  const [multiplier, setMultiplier] = useState(1);
+  // ★★★ ここから修正 ★★★
+  // ユーザーの手動操作（スワイプ、デバッグUI）による表示希望状態のみを管理する
+  const [isAlienHandManuallyVisible, setAlienHandManuallyVisible] = useState(true);
+  const [isNativeHandManuallyVisible, setNativeHandManuallyVisible] = useState(true);
+  // ★★★ ここまで修正 ★★★
+
   const [alienHandPage, setAlienHandPage] = useState(0);
   const [nativeHandPage, setNativeHandPage] = useState(0);
-  const [isAlienHandVisible, setAlienHandVisible] = useState(true);
-  const [isNativeHandVisible, setNativeHandVisible] = useState(true);
   const [debugSettings, setDebugSettings] = useState<DebugSettings>({
     isGestureAreaVisible: false,
     flickDistanceRatio: 0.25,
@@ -200,42 +212,11 @@ function App() {
     swipeAreaHeight: 4,
   });
 
-  // --- Ref ---
-  const handVisibilityBeforeSelect = useRef({ alien: true, native: true });
-  const prevSelectedCardId = useRef<string | null>(null);
+  // ★★★ 修正: 状態復元用のuseRefと、カード選択状態を監視するuseEffectは不要になったため削除 ★★★
 
-  // --- エフェクトフック ---
-
-  /**
-   * カードやエイリアンの選択状態に応じて、手札の表示/非表示を自動的に切り替える。
-   * - 何かが選択されたら、両プレイヤーの手札を非表示にする。
-   * - 選択が解除されたら、選択前の表示状態に復元する。
-   */
-  useEffect(() => {
-    // 初めてカードが選択された瞬間の手札表示状態を保存
-    if (!prevSelectedCardId.current && selectedCardId) {
-      handVisibilityBeforeSelect.current = { alien: isAlienHandVisible, native: isNativeHandVisible };
-    }
-    prevSelectedCardId.current = selectedCardId; // 現在の選択状態を次回のために保存
-
-    if (selectedCardId || selectedAlienInstanceId) {
-      setAlienHandVisible(false);
-      setNativeHandVisible(false);
-    } else {
-      setAlienHandVisible(handVisibilityBeforeSelect.current.alien);
-      setNativeHandVisible(handVisibilityBeforeSelect.current.native);
-    }
-  }, [selectedCardId, selectedAlienInstanceId]);
-
-
-  /**
-   * ターン開始時にアニメーションとUIの表示を制御する。
-   */
   useEffect(() => {
     if (!isGameStarted || store.isGameOver) return;
-    // ターン開始直後は操作をロック
     setIsStartingTurn(true);
-    // 少し遅れてターン表示バナーを出す
     const timer = setTimeout(() => {
       setShowTurnBanner(true);
       setIsStartingTurn(false);
@@ -243,9 +224,6 @@ function App() {
     return () => clearTimeout(timer);
   }, [store.activePlayerId, store.currentTurn, isGameStarted, store.isGameOver]);
 
-  /**
-   * ターン表示バナーを一定時間後に自動で非表示にする。
-   */
   useEffect(() => {
     if (showTurnBanner) {
       const timer = setTimeout(() => { setShowTurnBanner(false); }, TIMERS.TURN_BANNER_DURATION);
@@ -253,9 +231,6 @@ function App() {
     }
   }, [showTurnBanner]);
 
-  /**
-   * 通知メッセージを一定時間後に自動で非表示にする。
-   */
   useEffect(() => {
     if (notification) {
       const timer = setTimeout(() => setNotification(null), TIMERS.NOTIFICATION_DURATION);
@@ -264,33 +239,25 @@ function App() {
   }, [notification, setNotification]);
 
 
-  // --- メモ化された値 ---
-
-  /** カードマスターデータと倍率に基づき、各プレイヤーが使用するカードのリストを生成する */
   const { alienCards, nativeCards } = useMemo(() => {
-    const generatePlayerCards = (playerType: 'alien' | 'native') => {
-      const filterCondition = (c: typeof cardMasterData[0]) =>
-        playerType === 'alien' ? c.cardType === 'alien' : c.cardType !== 'alien';
-      const baseCards = cardMasterData.filter(filterCondition);
-      // multiplierに応じてカードを複製し、ユニークなinstanceIdを付与
-      return Array.from({ length: multiplier }).flatMap((_, i) =>
-        baseCards.map(card => ({ ...card, instanceId: `${card.id}-instance-${i}` }))
-      );
+    const duplicateCards = (cards: CardDefinition[]) => {
+      return cards.flatMap(card => Array.from({ length: card.deckCount }).map((_, i) => ({ ...card, instanceId: `${card.id}-instance-${i}` })));
     };
-    return {
-      alienCards: generatePlayerCards('alien'),
-      nativeCards: generatePlayerCards('native')
-    };
-  }, [multiplier]);
+    const allAlienCards = cardMasterData.filter(c => c.cardType === 'alien');
+    const duplicatedAlienCards = duplicateCards(allAlienCards);
+    duplicatedAlienCards.sort((a, b) => a.cost - b.cost);
+    const eradicationCards = cardMasterData.filter(c => c.cardType === 'eradication');
+    const recoveryCards = cardMasterData.filter(c => c.cardType === 'recovery');
+    const duplicatedEradication = duplicateCards(eradicationCards);
+    const duplicatedRecovery = duplicateCards(recoveryCards);
+    duplicatedEradication.sort((a, b) => a.cost - b.cost);
+    duplicatedRecovery.sort((a, b) => a.cost - b.cost);
+    const combinedNativeCards = [...duplicatedEradication, ...duplicatedRecovery];
+    return { alienCards: duplicatedAlienCards, nativeCards: combinedNativeCards };
+  }, []);
 
 
-  // --- ヘルパー関数 ---
-
-  /**
-   * ゲームの状況に応じて、UIオーバーレイに表示する内容を決定する。
-   * @param thisPlayerId オーバーレイを表示する対象のプレイヤーID
-   */
-  const getOverlayProps = (thisPlayerId: PlayerId) => {
+  const getOverlayProps = (thisPlayerId: PlayerType) => {
     const { isGameOver, winningPlayerId, activePlayerId, currentTurn, playerStates } = store;
     const isMyTurn = activePlayerId === thisPlayerId;
 
@@ -315,10 +282,6 @@ function App() {
     return { show: false, message: '' };
   };
 
-
-  /**
-   * ページング操作のためのハンドラを生成する。
-   */
   const createPageHandlers = (
     page: number,
     setPage: React.Dispatch<React.SetStateAction<number>>,
@@ -332,41 +295,44 @@ function App() {
     };
   };
 
-  // --- Propの準備 ---
-
-  const alienOverlayProps = getOverlayProps('alien_side');
-  const nativeOverlayProps = getOverlayProps('native_side');
-
+  const alienOverlayProps = getOverlayProps('alien');
+  const nativeOverlayProps = getOverlayProps('native');
   const alienPageHandlers = createPageHandlers(alienHandPage, setAlienHandPage, alienCards.length);
   const nativePageHandlers = createPageHandlers(nativeHandPage, setNativeHandPage, nativeCards.length);
+
+  // ★★★ ここから修正 ★★★
+  // カード選択中かどうかを判定するフラグ
+  const isSelecting = !!(selectedCardId || selectedAlienInstanceId);
+
+  // 実際に手札を表示するかどうかを、複数のルールから派生（算出）させる
+  // 表示条件: 1.手動で表示ON  2.自分のターンである  3.カード選択中でない
+  const isAlienHandActuallyVisible = isAlienHandManuallyVisible && activePlayerId === 'alien' && !isSelecting;
+  const isNativeHandActuallyVisible = isNativeHandManuallyVisible && activePlayerId === 'native' && !isSelecting;
+  // ★★★ ここまで修正 ★★★
 
   const debugDialogProps = {
     debugSettings,
     onSetDebugSettings: setDebugSettings,
-    cardMultiplier: multiplier,
-    onSetCardMultiplier: setMultiplier,
     players: [
       { name: 'Alien Side', currentPage: alienHandPage, maxPage: alienPageHandlers.maxPage, onNext: alienPageHandlers.handleNext, onPrev: alienPageHandlers.handlePrev },
       { name: 'Native Side', currentPage: nativeHandPage, maxPage: nativePageHandlers.maxPage, onNext: nativePageHandlers.handleNext, onPrev: nativePageHandlers.handlePrev },
     ],
-    isAlienHandVisible,
-    onToggleAlienHand: () => setAlienHandVisible(v => !v),
-    isNativeHandVisible,
-    onToggleNativeHand: () => setNativeHandVisible(v => !v),
+    // ★★★ 修正: 派生した表示状態と、手動状態を変更する関数を渡す
+    isAlienHandVisible: isAlienHandActuallyVisible,
+    onToggleAlienHand: () => setAlienHandManuallyVisible(v => !v),
+    isNativeHandVisible: isNativeHandActuallyVisible,
+    onToggleNativeHand: () => setNativeHandManuallyVisible(v => !v),
   };
 
-  // カード選択時やエイリアン選択時は手札の操作をロック
-  const isHandInteractionLocked = !!selectedCardId || !!selectedAlienInstanceId;
+  const isHandInteractionLocked = isSelecting;
 
-
-  // --- レンダリング ---
   return (
     <>
       <GlobalStyle />
       {isStartingTurn && <ScreenLockOverlay />}
 
       <DebugContainer>
-        <DebugDialog {...debugDialogProps} />
+        <DebugDialog {...debugDialogProps} cardMultiplier={0} onSetCardMultiplier={() => { }} />
       </DebugContainer>
 
       <MainContainer>
@@ -383,19 +349,21 @@ function App() {
 
         <CanvasContainer>
           <Canvas shadows camera={{ position: CAMERA_SETTINGS.POSITION, fov: CAMERA_SETTINGS.FOV }}>
-            <color attach="background" args={[GLOBAL_STYLES.BACKGROUND_COLOR]}/>
+            <color attach="background" args={[GLOBAL_STYLES.BACKGROUND_COLOR]} />
             <ambientLight intensity={LIGHT_SETTINGS.AMBIENT_INTENSITY} />
             <directionalLight
               position={LIGHT_SETTINGS.DIRECTIONAL_POSITION}
               intensity={LIGHT_SETTINGS.DIRECTIONAL_INTENSITY}
             />
             <GameBoard3D fieldState={store.gameField} />
+
+            {/* ★★★ 修正: 派生した表示状態と、手動状態を変更する関数を渡す */}
             <Hand3D
               key='alien-hand'
-              player="alien_side"
+              player="alien"
               cards={alienCards}
-              isVisible={isAlienHandVisible}
-              onVisibilityChange={setAlienHandVisible}
+              isVisible={isAlienHandActuallyVisible}
+              onVisibilityChange={setAlienHandManuallyVisible}
               currentPage={alienHandPage}
               onPageChange={setAlienHandPage}
               debugSettings={debugSettings}
@@ -403,10 +371,10 @@ function App() {
             />
             <Hand3D
               key='native-hand'
-              player="native_side"
+              player="native"
               cards={nativeCards}
-              isVisible={isNativeHandVisible}
-              onVisibilityChange={setNativeHandVisible}
+              isVisible={isNativeHandActuallyVisible}
+              onVisibilityChange={setNativeHandManuallyVisible}
               currentPage={nativeHandPage}
               onPageChange={setNativeHandPage}
               debugSettings={debugSettings}
@@ -419,18 +387,32 @@ function App() {
 
         <SidePanel className="right">
           <div className="content">
-            <GameInfo player="alien_side" />
-            <TurnEndButton onClick={store.progressTurn} disabled={store.isGameOver || store.activePlayerId !== 'alien_side'}>
-              ターン終了
-            </TurnEndButton>
+            <GameInfo player="alien" />
+            {isCardPreview && store.activePlayerId === 'alien' ? (
+              <ActionButtonContainer>
+                <SummonButton onClick={playSelectedCard}>召喚</SummonButton>
+                <CancelButton onClick={deselectCard}>取消</CancelButton>
+              </ActionButtonContainer>
+            ) : (
+              <TurnEndButton onClick={store.progressTurn} disabled={store.isGameOver || store.activePlayerId !== 'alien'}>
+                ターン終了
+              </TurnEndButton>
+            )}
           </div>
         </SidePanel>
         <SidePanel className="left">
           <div className="content">
-            <GameInfo player="native_side" />
-            <TurnEndButton onClick={store.progressTurn} disabled={store.isGameOver || store.activePlayerId !== 'native_side'}>
-              ターン終了
-            </TurnEndButton>
+            <GameInfo player="native" />
+            {isCardPreview && store.activePlayerId === 'native' ? (
+              <ActionButtonContainer>
+                <SummonButton onClick={playSelectedCard}>召喚</SummonButton>
+                <CancelButton onClick={deselectCard}>取消</CancelButton>
+              </ActionButtonContainer>
+            ) : (
+              <TurnEndButton onClick={store.progressTurn} disabled={store.isGameOver || store.activePlayerId !== 'native'}>
+                ターン終了
+              </TurnEndButton>
+            )}
           </div>
         </SidePanel>
       </MainContainer>

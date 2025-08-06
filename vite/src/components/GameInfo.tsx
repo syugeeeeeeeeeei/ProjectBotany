@@ -1,7 +1,7 @@
 import React from 'react';
 import styled from 'styled-components';
 import { useUIStore } from '../store/UIStore';
-import type { PlayerId } from '../types/data';
+import type { PlayerType } from '../types/data';
 
 // --- 定数定義 ---
 
@@ -46,7 +46,7 @@ const InfoItem = styled.div`
 // --- Component ---
 
 interface GameInfoProps {
-  player: PlayerId;
+  player: PlayerType; // PlayerId を PlayerType に修正
 }
 
 /**

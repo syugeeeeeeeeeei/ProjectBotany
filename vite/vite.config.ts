@@ -16,6 +16,17 @@ export default defineConfig({
     watch: {
       usePolling: true,
     },
+    proxy: {
+      // '/image-proxy' というパスへのリクエストをプロキシする設定
+      '/plantnet.org': {
+        // 転送先のドメイン
+        target: 'https://bs.plantnet.org',
+        // CORS制限を回避するために、リクエストのオリジンを転送先に偽装する
+        changeOrigin: true,
+        // パスから '/image-proxy' を削除してリクエストする
+        rewrite: (path) => path.replace(/^\/plantnet.org/, ''),
+      },
+    },
   },
   test: {
     globals: true,

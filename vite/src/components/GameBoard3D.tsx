@@ -69,7 +69,6 @@ const Outline: React.FC<{ color: string }> = ({ color }) => {
 	}, []);
 
 	return (
-		// メッシュを回転させ、Y軸に少しオフセットを持たせることで、マスの上に正しく表示させる
 		<mesh
 			position={[0, OUTLINE_LAYOUT.Y_OFFSET, 0]}
 			rotation={[BOARD_LAYOUT.ROTATION_X, 0, 0]}
@@ -84,7 +83,7 @@ const Outline: React.FC<{ color: string }> = ({ color }) => {
  * 「召喚準備状態」で表示される、ドラッグ可能なプレビュー用のコマ（召喚準備マス）
  */
 const PreviewPiece: React.FC<{ card: CardDefinition, position: { x: number, y: number }, boardRef: React.RefObject<Group | null> }> = ({ card, position, boardRef }) => {
-	const { setPreviewPlacement, playSelectedCard } = useUIStore();
+	const { setPreviewPlacement } = useUIStore(); // playSelectedCard を削除
 	const { size, camera, raycaster } = useThree();
 
 	const bind = useGesture({
@@ -92,20 +91,15 @@ const PreviewPiece: React.FC<{ card: CardDefinition, position: { x: number, y: n
 			event.stopPropagation();
 			if (!boardRef.current) return;
 
-			// スクリーン座標をワールド座標に変換して、どのマス上にあるかを判定
 			const pointer = new THREE.Vector2((px / size.width) * 2 - 1, -(py / size.height) * 2 + 1);
 			raycaster.setFromCamera(pointer, camera);
-			// boardRefを使って、盤面全体のセルとの交差判定を行う
 			const intersects = raycaster.intersectObjects(boardRef.current.children, true);
 			const intersectedCell = intersects.find(i => i.object.name.startsWith('cell-plane'))?.object.parent?.userData?.cell;
 			if (intersectedCell) {
 				setPreviewPlacement({ x: intersectedCell.x, y: intersectedCell.y });
 			}
 		},
-		onClick: ({ event }) => {
-			event.stopPropagation(); // DOMイベントの伝播を止める
-			playSelectedCard(); // タップで配置を確定
-		},
+		// ★★★ 修正: onClickによる召喚機能を削除
 	}, { drag: { filterTaps: true } });
 
 	const pieceColor = card.cardType === 'alien' ? CELL_COLORS.alien_core : card.cardType === 'eradication' ? '#4a82a2' : '#579d5b';
@@ -122,7 +116,6 @@ const PreviewPiece: React.FC<{ card: CardDefinition, position: { x: number, y: n
 
 /**
  * 個々のマス（セル）を表す3Dオブジェクト。
- * 効果予定マス（isEffectPreview）の表示を担当する。
  */
 const Cell: React.FC<{ cell: CellState, isEffectPreview: boolean, isSummonTarget: boolean }> = ({ cell, isEffectPreview, isSummonTarget }) => {
 	const { selectedAlienInstanceId, selectAlienInstance, moveAlien } = useUIStore();
@@ -132,18 +125,17 @@ const Cell: React.FC<{ cell: CellState, isEffectPreview: boolean, isSummonTarget
 		return cell.cellType === 'alien_invasion_area' && cell.dominantAlienInstanceId === selectedAlienInstanceId;
 	}, [selectedAlienInstanceId, cell]);
 
-	const isSelected = cell.alienInstanceId !== null && cell.alienInstanceId === selectedAlienInstanceId;
+	const isSelected = cell.cellType === 'alien_core' && cell.alienInstanceId === selectedAlienInstanceId;
 
 	const handleCellClick = (event: ThreeEvent<MouseEvent>) => {
-		event.stopPropagation(); // R3Fのイベント伝播を止める
-		// 「召喚準備状態」のクリックはPreviewPieceが担当するため、ここでは何もしない
+		event.stopPropagation();
 		if (selectedAlienInstanceId) {
 			if (isMoveTarget) moveAlien(cell);
-			else if (cell.alienInstanceId) selectAlienInstance(cell.alienInstanceId);
+			else if (cell.cellType === 'alien_core') selectAlienInstance(cell.alienInstanceId);
 			else selectAlienInstance(null);
 			return;
 		}
-		if (cell.alienInstanceId) {
+		if (cell.cellType === 'alien_core') {
 			selectAlienInstance(cell.alienInstanceId);
 		}
 	};
@@ -163,7 +155,6 @@ const Cell: React.FC<{ cell: CellState, isEffectPreview: boolean, isSummonTarget
 				/>
 			</mesh>
 			{isMoveTarget && <Outline color={OUTLINE_LAYOUT.MOVE_TARGET_COLOR} />}
-			{/* 召喚準備マス自体には枠線を表示せず、効果予定マスにのみ表示する */}
 			{isEffectPreview && !isSummonTarget && <Outline color={OUTLINE_LAYOUT.EFFECT_RANGE_COLOR} />}
 		</group>
 	);
@@ -173,32 +164,30 @@ const Cell: React.FC<{ cell: CellState, isEffectPreview: boolean, isSummonTarget
  * ゲームボード全体を表すコンポーネント。
  */
 const GameBoard3D: React.FC<{ fieldState: FieldState }> = ({ fieldState }) => {
-	const { selectedCardId, previewPlacement } = useUIStore();
-	const boardRef = useRef<Group>(null); // ボード全体への参照
+	const { selectedCardId, previewPlacement, playerStates, activePlayerId } = useUIStore();
+	const boardRef = useRef<Group>(null);
 
 	const selectedCardDef = useMemo(() => {
 		if (!selectedCardId) return null;
 		return cardMasterData.find(c => c.id === selectedCardId.split('-instance-')[0]) ?? null;
 	}, [selectedCardId]);
 
-	// 効果予定マスの座標セットを計算
 	const effectPreviewCells = useMemo(() => {
 		if (!selectedCardDef || !previewPlacement) return new Set();
 		const targetCell = fieldState.cells[previewPlacement.y][previewPlacement.x];
-		// 修正された`getEffectRange`を呼び出す
-		const range = logic.getEffectRange(selectedCardDef, targetCell, fieldState);
+		const facingFactor = playerStates[activePlayerId].facingFactor;
+		const range = logic.getEffectRange(selectedCardDef, targetCell, fieldState, facingFactor);
 		return new Set(range.map(c => `${c.x}-${c.y}`));
-	}, [selectedCardDef, previewPlacement, fieldState]);
+	}, [selectedCardDef, previewPlacement, fieldState, activePlayerId, playerStates]);
 
 	return (
 		<group ref={boardRef}>
-			{fieldState.cells.flat().map((cell) => {
-				const cellCoord = `${cell.x}-${cell.y}`;
-				const isEffectPreview = effectPreviewCells.has(cellCoord);
+			{fieldState.cells.flat().map((cell, index) => {
+				const cellCoord = `${cell.x}-${cell.y}-${index}`;
+				const isEffectPreview = effectPreviewCells.has(`${cell.x}-${cell.y}`);
 				const isSummonTarget = !!previewPlacement && cell.x === previewPlacement.x && cell.y === previewPlacement.y;
 				return <Cell key={cellCoord} cell={cell} isEffectPreview={isEffectPreview} isSummonTarget={isSummonTarget} />;
 			})}
-			{/* 召喚準備状態の時のみ、ドラッグ可能なプレビュー用のコマを表示 */}
 			{selectedCardDef && previewPlacement && (
 				<PreviewPiece card={selectedCardDef} position={previewPlacement} boardRef={boardRef} />
 			)}

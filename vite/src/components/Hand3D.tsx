@@ -1,9 +1,9 @@
 import { animated, to, useSpring } from '@react-spring/three';
 import { Plane } from '@react-three/drei';
-import { useGesture } from '@use-gesture/react';
+import { type DragState, useGesture } from '@use-gesture/react';
 import React, { useEffect, useMemo, useRef } from 'react';
 import { useUIStore } from '../store/UIStore';
-import type { CardDefinition, PlayerId } from '../types/data';
+import type { CardDefinition, PlayerType } from '../types/data';
 import Card3D from './Card3D';
 import type { DebugSettings } from './DebugDialog';
 
@@ -12,7 +12,7 @@ import type { DebugSettings } from './DebugDialog';
 type CardWithInstanceId = CardDefinition & { instanceId: string };
 
 interface Hand3DProps {
-	player: PlayerId;
+	player: PlayerType;
 	cards: CardWithInstanceId[];
 	isVisible: boolean;
 	onVisibilityChange: (visible: boolean) => void;
@@ -39,16 +39,10 @@ const HAND_LAYOUT = {
 		VISIBLE: 3.5,
 		HIDDEN: 6,
 	},
-	// カードの傾き角度
-	TILT_ANGLES: {
-		TOP_PLAYER: Math.PI / 2.2,
-		BOTTOM_PLAYER: -Math.PI / 2.2,
-	},
-	// カードのY軸回転
-	Y_ROTATIONS: {
-		TOP_PLAYER: Math.PI,
-		BOTTOM_PLAYER: 0,
-	},
+	// カードの傾き角度 (奥プレイヤーの角度を基準とする)
+	TILT_ANGLE_BASE: Math.PI / 2.2,
+	// カードのY軸回転 (奥プレイヤーの回転を基準とする)
+	Y_ROTATION_BASE: Math.PI,
 	CARD_SCALE: 1.25,       // カードの表示スケール
 	// ジェスチャーを受け取るPlaneの設定
 	GESTURE_PLANE: {
@@ -69,7 +63,7 @@ const HAND_LAYOUT = {
 
 /** ジェスチャー操作に関する設定値 */
 const GESTURE_SETTINGS = {
-	FLICK_DISTANCE_THRESHOLD: 30, // フリックと判定される最小移動距離
+	FLICK_DISTANCE_THRESHOLD: 45, // フリックと判定される最小移動距離
 	DRAG_THRESHOLD: 10,           // ドラッグ開始と判定される最小移動距離
 };
 
@@ -89,26 +83,23 @@ const Hand3D: React.FC<Hand3DProps> = ({
 }) => {
 	// --- StateとStore ---
 	const { isGestureAreaVisible, flickVelocityThreshold, swipeAreaHeight } = debugSettings;
-	const { deselectCard, selectedCardId } = useUIStore();
+	const { deselectCard, selectedCardId, playerStates } = useUIStore();
+	const { facingFactor } = playerStates[player];
 
 	// --- 変数とロジック ---
-	const isTopPlayer = player === 'native_side';
 	const maxPage = Math.ceil(cards.length / HAND_LAYOUT.CARDS_PER_PAGE) - 1;
 
-	// isVisibleの最新値をrefに保持し、useGestureのコールバック内で使用する
 	const isVisibleRef = useRef(isVisible);
 	useEffect(() => {
 		isVisibleRef.current = isVisible;
 	}, [isVisible]);
 
 	// --- アニメーション ---
-	// ページ切り替え時のX座標アニメーション
 	const { x } = useSpring({
-		x: -currentPage * (HAND_LAYOUT.PAGE_WIDTH + HAND_LAYOUT.PAGE_TRANSITION_SPACING),
+		x: -currentPage * (HAND_LAYOUT.PAGE_WIDTH + HAND_LAYOUT.PAGE_TRANSITION_SPACING) * facingFactor,
 		config: { tension: 300, friction: 30 },
 	});
 
-	// 手札の表示/非表示時のZ座標アニメーション
 	const { z } = useSpring({
 		z: isVisible ? HAND_LAYOUT.Z_POSITIONS.VISIBLE : HAND_LAYOUT.Z_POSITIONS.HIDDEN,
 		config: { tension: 300, friction: 20 },
@@ -116,69 +107,122 @@ const Hand3D: React.FC<Hand3DProps> = ({
 
 
 	// --- ジェスチャーハンドラ ---
+
+	/**
+	 * 左右フリック（ページめくり）を専門に扱う関数
+	 * @param state - useGestureから渡されるドラッグ状態
+	 */
+	const handleHorizontalFlick = (state: DragState) => {
+		const { movement: [mx], velocity: [vx], direction: [dx] } = state;
+		const absMx = Math.abs(mx);
+
+		// 条件判定
+		const isFlickDistanceMet = absMx > GESTURE_SETTINGS.FLICK_DISTANCE_THRESHOLD;
+		const isFlickVelocityMet = Math.abs(vx) > flickVelocityThreshold;
+
+		if (isFlickDistanceMet && isFlickVelocityMet) {
+			// フリック方向（dx）に応じて、ページ番号を増減させる量を決定する (-1 or 1)
+			// この計算は、プレイヤーの向き（facingFactor）に関わらず、両プレイヤーで共通となる
+			const pageIncrement = -Math.sign(dx) * facingFactor;
+
+			// 現在のページ番号に増減値を加え、新しいページ番号を計算する
+			// ただし、計算結果が 0 未満や最大ページ数を超えないよう、Math.maxとMath.minで範囲内に収める
+			const newPage = Math.max(0, Math.min(maxPage, currentPage + pageIncrement));
+			console.log(newPage, currentPage, maxPage);
+
+			if (newPage !== currentPage) onPageChange(newPage);
+		}
+	};
+
+	/**
+	 * 上下フリック（手札の表示/非表示）を専門に扱う関数
+	 * @param state - useGestureから渡されるドラッグ状態
+	 */
+	const handleVerticalFlick = (state: DragState) => {
+		const { movement: [_, my], velocity: [__, vy], direction: [___, dy] } = state;
+		const absMy = Math.abs(my);
+
+		// 条件判定
+		const isFlickDistanceMet = absMy > GESTURE_SETTINGS.FLICK_DISTANCE_THRESHOLD;
+		const isFlickVelocityMet = Math.abs(vy) > (flickVelocityThreshold * 0.5);
+
+		if (isFlickDistanceMet && isFlickVelocityMet) {
+			// facingFactorを使い、スワイプ方向と表示/非表示のロジックを一般化
+			// 奥側(factor:-1): 上スワイプ(dy<0)で隠す -> dy*factor > 0
+			// 手前側(factor:1): 下スワイプ(dy>0)で隠す -> dy*factor > 0
+			const shouldHide = (dy * facingFactor) > 0;
+			const shouldShow = (dy * facingFactor) < 0;
+
+			if (shouldHide && isVisibleRef.current) {
+				onVisibilityChange(false);
+			} else if (shouldShow && !isVisibleRef.current) {
+				onVisibilityChange(true);
+			}
+		}
+	};
+
+	/**
+	 * ドラッグイベントの司令塔（ディスパッチャー）となるハンドラ
+	 */
 	const bind = useGesture(
 		{
-			// ドラッグ終了時の処理
-			onDrag: ({ last, movement: [mx, my], velocity: [vx, vy], direction: [dx, dy], tap, event }) => {
-				// タップ or ドラッグ中でない場合は何もしない
+			onDrag: (state) => {
+				const { last, movement: [mx, my], tap, event } = state;
+				// ドラッグ終了時でなければ何もしない
 				if (tap || !last) return;
 				event.stopPropagation();
 
-				const absMx = Math.abs(mx);
-				const absMy = Math.abs(my);
+				const isDragHorizontal = Math.abs(mx) > Math.abs(my);
 
-				// 左右のフリック（ページめくり）
-				if (absMx > absMy && absMx > GESTURE_SETTINGS.FLICK_DISTANCE_THRESHOLD && Math.abs(vx) > flickVelocityThreshold) {
-					const newPage = Math.max(0, Math.min(maxPage, currentPage - Math.sign(dx)));
-					if (newPage !== currentPage) onPageChange(newPage);
-					return;
-				}
-
-				// 上下のスワイプ（手札の表示/非表示）
-				if (absMy > absMx && absMy > GESTURE_SETTINGS.FLICK_DISTANCE_THRESHOLD && Math.abs(vy) > (flickVelocityThreshold * 0.5)) {
-					const swipeUp = dy < 0;
-					// プレイヤーの位置に応じてスワイプ方向と表示/非表示のロジックを切り替え
-					if (isTopPlayer) {
-						if (swipeUp && isVisibleRef.current) onVisibilityChange(false); // 上スワイプで非表示
-						if (!swipeUp && !isVisibleRef.current) onVisibilityChange(true); // 下スワイプで表示
-					} else {
-						if (swipeUp && !isVisibleRef.current) onVisibilityChange(true);  // 上スワイプで表示
-						if (!swipeUp && isVisibleRef.current) onVisibilityChange(false); // 下スワイプで非表示
-					}
+				// ドラッグ方向に応じて、専門のハンドラを呼び出す
+				if (isDragHorizontal) {
+					handleHorizontalFlick(state);
+				} else {
+					handleVerticalFlick(state);
 				}
 			},
-			// クリック時の処理（カード選択解除）
 			onClick: ({ event }) => {
 				event.stopPropagation();
-				// 手札が表示されていて、かつ何かしらのカードが選択されている場合に選択を解除
 				if (isVisibleRef.current && selectedCardId) {
 					deselectCard();
 				}
 			},
 		},
 		{
-			enabled: !isInteractionLocked, // カード選択時などはジェスチャーを無効化
+			enabled: !isInteractionLocked,
 			drag: {
-				filterTaps: true, // タップをドラッグとして扱わない
+				filterTaps: true,
 				threshold: GESTURE_SETTINGS.DRAG_THRESHOLD,
 			},
 		}
 	);
 
-	// --- メモ化された値 ---
-	// カードリストをページごとに分割する
 	const pages = useMemo(() => {
-		const result: CardWithInstanceId[][] = [];
-		for (let i = 0; i < cards.length; i += HAND_LAYOUT.CARDS_PER_PAGE) {
-			result.push(cards.slice(i, i + HAND_LAYOUT.CARDS_PER_PAGE));
+		// --- ステップ1: プレイヤーの向きに応じてカードの表示順を決定する ---
+
+		const orderedCards: CardWithInstanceId[] = cards;
+		
+		// --- ステップ2: 順番が確定したカードリストを、ページ単位の配列に分割する ---
+
+		const allPages: CardWithInstanceId[][] = [];
+		const cardsPerPage = HAND_LAYOUT.CARDS_PER_PAGE; // 1ページあたりのカード枚数
+
+		// forループを使い、1ページあたりの枚数ずつインデックスを増やしながら処理
+		for (let i = 0; i < orderedCards.length; i += cardsPerPage) {
+			// Array.slice() を使い、現在のインデックスから1ページ分のカードを切り出す
+			const singlePage = orderedCards.slice(i, i + cardsPerPage);
+
+			// 切り出したページを最終的な結果の配列に追加する
+			allPages.push(singlePage);
 		}
-		return result;
-	}, [cards]);
+		return allPages;
+
+	}, [cards, facingFactor]);
+	
 
 	// --- レンダリング ---
 	return (
-		<animated.group position={to([z], (zVal) => [0, HAND_LAYOUT.POSITION_Y, isTopPlayer ? -zVal : zVal])}>
-			{/* ジェスチャーを受け取るための透明なPlane */}
+		<animated.group position={to([z], (zVal) => [0, HAND_LAYOUT.POSITION_Y, zVal * facingFactor])}>
 			<Plane
 				args={[HAND_LAYOUT.PAGE_WIDTH + HAND_LAYOUT.GESTURE_PLANE.WIDTH_PADDING, swipeAreaHeight]}
 				rotation={[HAND_LAYOUT.GESTURE_PLANE.ROTATION_X, 0, 0]}
@@ -193,17 +237,16 @@ const Hand3D: React.FC<Hand3DProps> = ({
 				/>
 			</Plane>
 
-			{/* ページングされるカード群 */}
 			<animated.group position-x={x}>
 				{pages.map((pageCards, pageIndex) => (
-					<group key={pageIndex} position={[pageIndex * (HAND_LAYOUT.PAGE_WIDTH + HAND_LAYOUT.PAGE_TRANSITION_SPACING), 0, 0]}>
+					<group key={pageIndex} position={[ pageIndex * (HAND_LAYOUT.PAGE_WIDTH + HAND_LAYOUT.PAGE_TRANSITION_SPACING) * facingFactor, 0, 0]}>
 						{pageCards.map((card, cardIndex) => (
 							<CardInLine
 								key={card.instanceId}
 								card={card}
 								index={cardIndex}
 								player={player}
-								isTopPlayer={isTopPlayer}
+								facingFactor={facingFactor}
 								isSelected={selectedCardId === card.instanceId}
 								isListVisible={isVisible}
 							/>
@@ -221,8 +264,8 @@ const Hand3D: React.FC<Hand3DProps> = ({
 interface CardInLineProps {
 	card: CardWithInstanceId;
 	index: number;
-	player: PlayerId;
-	isTopPlayer: boolean;
+	player: PlayerType;
+	facingFactor: 1 | -1;
 	isSelected: boolean;
 	isListVisible: boolean;
 }
@@ -231,35 +274,29 @@ interface CardInLineProps {
  * 手札の中で横一列に並ぶ個々のカード。
  * 位置計算と表示状態に応じたアニメーションを担当する。
  */
-const CardInLine: React.FC<CardInLineProps> = ({ card, index, player, isTopPlayer, isSelected, isListVisible }) => {
+const CardInLine: React.FC<CardInLineProps> = ({ card, index, player, facingFactor, isSelected, isListVisible }) => {
 	// --- 位置計算 ---
 	const totalWidth = HAND_LAYOUT.PAGE_WIDTH;
 	const startX = -totalWidth / 2;
-	const xPos = startX + index * (HAND_LAYOUT.CARD_WIDTH + HAND_LAYOUT.CARD_SPACING) + HAND_LAYOUT.CARD_WIDTH / 2;
+	const xPos = facingFactor * ( startX + index * (HAND_LAYOUT.CARD_WIDTH + HAND_LAYOUT.CARD_SPACING) + HAND_LAYOUT.CARD_WIDTH / 2);
 
 	// --- 角度計算 ---
-	const tiltAngle = isTopPlayer ? HAND_LAYOUT.TILT_ANGLES.TOP_PLAYER : HAND_LAYOUT.TILT_ANGLES.BOTTOM_PLAYER;
-	const yRotation = isTopPlayer ? HAND_LAYOUT.Y_ROTATIONS.TOP_PLAYER : HAND_LAYOUT.Y_ROTATIONS.BOTTOM_PLAYER;
-
-	const coefficient = isTopPlayer ? -1 : 1; // プレイヤーの位置に応じてZ座標の符号を反転
+	// 奥側(factor:-1)は正の角度、手前側(factor:1)は負の角度になる
+	const tiltAngle = HAND_LAYOUT.TILT_ANGLE_BASE * -facingFactor;
+	// 奥側(factor:-1)はPI回転、手前側(factor:1)は0回転になる
+	const yRotation = (1 - facingFactor) / 2 * HAND_LAYOUT.Y_ROTATION_BASE;
 
 	// --- アニメーション ---
 	const { z, opacity } = useSpring({
-		// zプロパティ：カードのZ軸（奥行き）の位置をアニメーションさせる。
-		// isSelectedがtrue（選択中）の場合、カードを少し手前に移動させ（Z_POS_SELECTED）、視覚的に浮き上がらせる。
-		// isSelectedがfalse（非選択）の場合、デフォルトの位置（Z_POS_DEFAULT）に戻す。
-		z: isSelected ? coefficient * HAND_LAYOUT.CARD_IN_LINE_ANIMATION.Z_POS_SELECTED : coefficient * HAND_LAYOUT.CARD_IN_LINE_ANIMATION.Z_POS_DEFAULT,
+		// isSelectedがtrueの場合、カードを少し手前に移動させる
+		// 奥側(factor:-1)はZ+方向、手前側(factor:1)はZ-方向に浮き上がる
+		z: isSelected ? facingFactor * HAND_LAYOUT.CARD_IN_LINE_ANIMATION.Z_POS_SELECTED : facingFactor * HAND_LAYOUT.CARD_IN_LINE_ANIMATION.Z_POS_DEFAULT,
 
-		// opacityプロパティ：カードの不透明度をアニメーションさせる。
-		// isListVisibleがtrue（手札が表示状態）の場合、全てのカードを完全不透明（OPACITY_VISIBLE）にする。
-		// isListVisibleがfalse（手札が非表示状態）の場合、三項演算子でさらに分岐させる。
-		//   - isSelectedがtrue（選択中）のカードは、非表示状態でも完全不透明を維持し、視認性を保つ。
-		//   - isSelectedがfalse（非選択）のカードは、半透明（OPACITY_HIDDEN）にし、選択中のカードを際立たせる。
 		opacity: isListVisible
 			? HAND_LAYOUT.CARD_IN_LINE_ANIMATION.OPACITY_VISIBLE
+			// eslint-disable-next-line indent
 			: (isSelected ? HAND_LAYOUT.CARD_IN_LINE_ANIMATION.OPACITY_VISIBLE : HAND_LAYOUT.CARD_IN_LINE_ANIMATION.OPACITY_HIDDEN),
 
-		// configプロパティ：アニメーションの物理的な挙動（バネの硬さや摩擦）を設定する。
 		config: HAND_LAYOUT.CARD_IN_LINE_ANIMATION.SPRING_CONFIG,
 	});
 
