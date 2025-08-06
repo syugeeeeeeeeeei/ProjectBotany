@@ -1,3 +1,4 @@
+import { produce } from "immer";
 import { nanoid } from "nanoid";
 import cardMasterData from "../data/cardMasterData";
 import type {
@@ -164,31 +165,29 @@ export const playCardLogic = (
 	// 駆除カードの使用ルール
 	if (card.cardType === "eradication" && targetCell.cellType === "native_area") return "在来種マスは駆除対象にできません。";
 
-	// --- 状態更新 ---
-	// 状態をディープコピーして、副作用なく変更を行う
-	const newState = JSON.parse(JSON.stringify(state)) as GameState;
-	const newPlayerState = newState.playerStates[activePlayerId];
+	// --- 状態更新 (immerを使用) ---
+	return produce(state, draft => {
+		const newPlayerState = draft.playerStates[activePlayerId];
 
-	// 効果範囲を計算
-	const effectRange = getEffectRange(card, targetCell, newState.gameField, newPlayerState.facingFactor);
+		// 効果範囲を計算
+		const effectRange = getEffectRange(card, targetCell, draft.gameField, newPlayerState.facingFactor);
 
-	// カードの種類に応じて、それぞれの効果適用関数を呼び出す
-	switch (card.cardType) {
-		case "alien": applyAlienCard(newState, card, targetCell); break;
-		case "eradication": applyEradicationCard(newState, card, effectRange); break;
-		case "recovery": applyRecoveryCard(newState, card, effectRange); break;
-	}
+		// カードの種類に応じて、それぞれの効果適用関数を呼び出す
+		switch (card.cardType) {
+			case "alien": applyAlienCard(draft, card, targetCell); break;
+			case "eradication": applyEradicationCard(draft, card, effectRange); break;
+			case "recovery": applyRecoveryCard(draft, card, effectRange); break;
+		}
 
-	// カード使用後の共通処理
-	newPlayerState.currentEnvironment -= card.cost; // コストを支払う
-	if (card.cooldownTurns) { // クールタイムを設定
-		newPlayerState.cooldownActiveCards.push({ cardId: card.id, turnsRemaining: card.cooldownTurns });
-	}
-	if (card.usageLimit) { // 使用回数を記録
-		newPlayerState.limitedCardsUsedCount[card.id] = (newPlayerState.limitedCardsUsedCount[card.id] || 0) + 1;
-	}
-
-	return newState;
+		// カード使用後の共通処理
+		newPlayerState.currentEnvironment -= card.cost; // コストを支払う
+		if (card.cooldownTurns) { // クールタイムを設定
+			newPlayerState.cooldownActiveCards.push({ cardId: card.id, turnsRemaining: card.cooldownTurns });
+		}
+		if (card.usageLimit) { // 使用回数を記録
+			newPlayerState.limitedCardsUsedCount[card.id] = (newPlayerState.limitedCardsUsedCount[card.id] || 0) + 1;
+		}
+	});
 };
 
 /**
@@ -216,23 +215,22 @@ export const moveAlienLogic = (
 	if (currentPlayer.currentEnvironment < moveCost) return "移動のためのエンバイロメントが足りません！";
 	if (targetCell.cellType !== "alien_invasion_area" || targetCell.dominantAlienInstanceId !== alien.instanceId) return "自身の侵略マスにしか移動できません";
 
-	// --- 状態更新 ---
-	const newState = JSON.parse(JSON.stringify(state)) as GameState;
-	const newAlien = newState.activeAlienInstances[alienInstanceId];
-	const newPlayerState = newState.playerStates[newState.activePlayerId];
+	// --- 状態更新 (immerを使用) ---
+	return produce(state, draft => {
+		const newAlien = draft.activeAlienInstances[alienInstanceId];
+		const newPlayerState = draft.playerStates[draft.activePlayerId];
 
-	// 元いたマスを空マスに置き換える
-	newState.gameField.cells[newAlien.currentY][newAlien.currentX] = createEmptyAreaCell(newAlien.currentX, newAlien.currentY);
-	// 新しいターゲットマスをコアマスに置き換える
-	newState.gameField.cells[targetCell.y][targetCell.x] = createAlienCoreCell(targetCell.x, targetCell.y, newAlien.instanceId);
+		// 元いたマスを空マスに置き換える
+		draft.gameField.cells[newAlien.currentY][newAlien.currentX] = createEmptyAreaCell(newAlien.currentX, newAlien.currentY);
+		// 新しいターゲットマスをコアマスに置き換える
+		draft.gameField.cells[targetCell.y][targetCell.x] = createAlienCoreCell(targetCell.x, targetCell.y, newAlien.instanceId);
 
-	// 外来種インスタンスの状態を更新
-	newAlien.currentX = targetCell.x;
-	newAlien.currentY = targetCell.y;
-	newAlien.turnsSinceLastAction = 0; // アクション（移動）したので経過ターンをリセット
-	newPlayerState.currentEnvironment -= moveCost; // コストを支払う
-
-	return newState;
+		// 外来種インスタンスの状態を更新
+		newAlien.currentX = targetCell.x;
+		newAlien.currentY = targetCell.y;
+		newAlien.turnsSinceLastAction = 0; // アクション（移動）したので経過ターンをリセット
+		newPlayerState.currentEnvironment -= moveCost; // コストを支払う
+	});
 };
 
 /**
@@ -243,54 +241,57 @@ export const moveAlienLogic = (
 export const progressTurnLogic = (state: GameState): GameState => {
 	if (state.isGameOver) return state;
 
-	const newState = JSON.parse(JSON.stringify(state)) as GameState;
+	return produce(state, draft => {
+		// 現在のプレイヤーに応じて、ターン終了時の自動処理（活性フェーズ）を実行
+		if (draft.activePlayerId === "alien") {
+			runAlienActivationPhase(draft);
+		} else {
+			runNativeActivationPhase(draft);
+		}
 
-	// 現在のプレイヤーに応じて、ターン終了時の自動処理（活性フェーズ）を実行
-	if (newState.activePlayerId === "alien") {
-		runAlienActivationPhase(newState);
-	} else {
-		runNativeActivationPhase(newState);
-	}
+		// プレイヤーを交代し、必要であればターン数を進める
+		const nextPlayerId: PlayerType = draft.activePlayerId === "alien" ? "native" : "alien";
+		const isNewTurnStarting = nextPlayerId === "alien"; // 外来種の手番で新しいターンが始まる
+		const nextTurn = isNewTurnStarting ? draft.currentTurn + 1 : draft.currentTurn;
 
-	// プレイヤーを交代し、必要であればターン数を進める
-	const nextPlayerId: PlayerType = newState.activePlayerId === "alien" ? "native" : "alien";
-	const isNewTurnStarting = nextPlayerId === "alien"; // 外来種の手番で新しいターンが始まる
-	const nextTurn = isNewTurnStarting ? newState.currentTurn + 1 : newState.currentTurn;
+		// 全プレイヤーの状態を更新
+		(Object.keys(draft.playerStates) as PlayerType[]).forEach(playerId => {
+			const player = draft.playerStates[playerId];
 
-	// 全プレイヤーの状態を更新
-	(Object.keys(newState.playerStates) as PlayerType[]).forEach(playerId => {
-		const player = newState.playerStates[playerId];
+			// ハンデを考慮したエンバイロメント計算式
+			// (次のターン数 - 1) に、各プレイヤーの初期エンバイロメントを加算する
+			const newMaxEnv = (nextTurn - 1) + player.initialEnvironment;
 
-		// ハンデを考慮したエンバイロメント計算式
-		// (次のターン数 - 1) に、各プレイヤーの初期エンバイロメントを加算する
-		const newMaxEnv = (nextTurn - 1) + player.initialEnvironment;
+			// エンバイロメントを最大値まで回復
+			player.maxEnvironment = newMaxEnv;
+			player.currentEnvironment = newMaxEnv;
+			// クールダウンを1ターン進める
+			player.cooldownActiveCards = player.cooldownActiveCards
+				.map(c => ({ ...c, turnsRemaining: c.turnsRemaining - 1 }))
+				.filter(c => c.turnsRemaining > 0);
+		});
 
-		// エンバイロメントを最大値まで回復
-		player.maxEnvironment = newMaxEnv;
-		player.currentEnvironment = newMaxEnv;
-		// クールダウンを1ターン進める
-		player.cooldownActiveCards = player.cooldownActiveCards
-			.map(c => ({ ...c, turnsRemaining: c.turnsRemaining - 1 }))
-			.filter(c => c.turnsRemaining > 0);
+		// ゲーム終了判定
+		const isGameOver = nextTurn > GAME_SETTINGS.MAXIMUM_TURNS;
+		if (isGameOver && !draft.isGameOver) {
+			// スコアを計算して勝者を決定
+			const nativeScore = draft.gameField.cells.flat().filter(c => c.ownerId === "native").length;
+			const alienScore = draft.gameField.cells.flat().filter(c => c.ownerId === "alien").length;
+
+			// 計算したスコアをstateに保存
+			draft.nativeScore = nativeScore;
+			draft.alienScore = alienScore;
+
+			if (nativeScore > alienScore) draft.winningPlayerId = "native";
+			else if (alienScore > nativeScore) draft.winningPlayerId = "alien";
+			else draft.winningPlayerId = null; // 引き分け
+		}
+
+		// 新しい状態をセット
+		draft.currentTurn = nextTurn;
+		draft.activePlayerId = nextPlayerId;
+		draft.isGameOver = isGameOver;
 	});
-
-	// ゲーム終了判定
-	const isGameOver = nextTurn > GAME_SETTINGS.MAXIMUM_TURNS;
-	if (isGameOver && !newState.isGameOver) {
-		// スコアを計算して勝者を決定
-		const nativeScore = newState.gameField.cells.flat().filter(c => c.ownerId === "native").length;
-		const alienScore = newState.gameField.cells.flat().filter(c => c.ownerId === "alien").length;
-		if (nativeScore > alienScore) newState.winningPlayerId = "native";
-		else if (alienScore > nativeScore) newState.winningPlayerId = "alien";
-		else newState.winningPlayerId = null; // 引き分け
-	}
-
-	// 新しい状態をセット
-	newState.currentTurn = nextTurn;
-	newState.activePlayerId = nextPlayerId;
-	newState.isGameOver = isGameOver;
-
-	return newState;
 };
 
 // --- 内部ヘルパー関数 ---

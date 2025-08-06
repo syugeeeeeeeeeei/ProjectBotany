@@ -105,6 +105,24 @@ const ActionButton = styled.button`
   }
 `;
 
+const ScoreContainer = styled.div`
+  margin-top: 20px;
+  font-size: 1.1em;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background-color: rgba(255, 255, 255, 0.1);
+  padding: 10px 20px;
+  border-radius: 8px;
+`;
+
+const ScoreRow = styled.div`
+  display: flex;
+  justify-content: space-between;
+  width: 250px;
+`;
+
+
 // --- Component ---
 
 interface UIOverlayProps {
@@ -116,6 +134,11 @@ interface UIOverlayProps {
 	side: 'top' | 'bottom';
 	isDismissible?: boolean;
 	onDismiss?: () => void;
+	scoreInfo?: {
+		native: number;
+		alien: number;
+		total: number;
+	}
 }
 
 /**
@@ -131,6 +154,7 @@ const UIOverlay: React.FC<UIOverlayProps> = ({
 	side,
 	isDismissible,
 	onDismiss,
+	scoreInfo,
 }) => {
 	const [isRendered, setIsRendered] = useState(show);
 
@@ -180,6 +204,20 @@ const UIOverlay: React.FC<UIOverlayProps> = ({
 		<OverlayContainer $isExiting={!show} side={side} onClick={handleContainerClick}>
 			<Message $fontSize={fontSize}>{message}</Message>
 			{subMessage && <SubMessage>{subMessage}</SubMessage>}
+
+			{scoreInfo && (
+				<ScoreContainer>
+					<ScoreRow>
+						<span>在来種マス:</span>
+						<span>{scoreInfo.native} / {scoreInfo.total}</span>
+					</ScoreRow>
+					<ScoreRow>
+						<span>外来種マス:</span>
+						<span>{scoreInfo.alien} / {scoreInfo.total}</span>
+					</ScoreRow>
+				</ScoreContainer>
+			)}
+
 			{buttonText && onButtonClick && (
 				<ActionButton onClick={onButtonClick}>
 					{buttonText}

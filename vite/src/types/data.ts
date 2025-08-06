@@ -278,4 +278,8 @@ export interface GameState {
   winningPlayerId: PlayerType | null;
   /** フィールド上の全アクティブ外来種インスタンス */
   activeAlienInstances: { [instanceId: string]: ActiveAlienInstance };
+  /** 在来種サイドの最終スコア */
+  nativeScore: number;
+  /** 外来種サイドの最終スコア */
+  alienScore: number;
 }

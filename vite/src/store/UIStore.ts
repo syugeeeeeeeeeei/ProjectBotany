@@ -68,6 +68,8 @@ const createInitialGameState = (): GameState => ({
 		alien: createInitialPlayerState('alien', '外来種'),
 	},
 	activeAlienInstances: {},
+	nativeScore: 0,
+	alienScore: 0,
 });
 
 /** UIの初期状態（UIState）を生成する */
