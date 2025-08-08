@@ -2,6 +2,8 @@
 services:
   vite:
     container_name: vite_dev
+    build:
+      target: dev  # Dockerfileのdevステージを使用
     volumes:
       - ./vite:/app:delegated
     ports:

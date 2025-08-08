@@ -5,10 +5,11 @@ services:
       context: ./vite
       dockerfile: Dockerfile
     volumes:
-      - /app/node_modules
+      - ./vite:/app:delegated
     networks:
       - project_botany_network
 
 networks:
   project_botany_network:
+    name: project_botany_network
     driver: bridge
