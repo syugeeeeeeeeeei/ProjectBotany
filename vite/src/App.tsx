@@ -283,7 +283,7 @@ function App() {
   };
 
   const createPageHandlers = (
-    page: number,
+    _page: number,
     setPage: React.Dispatch<React.SetStateAction<number>>,
     cardsLength: number
   ) => {
