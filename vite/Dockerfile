@@ -30,12 +30,14 @@ WORKDIR /app
 # devステージからインストール済みの依存関係をコピー
 COPY --from=dev /app/node_modules ./node_modules
 COPY package.json .yarnrc.yml ./
+# corepackを有効にし、yarnの安定版をインストール
+RUN corepack enable && yarn set version stable
+
+RUN yarn install --production=false
 
 # アプリケーションのソースコードをコピー
 COPY . .
 
-# corepackを有効にし、yarnの安定版をインストール
-RUN corepack enable && yarn set version stable
 
 # yarn buildを実行
 RUN yarn build
