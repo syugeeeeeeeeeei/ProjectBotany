@@ -2,6 +2,8 @@
 services:
   vite:
     container_name: vite_dev
+    volumes:
+      - ./vite:/app:delegated
     ports:
       - "5173:5173"
     tty: true

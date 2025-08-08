@@ -5,7 +5,6 @@ services:
       context: ./vite
       dockerfile: Dockerfile
     volumes:
-      - ./vite:/app:delegated
       - /app/node_modules
     networks:
       - project_botany_network
