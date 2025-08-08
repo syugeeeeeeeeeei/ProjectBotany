@@ -17,7 +17,7 @@ COPY package.json .yarnrc.yml ./
 RUN corepack enable && yarn set version stable
 
 # 依存関係をインストール
-RUN yarn install --immutable
+RUN yarn install
 
 # -----------------------------------------------------------
 # prodステージ: 本番環境用のビルド
