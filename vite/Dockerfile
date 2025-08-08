@@ -33,8 +33,6 @@ COPY package.json .yarnrc.yml ./
 # corepackを有効にし、yarnの安定版をインストール
 RUN corepack enable && yarn set version stable
 
-RUN yarn install --production=false
-
 # アプリケーションのソースコードをコピー
 COPY . .
 
