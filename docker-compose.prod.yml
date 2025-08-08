@@ -4,7 +4,7 @@ services:
     container_name: project-botany-vite
     restart: unless-stopped
     entrypoint: "/bin/sh"
-    command: -c "yarn build && yarn start"
+    command: -c "yarn start"
     networks:
       - fukaya-lab-network
     labels:
