@@ -34,5 +34,8 @@ COPY package.json .yarnrc.yml ./
 # アプリケーションのソースコードをコピー
 COPY . .
 
+# corepackを有効にし、yarnの安定版をインストール
+RUN corepack enable && yarn set version stable
+
 # yarn buildを実行
 RUN yarn build
