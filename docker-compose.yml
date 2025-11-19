@@ -1,24 +1,19 @@
-# ProjectBotany/docker-compose.yml
 name: projectbotany
 services:
   # -----------------------------------------------------------
-  #  🌿 ProjectBotany
+  #  🌿 ProjectBotany (Production / Base)
   # -----------------------------------------------------------
   projectbotany-vite:
     build:
       context: ./vite
       dockerfile: Dockerfile
+      target: prod # 本番用ステージを使用
     container_name: projectbotany-vite
-    volumes:
-      - ./vite:/app:delegated
-      - /app/node_modules
-    networks:
-      - fukaya-lab-network
     restart: unless-stopped
-    command: ["yarn", "dev"]
+    # 本番ではボリュームマウントを行わない (COPY済みのため)
     labels:
-      caddy: http://projectbotany.app.fukaya-sus.lab # ドメイン名
-      caddy.reverse_proxy: "{{upstreams 5173}}"
+      caddy: http://projectbotany.app.fukaya-sus.lab
+      caddy.reverse_proxy: "{{upstreams 80}}" # Nginxの80番ポートへ
 
 networks:
   fukaya-lab-network:

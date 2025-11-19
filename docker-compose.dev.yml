@@ -1,0 +1,15 @@
+services:
+  # -----------------------------------------------------------
+  #  🌿 ProjectBotany (Development Override)
+  # -----------------------------------------------------------
+  projectbotany-vite:
+    build:
+      target: dev # 開発用ステージを使用
+    volumes:
+      - ./vite:/app:delegated
+      - /app/node_modules
+    command: ["yarn", "dev", "--host"]
+    environment:
+      - CHOKIDAR_USEPOLLING=true # ファイル変更検知の強化 (必要に応じて)
+    labels:
+      caddy.reverse_proxy: "{{upstreams 5173}}" # Viteの5173番ポートへ上書き
