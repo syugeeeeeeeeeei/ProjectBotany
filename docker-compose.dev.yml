@@ -4,10 +4,10 @@ services:
   # -----------------------------------------------------------
   projectbotany-vite:
     build:
-      target: dev # 開発用ステージを使用
+      target: dev # 開発用ステージを使用 (Vite Server)
     volumes:
-      - ./vite:/app:delegated
-      - /app/node_modules
+      - ./vite:/app:delegated # ソースコードを同期
+      - /app/node_modules     # コンテナ内のnode_modulesを守る
     command: ["yarn", "dev", "--host"]
     environment:
       - CHOKIDAR_USEPOLLING=true # ファイル変更検知の強化 (必要に応じて)

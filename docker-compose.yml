@@ -7,7 +7,7 @@ services:
     build:
       context: ./vite
       dockerfile: Dockerfile
-      target: prod # 本番用ステージを使用
+      target: prod # 本番用ステージを使用 (Nginx)
     container_name: projectbotany-vite
     restart: unless-stopped
     # 本番ではボリュームマウントを行わない (COPY済みのため)
