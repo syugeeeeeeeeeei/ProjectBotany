@@ -63,17 +63,20 @@ const cardMasterData: CardDefinition[] = [
 		id: "alien-4",
 		name: "ミズバショウ",
 		description:
-			"諏訪地域では外来植物。\n大きな葉で広範囲の面積を奪う。\n全国的には希少なため安易に駆除できない。\n\n[侵略]：周囲1マス\n[クールタイム]：1ターン",
+			"諏訪地域では外来植物。\n大きな葉で広範囲の面積を奪う。\n全国的には希少なため安易に駆除できない。\n\n[侵略]：周囲1マス\n[成長]：1ターン後、侵略力3\n[クールタイム]：1ターン",
 		cost: 3,
 		cardType: "alien",
 		deckCount: 1,
 		imagePath: "/plants/ミズバショウ.png",
 		targeting: {
-			power: 1,
+			power: 2,
 			shape: "range",
 		},
 		cooldownTurns: 1,
 		canGrow: false,
+		growthConditions: [{ type: "turns_since_last_action", value: 1 }],
+		growthEffects: [{ newInvasionPower: 3}],
+
 	},
 	{
 		id: "alien-5",
@@ -89,26 +92,25 @@ const cardMasterData: CardDefinition[] = [
 			shape: "cross",
 		},
 		cooldownTurns: 1,
-		usageLimit: 2,
+		usageLimit: 3,
 		canGrow: false,
 	},
 	{
 		id: "alien-6",
 		name: "アレチウリ",
 		description:
-			"特定外来生物。\nつるを伸ばし、樹木や河川敷を覆い尽くす。\n密集して繁茂するため、物理的な駆除が難しい。\n\n[侵略]：周囲1マス\n[成長]：2ターン後、侵略力3\n[使用制限]：2回",
+			"特定外来生物。\nつるを伸ばし、樹木や河川敷を覆い尽くす。\n密集して繁茂するため、物理的な駆除が難しい。\n\n[侵略]：周囲3マス\n[クールタイム]：1ターン\n[使用制限]：2回",
 		cost: 5,
 		cardType: "alien",
 		deckCount: 1,
 		imagePath: "/plants/アレチウリ.png",
 		targeting: {
-			power: 2,
+			power: 3,
 			shape: "range",
 		},
-		canGrow: true,
+		cooldownTurns: 1,
+		canGrow: false,
 		usageLimit: 2,
-		growthConditions: [{ type: "turns_since_last_action", value: 2 }],
-		growthEffects: [{ newInvasionPower: 3 }],
 	},
 	// --- 駆除カード ---
 	{
