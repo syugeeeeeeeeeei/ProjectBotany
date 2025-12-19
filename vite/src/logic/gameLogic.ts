@@ -139,45 +139,41 @@ export const getEffectRange = (
  * @param state - 現在のゲーム状態
  * @param card - 使用するカードの定義
  * @param targetCell - カードを使用する対象のマス
+ * @param instanceId - 使用するカード個別のインスタンスID ★追加
  * @returns 成功した場合は新しいゲーム状態、失敗した場合はエラーメッセージ文字列
  */
 export const playCardLogic = (
 	state: GameState,
 	card: CardDefinition,
 	targetCell: CellState,
+	instanceId: string, // ★第4引数を追加
 ): GameState | string => {
 	const { activePlayerId } = state;
 	const currentPlayer = state.playerStates[activePlayerId];
 
 	// --- バリデーションチェック ---
 	if (currentPlayer.currentEnvironment < card.cost) return "エンバイロメントが足りません！";
-	// 外来種カードの配置ルール
 	if (card.cardType === "alien" && (targetCell.cellType === "empty_area" || targetCell.cellType === "recovery_pending_area" || targetCell.cellType === "alien_core")) return "このマスには配置できません";
-	// 回復カードの使用ルール
 	if (card.cardType === "recovery" && !("target" in card.targeting && card.targeting.target === "species") && (targetCell.cellType !== "empty_area" && targetCell.cellType !== "recovery_pending_area")) return "このマスは回復できません。";
-	// 駆除カードの使用ルール
 	if (card.cardType === "eradication" && targetCell.cellType === "native_area") return "在来種マスは駆除対象にできません。";
 
 	// --- 状態更新 (immerを使用) ---
 	return produce(state, draft => {
 		const newPlayerState = draft.playerStates[activePlayerId];
-
-		// 効果範囲を計算
 		const effectRange = getEffectRange(card, targetCell, draft.gameField, newPlayerState.facingFactor);
 
-		// カードの種類に応じて、それぞれの効果適用関数を呼び出す
 		switch (card.cardType) {
 			case "alien": applyAlienCard(draft, card, targetCell); break;
 			case "eradication": applyEradicationCard(draft, card, effectRange); break;
 			case "recovery": applyRecoveryCard(draft, card, effectRange); break;
 		}
 
-		// カード使用後の共通処理
-		newPlayerState.currentEnvironment -= card.cost; // コストを支払う
-		if (card.cooldownTurns) { // クールタイムを設定
-			newPlayerState.cooldownActiveCards.push({ cardId: card.id, turnsRemaining: card.cooldownTurns });
+		newPlayerState.currentEnvironment -= card.cost;
+		if (card.cooldownTurns) {
+			// ★card.id (マスターID) ではなく instanceId (個別ID) を記録するように修正
+			newPlayerState.cooldownActiveCards.push({ cardId: instanceId, turnsRemaining: card.cooldownTurns });
 		}
-		if (card.usageLimit) { // 使用回数を記録
+		if (card.usageLimit) {
 			newPlayerState.limitedCardsUsedCount[card.id] = (newPlayerState.limitedCardsUsedCount[card.id] || 0) + 1;
 		}
 	});

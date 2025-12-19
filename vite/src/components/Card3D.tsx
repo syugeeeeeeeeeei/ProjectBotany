@@ -74,7 +74,7 @@ const Card3D: React.FC<Card3DProps> = ({ card, player, width, opacity }) => {
 	} = useUIStore();
 
 	const CARD_WIDTH = width;
-	const cooldownInfo = playerStates[player]?.cooldownActiveCards.find(c => c.cardId === card.id);
+	const cooldownInfo = playerStates[player]?.cooldownActiveCards.find(c => c.cardId === card.instanceId);
 	const isCooldown = !!cooldownInfo;
 	const isSelected = selectedCardId === card.instanceId;
 	const isMyTurn = activePlayerId === player;

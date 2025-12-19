@@ -126,12 +126,15 @@ export const useUIStore = create(
 		playSelectedCard: () => {
 			const { selectedCardId, previewPlacement, gameField } = get();
 			if (!selectedCardId || !previewPlacement) return;
-			const card = cardMasterData.find(c => c.id === selectedCardId.split('-instance-')[0]);
+			// マスターデータの取得はIDの先頭部分で行う
+			const cardDefId = selectedCardId.split('-instance-')[0];
+			const card = cardMasterData.find(c => c.id === cardDefId);
 			if (!card) return;
 
 			const targetCell = gameField.cells[previewPlacement.y][previewPlacement.x];
-			// ゲームロジックを呼び出し、状態更新を試みる
-			const result = logic.playCardLogic(get(), card, targetCell);
+
+			// ★ logic.playCardLogic に selectedCardId (インスタンスID) を渡す
+			const result = logic.playCardLogic(get(), card, targetCell, selectedCardId);
 
 			if (typeof result === 'string') {
 				// ロジックがエラーメッセージを返した場合、通知として表示

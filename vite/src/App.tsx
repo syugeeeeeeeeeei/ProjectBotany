@@ -182,6 +182,19 @@ const CancelButton = styled(BaseActionButton)`
   font-size: 1em;
 `;
 
+const GestureProtector = styled.div`
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: env(safe-area-inset-bottom, 20px); // iPadのインジケーター領域分だけ確保
+  z-index: 9998;
+  pointer-events: none; // ユーザーの操作は透過させる
+  background: transparent;
+  /* 重要: 物理的な存在をブラウザに分からせるため、ごく微細な設定を入れる場合がある */
+  touch-action: none; 
+`;
+
 
 /**
  * アプリケーションのメインコンポーネント。
@@ -241,7 +254,14 @@ function App() {
 
   const { alienCards, nativeCards } = useMemo(() => {
     const duplicateCards = (cards: CardDefinition[]) => {
-      return cards.flatMap(card => Array.from({ length: card.deckCount }).map((_, i) => ({ ...card, instanceId: `${card.id}-instance-${i}` })));
+      return cards.flatMap(card =>
+        Array.from({ length: card.deckCount }).map((_, i) => ({
+          ...card, // 基本プロパティをコピー
+          // 今回は instanceId を振る際に完全に新しいオブジェクトとして生成
+          instanceId: `${card.id}-instance-${i}`,
+          currentCooldown: 0
+        }))
+      );
     };
     const allAlienCards = cardMasterData.filter(c => c.cardType === 'alien');
     const duplicatedAlienCards = duplicateCards(allAlienCards);
@@ -416,6 +436,7 @@ function App() {
           </div>
         </SidePanel>
       </MainContainer>
+      <GestureProtector/>
     </>
   );
 }
