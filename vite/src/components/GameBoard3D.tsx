@@ -3,6 +3,7 @@ import { useGesture } from '@use-gesture/react';
 import React, { useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import { Group } from 'three';
+import { GAME_SETTINGS } from '../constants';
 import cardMasterData from '../data/cardMasterData';
 import * as logic from '../logic/gameLogic';
 import { useUIStore } from '../store/UIStore';
@@ -21,8 +22,8 @@ const CELL_COLORS = {
 const BOARD_LAYOUT = {
 	CELL_GAP: 1.0,
 	CELL_SIZE: 0.9,
-	BOARD_WIDTH: 7,
-	BOARD_HEIGHT: 10,
+	BOARD_WIDTH: GAME_SETTINGS.FIELD_WIDTH,
+	BOARD_HEIGHT: GAME_SETTINGS.FIELD_HEIGHT,
 	ROTATION_X: -Math.PI / 2,
 };
 const HIGHLIGHT_SETTINGS = {

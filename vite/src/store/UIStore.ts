@@ -1,16 +1,12 @@
 import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
+import { GAME_SETTINGS } from '../constants';
 import cardMasterData from '../data/cardMasterData';
 import * as logic from '../logic/gameLogic'; // ゲームロジックをインポート
+import { createNativeAreaCell } from '../logic/gameLogic'; // セル生成ヘルパーをインポート
 import type { CellState, GameState, PlayerState, PlayerType } from '../types/data';
 
 // --- 定数定義 ---
-/** ゲームの基本設定 */
-const GAME_SETTINGS = {
-	FIELD_WIDTH: 7,
-	FIELD_HEIGHT: 10,
-	MAXIMUM_TURNS: 6,
-};
 /** カードプレビュー時のコマの初期表示位置 */
 const DEFAULT_PREVIEW_POSITION = { x: 3, y: 5 };
 
@@ -105,11 +101,9 @@ const createInitialFieldState = (): GameState['gameField'] => {
 	const { FIELD_WIDTH, FIELD_HEIGHT } = GAME_SETTINGS;
 	// 全てのマスを在来種マスで埋める
 	const cells = Array.from({ length: FIELD_HEIGHT }, (_, y) =>
-		Array.from({ length: FIELD_WIDTH }, (_, x): CellState => ({
-			x, y,
-			cellType: 'native_area',
-			ownerId: 'native',
-		}))
+		Array.from({ length: FIELD_WIDTH }, (_, x): CellState =>
+			createNativeAreaCell(x, y)
+		)
 	);
 	return { width: FIELD_WIDTH, height: FIELD_HEIGHT, cells };
 };

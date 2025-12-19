@@ -1,5 +1,6 @@
 import { produce } from "immer";
 import { nanoid } from "nanoid";
+import { GAME_SETTINGS } from "../constants";
 import cardMasterData from "../data/cardMasterData";
 import type {
 	ActiveAlienInstance,
@@ -19,38 +20,30 @@ import type {
 	RecoveryPendingAreaCell,
 } from "../types/data";
 
-// --- 定数定義 ---
-/** ゲームの基本設定 */
-const GAME_SETTINGS = {
-	FIELD_WIDTH: 7,
-	FIELD_HEIGHT: 10,
-	MAXIMUM_TURNS: 6,
-};
-
 // --- 型安全なセル生成ヘルパー関数 ---
 
 /** 空マス（EmptyAreaCell）を生成するヘルパー関数 */
-const createEmptyAreaCell = (x: number, y: number): EmptyAreaCell => ({
+export const createEmptyAreaCell = (x: number, y: number): EmptyAreaCell => ({
 	x, y, cellType: "empty_area", ownerId: null,
 });
 
 /** 再生待機マス（RecoveryPendingAreaCell）を生成するヘルパー関数 */
-const createRecoveryPendingAreaCell = (x: number, y: number, turn: number): RecoveryPendingAreaCell => ({
+export const createRecoveryPendingAreaCell = (x: number, y: number, turn: number): RecoveryPendingAreaCell => ({
 	x, y, cellType: "recovery_pending_area", ownerId: null, recoveryPendingTurn: turn,
 });
 
 /** 在来種マス（NativeAreaCell）を生成するヘルパー関数 */
-const createNativeAreaCell = (x: number, y: number): NativeAreaCell => ({
+export const createNativeAreaCell = (x: number, y: number): NativeAreaCell => ({
 	x, y, cellType: "native_area", ownerId: "native",
 });
 
 /** 外来種（コア）マス（AlienCoreCell）を生成するヘルパー関数 */
-const createAlienCoreCell = (x: number, y: number, instanceId: string): AlienCoreCell => ({
+export const createAlienCoreCell = (x: number, y: number, instanceId: string): AlienCoreCell => ({
 	x, y, cellType: "alien_core", ownerId: "alien", alienInstanceId: instanceId,
 });
 
 /** 侵略マス（AlienInvasionAreaCell）を生成するヘルパー関数 */
-const createAlienInvasionAreaCell = (x: number, y: number, dominantId: string): AlienInvasionAreaCell => ({
+export const createAlienInvasionAreaCell = (x: number, y: number, dominantId: string): AlienInvasionAreaCell => ({
 	x, y, cellType: "alien_invasion_area", ownerId: "alien", dominantAlienInstanceId: dominantId,
 });
 
