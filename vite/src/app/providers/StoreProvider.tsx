@@ -13,7 +13,6 @@ import type {
 	PlayerType
 } from '../../shared/types/data';
 
-/** UIに固有の状態を管理する型 */
 interface UIState {
 	selectedCardId: string | null;
 	selectedAlienInstanceId: string | null;
@@ -22,7 +21,6 @@ interface UIState {
 	isCardPreview: boolean;
 }
 
-/** 状態を変更するためのアクションの型 */
 interface UIActions {
 	playSelectedCard: () => void;
 	progressTurn: () => void;
@@ -48,8 +46,8 @@ const createInitialGameState = (): GameState => ({
 	winningPlayerId: null,
 	gameField: createInitialFieldState(),
 	playerStates: {
-		native: createInitialPlayerState('native', '在来種'),
-		alien: createInitialPlayerState('alien', '外来種'),
+		native: createInitialPlayerState('native', '在来種サイド'),
+		alien: createInitialPlayerState('alien', '外来種サイド'),
 	},
 	activeAlienInstances: {},
 	nativeScore: 0,
@@ -111,7 +109,7 @@ export const useGameStore = create<GameStore>()(
 			const limit = cardDef.usageLimit;
 			const usedCount = player.limitedCardsUsedCount[cardDef.id] || 0;
 			if (limit && usedCount >= limit) {
-				state.notification = { message: `このカードはもう使用できません。`, forPlayer: state.activePlayerId };
+				state.notification = { message: `このカードは最大使用回数に達しています。`, forPlayer: state.activePlayerId };
 				return;
 			}
 
@@ -125,7 +123,7 @@ export const useGameStore = create<GameStore>()(
 
 		selectAlienInstance: (instanceId) => set((state) => {
 			if (state.activePlayerId !== 'alien') {
-				state.notification = { message: "外来種サイドのターンではありません。", forPlayer: 'native' };
+				state.notification = { message: "外来種側のターンではありません。", forPlayer: 'native' };
 				return;
 			}
 			if (state.selectedAlienInstanceId === instanceId) {

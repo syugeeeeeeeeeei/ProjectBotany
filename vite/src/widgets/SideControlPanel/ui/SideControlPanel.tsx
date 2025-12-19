@@ -14,6 +14,7 @@ const PanelWrapper = styled.div`
 
 const InfoBox = styled.div<{ $isActive: boolean }>`
   background: rgba(0, 0, 0, 0.6);
+  color: #ffffff;
   padding: 10px;
   border-radius: 12px;
   width: 100%;

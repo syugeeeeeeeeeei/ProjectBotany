@@ -22,11 +22,11 @@ export const Card3D: React.FC<Card3DProps> = ({ card, isSelected, onClick, opaci
 				/>
 			</mesh>
 
-			{/* カード名 */}
+			{/* カード名 - 位置とフォントを微調整 */}
 			<Text
-				position={[0, 1.2, 0.03]}
-				fontSize={0.2}
-				color="#333"
+				position={[0, 1.25, 0.03]}
+				fontSize={0.22}
+				color="#212121"
 				anchorX="center"
 				anchorY="middle"
 				font="/MPLUS1p-Bold.ttf"
@@ -34,33 +34,33 @@ export const Card3D: React.FC<Card3DProps> = ({ card, isSelected, onClick, opaci
 				{card.name}
 			</Text>
 
-			{/* コスト表示 */}
-			<group position={[-0.7, 1.2, 0.04]}>
+			{/* コスト表示 - 元のデザインに準拠 */}
+			<group position={[-0.7, 1.25, 0.04]}>
 				<mesh>
-					<circleGeometry args={[0.2, 32]} />
-					<meshBasicMaterial color="#3f51b5" />
+					<circleGeometry args={[0.22, 32]} />
+					<meshBasicMaterial color="#303f9f" />
 				</mesh>
-				<Text fontSize={0.2} color="white" position={[0, 0, 0.01]}>
+				<Text fontSize={0.2} color="white" position={[0, 0, 0.01]} font="/MPLUS1p-Bold.ttf">
 					{card.cost}
 				</Text>
 			</group>
 
-			{/* 植物画像 */}
+			{/* 植物画像 - ボヤけ防止のため解像度設定を意識 */}
 			<Image
 				url={card.imagePath}
-				position={[0, 0.1, 0.03]}
-				scale={[1.6, 1.6]}
+				position={[0, 0.15, 0.03]}
+				scale={[1.7, 1.7]}
 				transparent
 				opacity={opacity}
 			/>
 
-			{/* 説明文 */}
+			{/* 説明文 - 行間と幅を修正 */}
 			<Text
-				position={[0, -1, 0.03]}
-				fontSize={0.12}
-				color="#555"
+				position={[0, -0.95, 0.03]}
+				fontSize={0.13}
+				color="#424242"
 				maxWidth={1.8}
-				lineHeight={1.2}
+				lineHeight={1.4}
 				font="/MPLUS1p-Regular.ttf"
 			>
 				{card.description}

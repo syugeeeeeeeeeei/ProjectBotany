@@ -5,7 +5,7 @@ import styled from 'styled-components';
 import { useGameStore } from '../../../app/providers/StoreProvider';
 import cardMasterData from '../../../entities/card/model/cardMasterData';
 import { duplicateCardsWithInstanceId } from '../../../entities/card/model/cards';
-import { TIMERS } from '../../../shared/config/gameConfig';
+import { CAMERA_SETTINGS, TIMERS } from '../../../shared/config/gameConfig';
 import { GameBoard3D } from '../../../widgets/GameBoard';
 import { UIOverlay } from '../../../widgets/GameUIOverlay';
 import { PlayerHand } from '../../../widgets/PlayerHand';
@@ -59,12 +59,12 @@ export const GamePage: React.FC = () => {
 
 	const getOverlayProps = (playerId: 'alien' | 'native') => {
 		const isMyTurn = store.activePlayerId === playerId;
-		if (!isGameStarted) return { show: true, message: 'Project Botany', buttonText: 'Start Game', onButtonClick: () => setIsGameStarted(true) };
+		if (!isGameStarted) return { show: true, message: 'Project Botany', buttonText: 'スタート', onButtonClick: () => setIsGameStarted(true) };
 		if (store.isGameOver) {
 			const result = store.winningPlayerId === playerId ? '勝利！' : store.winningPlayerId === null ? '引き分け' : '敗北';
-			return { show: true, message: 'Game Over', subMessage: result, buttonText: 'Play Again', onButtonClick: () => { store.resetGame(); setIsGameStarted(true); } };
+			return { show: true, message: 'ゲーム終了', subMessage: result, buttonText: 'もう一度遊ぶ', onButtonClick: () => { store.resetGame(); setIsGameStarted(true); } };
 		}
-		if (showBanner && isMyTurn) return { show: true, message: `Your Turn\n(Turn ${store.currentTurn})` };
+		if (showBanner && isMyTurn) return { show: true, message: `あなたの番です\n(ターン ${store.currentTurn})` };
 		if (store.notification && store.notification.forPlayer === playerId) return { show: true, message: store.notification.message, isDismissible: true };
 		return { show: false, message: '' };
 	};
@@ -82,9 +82,14 @@ export const GamePage: React.FC = () => {
 			</SidePanel>
 
 			<CanvasContainer>
-				<Canvas shadows camera={{ position: [0, 15, 14], fov: 70 }}>
+				<Canvas
+					shadows
+					camera={{ position: CAMERA_SETTINGS.INITIAL_POSITION, fov: CAMERA_SETTINGS.FOV }}
+					dpr={[1, 2]} // 高解像度ディスプレイ対応
+					gl={{ antialias: true }}
+				>
 					<ambientLight intensity={0.8} />
-					<directionalLight position={[10, 10, 5]} intensity={1} />
+					<directionalLight position={[10, 10, 5]} intensity={1} castShadow />
 					<GameBoard3D fieldState={store.gameField} />
 
 					<PlayerHand
@@ -104,7 +109,12 @@ export const GamePage: React.FC = () => {
 						isInteractionLocked={!!store.selectedCardId}
 					/>
 
-					<OrbitControls enableZoom={false} enableRotate={false} enablePan={false} />
+					{/* カメラ操作のロック設定をConfigから反映 */}
+					<OrbitControls
+						enableZoom={!CAMERA_SETTINGS.LOCK_CONTROLS}
+						enableRotate={!CAMERA_SETTINGS.LOCK_CONTROLS}
+						enablePan={!CAMERA_SETTINGS.LOCK_CONTROLS}
+					/>
 				</Canvas>
 			</CanvasContainer>
 		</PageContainer>

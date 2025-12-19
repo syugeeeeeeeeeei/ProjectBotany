@@ -10,13 +10,13 @@ export const BaseActionButton = styled.button`
   font-size: 1.2em;
   font-weight: bold;
   cursor: pointer;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
   transition: all 0.2s ease-in-out;
-  text-shadow: 1px 1px 2px rgba(0,0,0,0.4);
+  text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
   width: 100%;
 
   &:hover:not(:disabled) {
-    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
     transform: translateY(-2px);
   }
 
@@ -26,7 +26,7 @@ export const BaseActionButton = styled.button`
   }
 
   &:disabled {
-    background: #757575;
+    background: #757575 !important;
     color: #bdbdbd;
     cursor: not-allowed;
     box-shadow: none;
@@ -43,11 +43,11 @@ export const TurnEndButton = styled(BaseActionButton)`
 /** 召喚確定ボタン */
 export const SummonButton = styled(BaseActionButton)`
   background: linear-gradient(145deg, #ffc107, #ff8f00);
-  font-size: 1em;
+  font-size: 1.1em;
 `;
 
 /** キャンセルボタン */
 export const CancelButton = styled(BaseActionButton)`
   background: linear-gradient(145deg, #9e9e9e, #616161);
-  font-size: 1em;
+  font-size: 1.1em;
 `;

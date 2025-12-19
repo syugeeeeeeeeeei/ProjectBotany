@@ -4,7 +4,7 @@ import { useGesture } from '@use-gesture/react';
 import React from 'react';
 import { useGameStore } from '../../../app/providers/StoreProvider';
 import { Card3D } from '../../../entities/card/ui/Card3D';
-import { HAND_PAGING } from '../../../shared/config/gameConfig';
+import { DEBUG_SETTINGS, HAND_LAYOUT, HAND_PAGING } from '../../../shared/config/gameConfig';
 import type { CardDefinition, PlayerType } from '../../../shared/types/data';
 
 interface PlayerHandProps {
@@ -30,7 +30,10 @@ export const PlayerHand: React.FC<PlayerHandProps> = ({
 	const isMyTurn = activePlayerId === player;
 	const isOpponent = player === 'native';
 
-	const yPos = isOpponent ? viewport.height / 2 - 1 : -viewport.height / 2 + 1;
+	// ConfigからY座標位置を計算
+	const yPos = isOpponent
+		? viewport.height / 2 - HAND_LAYOUT.Y_OFFSET_FROM_EDGE
+		: -viewport.height / 2 + HAND_LAYOUT.Y_OFFSET_FROM_EDGE;
 	const rotationZ = isOpponent ? Math.PI : 0;
 
 	const { positionY } = useSpring({
@@ -40,7 +43,7 @@ export const PlayerHand: React.FC<PlayerHandProps> = ({
 
 	const bind = useGesture({
 		onDrag: ({ velocity: [vx], distance: [dx], direction: [xDir], last }) => {
-			if (!last || dx < 50 || Math.abs(vx) < 0.2) return;
+			if (!last || dx < HAND_LAYOUT.SWIPE_THRESHOLD_DISTANCE || Math.abs(vx) < HAND_LAYOUT.SWIPE_THRESHOLD_VELOCITY) return;
 			const maxPage = Math.ceil(cards.length / HAND_PAGING.CARDS_PER_PAGE) - 1;
 			if (xDir > 0) onPageChange(Math.max(0, currentPage - 1));
 			else onPageChange(Math.min(maxPage, currentPage + 1));
@@ -53,9 +56,25 @@ export const PlayerHand: React.FC<PlayerHandProps> = ({
 	);
 
 	return (
-		<animated.group position-y={positionY} position-z={5} rotation-z={rotationZ} {...(isInteractionLocked ? {} : bind())}>
+		<animated.group
+			position-y={positionY}
+			position-z={HAND_LAYOUT.Z_POSITION}
+			rotation-z={rotationZ}
+			{...(isInteractionLocked ? {} : bind())}
+		>
+			{/* スワイプ判定用のヒットボックス（デバッグ設定で可視化可能） */}
+			<mesh position={[0, 0, -0.1]}>
+				<planeGeometry args={HAND_LAYOUT.HITBOX_SIZE} />
+				<meshBasicMaterial
+					color="#ff0000"
+					transparent
+					opacity={DEBUG_SETTINGS.SHOW_SWIPE_AREA ? 0.3 : 0}
+					visible={true} // レイトレーシングのためにvisibleはtrueのまま、opacityで制御
+				/>
+			</mesh>
+
 			{pageCards.map((card, i) => {
-				const xPos = (i - (pageCards.length - 1) / 2) * 2.2;
+				const xPos = (i - (pageCards.length - 1) / 2) * HAND_LAYOUT.CARD_SPACING;
 				return (
 					<group key={card.instanceId} position-x={xPos}>
 						<Card3D
