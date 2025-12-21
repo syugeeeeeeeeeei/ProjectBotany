@@ -7,7 +7,7 @@ import styled from 'styled-components';
  */
 const ConsoleContainer = styled.div`
   position: fixed;
-  bottom: 10px;
+  bottom: env(safe-area-inset-bottom, 10px);
   left: 10px;
   width: calc(100% - 20px);
   max-width: 600px;
@@ -93,15 +93,15 @@ const LogList = styled.div`
   }
 `;
 
-const LogMessage = styled.div<{ type: string }>`
+const LogMessage = styled.div<{ $type: string }>`
   white-space: pre-wrap;
   word-break: break-all;
   padding: 3px 0;
   font-size: 12px;
   line-height: 1.4;
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-  color: ${({ type }) => {
-		switch (type) {
+  color: ${({ $type }) => {
+		switch ($type) {
 			case 'error': return '#ff5555';
 			case 'warn': return '#ffb86c';
 			case 'info': return '#8be9fd';
@@ -157,7 +157,8 @@ export const OnScreenConsole: React.FC = () => {
 		const originalConsole = { ...console };
 
 		const intercept = (type: LogEntry['type']) => (...args: any[]) => {
-			originalConsole[type](...args);
+			// 修正ポイント: 2556 対応。メソッドを any にキャストして spread を許可する
+			(originalConsole[type] as any)(...args);
 			setLogs(prevLogs => [
 				{ id: Date.now() + Math.random(), type, message: formatMessage(args) },
 				...prevLogs
@@ -170,7 +171,8 @@ export const OnScreenConsole: React.FC = () => {
 		console.info = intercept('info');
 
 		return () => {
-			Object.assign(console, originalConsole);
+			// 修正ポイント: 2345 対応。クリーンアップ関数が値を返さないように明示
+			void Object.assign(console, originalConsole);
 		};
 	}, []);
 
@@ -192,9 +194,8 @@ export const OnScreenConsole: React.FC = () => {
 				</ButtonGroup>
 			</ConsoleHeader>
 			<LogList>
-				{/* column-reverse のため、map内の順序は変えずに最新が下に来る */}
 				{logs.map(log => (
-					<LogMessage key={log.id} type={log.type}>
+					<LogMessage key={log.id} $type={log.type}>
 						[{log.type.toUpperCase()}] {log.message}
 					</LogMessage>
 				))}

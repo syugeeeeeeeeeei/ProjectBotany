@@ -48,7 +48,7 @@ const GlobalStyle = createGlobalStyle`
     margin: 0;
     padding: 0;
     width: 100%;
-    height: 100%;
+    height: 100vh;
     overflow: hidden;
     background-color: ${GLOBAL_STYLES.BACKGROUND_COLOR};
     overscroll-behavior: none;
@@ -182,18 +182,6 @@ const CancelButton = styled(BaseActionButton)`
   font-size: 1em;
 `;
 
-const GestureProtector = styled.div`
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  width: 100%;
-  height: env(safe-area-inset-bottom, 20px); // iPadのインジケーター領域分だけ確保
-  z-index: 9998;
-  pointer-events: none; // ユーザーの操作は透過させる
-  background: transparent;
-  /* 重要: 物理的な存在をブラウザに分からせるため、ごく微細な設定を入れる場合がある */
-  touch-action: none; 
-`;
 
 
 /**
@@ -210,11 +198,9 @@ function App() {
   const [showTurnBanner, setShowTurnBanner] = useState(false);
   const [isStartingTurn, setIsStartingTurn] = useState(false);
 
-  // ★★★ ここから修正 ★★★
   // ユーザーの手動操作（スワイプ、デバッグUI）による表示希望状態のみを管理する
   const [isAlienHandManuallyVisible, setAlienHandManuallyVisible] = useState(true);
   const [isNativeHandManuallyVisible, setNativeHandManuallyVisible] = useState(true);
-  // ★★★ ここまで修正 ★★★
 
   const [alienHandPage, setAlienHandPage] = useState(0);
   const [nativeHandPage, setNativeHandPage] = useState(0);
@@ -224,8 +210,6 @@ function App() {
     flickVelocityThreshold: 0.2,
     swipeAreaHeight: 4,
   });
-
-  // ★★★ 修正: 状態復元用のuseRefと、カード選択状態を監視するuseEffectは不要になったため削除 ★★★
 
   useEffect(() => {
     if (!isGameStarted || store.isGameOver) return;
@@ -320,7 +304,6 @@ function App() {
   const alienPageHandlers = createPageHandlers(alienHandPage, setAlienHandPage, alienCards.length);
   const nativePageHandlers = createPageHandlers(nativeHandPage, setNativeHandPage, nativeCards.length);
 
-  // ★★★ ここから修正 ★★★
   // カード選択中かどうかを判定するフラグ
   const isSelecting = !!(selectedCardId || selectedAlienInstanceId);
 
@@ -328,7 +311,6 @@ function App() {
   // 表示条件: 1.手動で表示ON  2.自分のターンである  3.カード選択中でない
   const isAlienHandActuallyVisible = isAlienHandManuallyVisible && activePlayerId === 'alien' && !isSelecting;
   const isNativeHandActuallyVisible = isNativeHandManuallyVisible && activePlayerId === 'native' && !isSelecting;
-  // ★★★ ここまで修正 ★★★
 
   const debugDialogProps = {
     debugSettings,
@@ -337,7 +319,7 @@ function App() {
       { name: 'Alien Side', currentPage: alienHandPage, maxPage: alienPageHandlers.maxPage, onNext: alienPageHandlers.handleNext, onPrev: alienPageHandlers.handlePrev },
       { name: 'Native Side', currentPage: nativeHandPage, maxPage: nativePageHandlers.maxPage, onNext: nativePageHandlers.handleNext, onPrev: nativePageHandlers.handlePrev },
     ],
-    // ★★★ 修正: 派生した表示状態と、手動状態を変更する関数を渡す
+    // 派生した表示状態と、手動状態を変更する関数を渡す
     isAlienHandVisible: isAlienHandActuallyVisible,
     onToggleAlienHand: () => setAlienHandManuallyVisible(v => !v),
     isNativeHandVisible: isNativeHandActuallyVisible,
@@ -377,7 +359,7 @@ function App() {
             />
             <GameBoard3D fieldState={store.gameField} />
 
-            {/* ★★★ 修正: 派生した表示状態と、手動状態を変更する関数を渡す */}
+            {/* 派生した表示状態と、手動状態を変更する関数を渡す */}
             <Hand3D
               key='alien-hand'
               player="alien"
@@ -436,7 +418,6 @@ function App() {
           </div>
         </SidePanel>
       </MainContainer>
-      <GestureProtector/>
     </>
   );
 }
