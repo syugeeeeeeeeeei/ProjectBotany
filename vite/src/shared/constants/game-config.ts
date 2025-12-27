@@ -7,7 +7,7 @@ export const GAME_SETTINGS = {
   /** フィールドの高さ（マス数） */
   FIELD_HEIGHT: 10,
   /** ゲームの最大ターン数 */
-  MAXIMUM_TURNS: 2,
+  MAXIMUM_TURNS: 4,
   /** 機能の有効/無効を制御するフラグ */
   FEATURE_FLAGS: {
     /** 外来種移動機能の有効化 */
