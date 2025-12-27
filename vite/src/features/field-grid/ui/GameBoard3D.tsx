@@ -3,11 +3,11 @@ import { useGesture } from '@use-gesture/react';
 import React, { useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import { Group } from 'three';
-import { GAME_SETTINGS } from '../constants';
-import cardMasterData from '../data/cardMasterData';
-import * as logic from '../logic/gameLogic';
-import { useUIStore } from '../store/UIStore';
-import type { CardDefinition, CellState, FieldState } from '../types/data';
+import { GAME_SETTINGS } from '../../../shared/constants/game-config';
+import cardMasterData from '../../../data/cardMasterData';
+import * as logic from '../../../logic/gameLogic';
+import { useUIStore } from '../../../store/UIStore';
+import type { CardDefinition, CellState, FieldState } from '../../../shared/types/game-schema';
 
 // --- 定数定義 ---
 

@@ -1,4 +1,4 @@
-// src/hooks/useFullscreenHeight.ts
+// src/shared/hooks/useFullscreenHeight.ts
 
 import { useEffect } from 'react';
 

@@ -2,10 +2,10 @@ import { animated, to, useSpring } from "@react-spring/three";
 import { Plane } from "@react-three/drei";
 import { type DragState, useGesture } from "@use-gesture/react";
 import React, { useEffect, useMemo, useRef } from "react";
-import { useUIStore } from "../store/UIStore";
-import type { CardDefinition, PlayerType } from "../types/data";
+import { useUIStore } from "../../../store/UIStore";
+import type { CardDefinition, PlayerType } from "../../../shared/types/game-schema";
 import Card3D from "./Card3D";
-import type { DebugSettings } from "./DebugDialog";
+import type { DebugSettings } from "../../../shared/components/debug/DebugDialog";
 
 // --- 型定義 ---
 

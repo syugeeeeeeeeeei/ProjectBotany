@@ -3,8 +3,8 @@ import { RoundedBox, Text, useTexture } from "@react-three/drei";
 import type { ThreeEvent } from "@react-three/fiber";
 import React, { useEffect, useMemo, useState } from "react";
 import * as THREE from "three";
-import { useUIStore } from "../store/UIStore";
-import type { CardDefinition, PlayerType } from "../types/data";
+import { useUIStore } from "../../../store/UIStore";
+import type { CardDefinition, PlayerType } from "../../../shared/types/game-schema";
 
 // --- 定数定義 ---
 const PLACEHOLDER_IMAGE_URL = "https://placehold.co/256x160/ccc/999?text=No+Image";
