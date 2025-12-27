@@ -2,19 +2,30 @@ import { create } from "zustand";
 import { immer } from "zustand/middleware/immer";
 import { PlayerType } from "@/shared/types/game-schema";
 
+/**
+ * UIの状態を管理するインターフェース
+ */
 interface UIState {
+  /** 選択中のカードID */
   selectedCardId: string | null;
+  /** 選択中の外来種インスタンスID */
   selectedAlienInstanceId: string | null;
-  notification: { message: string; forPlayer: PlayerType } | null;
+  /** 各プレイヤーへの通知メッセージ */
+  notifications: { [key in PlayerType]: string | null };
+  /** カード配置のプレビュー座標 */
   previewPlacement: { x: number; y: number } | null;
+  /** カードプレビューモード（ボタン表示切り替え用） */
   isCardPreview: boolean;
 }
 
+/**
+ * UIの操作（アクション）を管理するインターフェース
+ */
 interface UIActions {
   selectCard: (cardId: string) => void;
   deselectCard: () => void;
   selectAlienInstance: (instanceId: string | null) => void;
-  setNotification: (message: string | null, forPlayer?: PlayerType) => void;
+  setNotification: (message: string | null, forPlayer: PlayerType) => void;
   setPreviewPlacement: (position: { x: number; y: number } | null) => void;
 }
 
@@ -24,7 +35,7 @@ export const useUIStore = create(
   immer<UIState & UIActions>((set) => ({
     selectedCardId: null,
     selectedAlienInstanceId: null,
-    notification: null,
+    notifications: { native: null, alien: null },
     previewPlacement: null,
     isCardPreview: false,
 
@@ -53,8 +64,7 @@ export const useUIStore = create(
 
     setNotification: (message, forPlayer) =>
       set((state) => {
-        state.notification =
-          message && forPlayer ? { message, forPlayer } : null;
+        state.notifications[forPlayer] = message;
       }),
 
     setPreviewPlacement: (position) =>

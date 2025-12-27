@@ -255,6 +255,22 @@ export interface FieldState {
 }
 
 /**
+ * 棋譜（アクションログ）の定義
+ */
+export interface ActionLog {
+  /** ログのユニークID */
+  actionId: string;
+  /** アクション名 (例: 'MOVE_ALIEN') */
+  type: string;
+  /** アクションのパラメータ */
+  payload: any;
+  /** 実行時刻 */
+  timestamp: number;
+  /** 実行時のターン数 */
+  turn: number;
+}
+
+/**
  * ゲーム全体の最上位の状態
  */
 export interface GameState {
@@ -282,4 +298,6 @@ export interface GameState {
   nativeScore: number;
   /** 外来種サイドの最終スコア */
   alienScore: number;
+  /** 棋譜（アクション履歴） */
+  history: ActionLog[];
 }

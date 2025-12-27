@@ -2,6 +2,8 @@ import {
   CardDefinition,
   CellState,
   FieldState,
+  EradicationCard,
+  RecoveryCard,
 } from "@/shared/types/game-schema";
 
 /**
@@ -38,7 +40,15 @@ export const getEffectRange = (
       coords.push({ x: cx, y: cy });
     }
   } else {
-    const { power, shape } = card.targeting;
+    // targetingオブジェクトが存在し、targetがspeciesでない場合
+    // card.targetingは ShapeType を持つオブジェクトとして扱える
+    const targeting = card.targeting as {
+      shape: "single" | "cross" | "range" | "straight";
+      power: number;
+      direction?: string;
+    };
+
+    const { power, shape } = targeting;
     switch (shape) {
       case "single":
         coords.push({ x: cx, y: cy });
@@ -62,7 +72,7 @@ export const getEffectRange = (
         }
         break;
       case "straight": {
-        const { direction } = card.targeting;
+        const direction = targeting.direction || "vertical";
         const directions = {
           up: [0, -1],
           down: [0, 1],
@@ -92,4 +102,28 @@ export const getEffectRange = (
   return coords
     .filter((c) => c.x >= 0 && c.x < width && c.y >= 0 && c.y < height)
     .map((c) => cells[c.y][c.x]);
+};
+
+/**
+ * 駆除カードの影響範囲を計算する
+ */
+export const calculateEradicationImpact = (
+  card: EradicationCard,
+  targetCell: CellState,
+  field: FieldState,
+  facingFactor: 1 | -1,
+): CellState[] => {
+  return getEffectRange(card, targetCell, field, facingFactor);
+};
+
+/**
+ * 回復カードの影響範囲を計算する
+ */
+export const calculateRecoveryImpact = (
+  card: RecoveryCard,
+  targetCell: CellState,
+  field: FieldState,
+  facingFactor: 1 | -1,
+): CellState[] => {
+  return getEffectRange(card, targetCell, field, facingFactor);
 };

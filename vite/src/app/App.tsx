@@ -163,14 +163,24 @@ function App() {
   }, [showTurnBanner]);
 
   useEffect(() => {
-    if (ui.notification) {
+    if (ui.notifications.alien) {
       const timer = setTimeout(
-        () => ui.setNotification(null),
+        () => ui.setNotification(null, "alien"),
         TIMERS.NOTIFICATION_DURATION,
       );
       return () => clearTimeout(timer);
     }
-  }, [ui.notification, ui]);
+  }, [ui.notifications.alien, ui]);
+
+  useEffect(() => {
+    if (ui.notifications.native) {
+      const timer = setTimeout(
+        () => ui.setNotification(null, "native"),
+        TIMERS.NOTIFICATION_DURATION,
+      );
+      return () => clearTimeout(timer);
+    }
+  }, [ui.notifications.native, ui]);
 
   const { alienCards, nativeCards } = useMemo(() => {
     const duplicate = (cards: CardDefinition[]) =>
@@ -181,12 +191,10 @@ function App() {
         })),
       );
 
-    // 外来種は単純なコスト昇順
     const alien = duplicate(
       cardMasterData.filter((c) => c.cardType === "alien"),
     ).sort((a, b) => a.cost - b.cost);
 
-    // 在来種は 駆除(コスト順) -> 回復(コスト順) の順で結合
     const eradication = duplicate(
       cardMasterData.filter((c) => c.cardType === "eradication"),
     ).sort((a, b) => a.cost - b.cost);
@@ -206,6 +214,14 @@ function App() {
         buttonText: "Start Game",
         onButtonClick: () => setIsGameStarted(true),
       };
+
+    // 共通のスコア情報
+    const scoreInfo = {
+      native: game.nativeScore,
+      alien: game.alienScore,
+      total: game.gameField.width * game.gameField.height,
+    };
+
     if (game.isGameOver) {
       const sub =
         game.winningPlayerId === thisPlayerId
@@ -218,26 +234,39 @@ function App() {
         message: "Game Over",
         subMessage: sub,
         buttonText: "Play Again",
+        scoreInfo, // スコアを表示
         onButtonClick: () => {
           game.resetGame();
-          setIsGameStarted(true);
+          setIsGameStarted(false);
+          setAlienHandPage(0);
+          setNativeHandPage(0);
+          setAlienHandManuallyVisible(true);
+          setNativeHandManuallyVisible(true);
+          ui.setNotification(null, "alien");
+          ui.setNotification(null, "native");
         },
       };
     }
+
     if (showTurnBanner) {
       const role =
         game.activePlayerId === thisPlayerId ? "(あなた)" : "(あいて)";
       return {
         show: true,
         message: `Turn ${game.currentTurn}/${game.maximumTurns}\n${game.playerStates[game.activePlayerId].playerName} ${role} のターン`,
+        scoreInfo, // スコアを表示
       };
     }
-    if (ui.notification && ui.notification.forPlayer === thisPlayerId)
+
+    const playerNotification = ui.notifications[thisPlayerId];
+    if (playerNotification)
       return {
         show: true,
-        message: ui.notification.message,
+        message: playerNotification,
         isDismissible: true,
+        onDismiss: () => ui.setNotification(null, thisPlayerId),
       };
+
     return { show: false, message: "" };
   };
 
@@ -293,16 +322,8 @@ function App() {
         />
       </DebugContainer>
       <MainContainer>
-        <UIOverlay
-          {...getOverlayProps("alien")}
-          side="bottom"
-          onDismiss={() => ui.setNotification(null)}
-        />
-        <UIOverlay
-          {...getOverlayProps("native")}
-          side="top"
-          onDismiss={() => ui.setNotification(null)}
-        />
+        <UIOverlay {...getOverlayProps("alien")} side="bottom" />
+        <UIOverlay {...getOverlayProps("native")} side="top" />
         <CanvasContainer>
           <Canvas
             shadows

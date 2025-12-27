@@ -1,22 +1,19 @@
-import { type ThreeEvent, useThree } from "@react-three/fiber";
-import { useGesture } from "@use-gesture/react";
 import React, { useMemo, useRef } from "react";
-import * as THREE from "three";
 import { Group } from "three";
-import { GAME_SETTINGS } from "@/shared/constants/game-config";
-import cardMasterData from "@/data/cardMasterData";
-import { getEffectRange } from "@/features/play-card/domain/effectCalculator";
+import { InteractionRegistry } from "@/app/registry/InteractionRegistry";
 import { useUIStore } from "@/app/store/useUIStore";
 import { useGameStore } from "@/app/store/useGameStore";
-import type {
-  CardDefinition,
-  CellState,
-  FieldState,
-} from "@/shared/types/game-schema";
+import type { CellState, FieldState } from "@/shared/types/game-schema";
 
-// --- 定数定義 ---
+const BOARD_LAYOUT = {
+  CELL_GAP: 1.0,
+  CELL_SIZE: 0.9,
+  BOARD_WIDTH: 7,
+  BOARD_HEIGHT: 10,
+  ROTATION_X: -Math.PI / 2,
+};
 
-const CELL_COLORS = {
+const CELL_COLORS: Record<string, string> = {
   native_area: "#2E7D32",
   alien_core: "#C62828",
   alien_invasion_area: "#E57373",
@@ -24,245 +21,69 @@ const CELL_COLORS = {
   recovery_pending_area: "#FDD835",
   default: "#444444",
 };
-const BOARD_LAYOUT = {
-  CELL_GAP: 1.0,
-  CELL_SIZE: 0.9,
-  BOARD_WIDTH: GAME_SETTINGS.FIELD_WIDTH,
-  BOARD_HEIGHT: GAME_SETTINGS.FIELD_HEIGHT,
-  ROTATION_X: -Math.PI / 2,
-};
-const HIGHLIGHT_SETTINGS = {
-  SELECTED_COLOR: "#4488FF",
-  SELECTED_INTENSITY: 1.5,
-  DEFAULT_COLOR: "black",
-  DEFAULT_INTENSITY: 0,
-};
-const OUTLINE_LAYOUT = {
-  OUTER_SIZE: 0.45,
-  THICKNESS: 0.05,
-  MOVE_TARGET_COLOR: "#87CEEB",
-  EFFECT_RANGE_COLOR: "#32CD32",
-  Y_OFFSET: 0.1,
-};
-const PREVIEW_PIECE_LAYOUT = { COLOR: "#FFD700", OPACITY: 0.7 };
 
-// --- ヘルパー関数 ---
+const Cell: React.FC<{ cell: CellState }> = ({ cell }) => {
+  const game = useGameStore();
+  const ui = useUIStore();
 
-const getCellColor = (cellType: CellState["cellType"]): string =>
-  CELL_COLORS[cellType] || CELL_COLORS.default;
-const getPositionFromCoords = (
-  x: number,
-  y: number,
-): [number, number, number] => [
-  (x - (BOARD_LAYOUT.BOARD_WIDTH - 1) / 2) * BOARD_LAYOUT.CELL_GAP,
-  0,
-  (y - (BOARD_LAYOUT.BOARD_HEIGHT - 1) / 2) * BOARD_LAYOUT.CELL_GAP,
-];
+  const decoration = useMemo(() => 
+    InteractionRegistry.getCombinedDecoration(cell, game, ui),
+    [cell, game, ui]
+  );
 
-// --- コンポーネント定義 ---
+  // 📢 ここでRegistryから「このマスに重ねるコンポーネント」を取得
+  const overlays = useMemo(() =>
+    InteractionRegistry.getCellOverlays(cell, game, ui),
+    [cell, game, ui]
+  );
 
-const Outline: React.FC<{ color: string }> = ({ color }) => {
-  const shape = useMemo(() => {
-    const s = OUTLINE_LAYOUT.OUTER_SIZE;
-    const innerS = s - OUTLINE_LAYOUT.THICKNESS;
-    const newShape = new THREE.Shape();
-    newShape.moveTo(-s, s);
-    newShape.lineTo(s, s);
-    newShape.lineTo(s, -s);
-    newShape.lineTo(-s, -s);
-    newShape.closePath();
-    const hole = new THREE.Path();
-    hole.moveTo(-innerS, innerS);
-    hole.lineTo(innerS, innerS);
-    hole.lineTo(innerS, -innerS);
-    hole.lineTo(-innerS, -innerS);
-    hole.closePath();
-    newShape.holes.push(hole);
-    return newShape;
-  }, []);
   return (
-    <mesh
-      position={[0, OUTLINE_LAYOUT.Y_OFFSET, 0]}
-      rotation={[BOARD_LAYOUT.ROTATION_X, 0, 0]}
+    <group 
+      position={[
+        (cell.x - (BOARD_LAYOUT.BOARD_WIDTH - 1) / 2) * BOARD_LAYOUT.CELL_GAP,
+        0,
+        (cell.y - (BOARD_LAYOUT.BOARD_HEIGHT - 1) / 2) * BOARD_LAYOUT.CELL_GAP
+      ]}
+      userData={{ cell }}
     >
-      <shapeGeometry args={[shape]} />
-      <meshBasicMaterial color={color} side={THREE.DoubleSide} />
-    </mesh>
-  );
-};
-
-const PreviewPiece: React.FC<{
-  card: CardDefinition;
-  position: { x: number; y: number };
-  boardRef: React.RefObject<Group | null>;
-}> = ({ card, position, boardRef }) => {
-  const { setPreviewPlacement } = useUIStore();
-  const { size, camera, raycaster } = useThree();
-  const bind = useGesture(
-    {
-      onDrag: ({ xy: [px, py], event }) => {
-        event.stopPropagation();
-        if (!boardRef.current) return;
-        const pointer = new THREE.Vector2(
-          (px / size.width) * 2 - 1,
-          -(py / size.height) * 2 + 1,
-        );
-        raycaster.setFromCamera(pointer, camera);
-        const intersects = raycaster.intersectObjects(
-          boardRef.current.children,
-          true,
-        );
-        const intersectedCell = intersects.find((i) =>
-          i.object.name.startsWith("cell-plane"),
-        )?.object.parent?.userData?.cell;
-        if (intersectedCell)
-          setPreviewPlacement({ x: intersectedCell.x, y: intersectedCell.y });
-      },
-    },
-    { drag: { filterTaps: true } },
-  );
-  const pieceColor =
-    card.cardType === "alien"
-      ? CELL_COLORS.alien_core
-      : card.cardType === "eradication"
-        ? "#4a82a2"
-        : "#579d5b";
-  return (
-    <group position={getPositionFromCoords(position.x, position.y)} {...bind()}>
-      <mesh
-        rotation={[BOARD_LAYOUT.ROTATION_X, 0, 0]}
-        position={[0, OUTLINE_LAYOUT.Y_OFFSET, 0]}
+      <mesh 
+        name="cell-plane" 
+        rotation={[BOARD_LAYOUT.ROTATION_X, 0, 0]} 
+        onClick={(e) => {
+          e.stopPropagation();
+          InteractionRegistry.invokeClick(cell, game, ui, game.dispatch);
+        }}
       >
-        <boxGeometry
-          args={[BOARD_LAYOUT.CELL_SIZE, BOARD_LAYOUT.CELL_SIZE, 0.2]}
-        />
+        <planeGeometry args={[BOARD_LAYOUT.CELL_SIZE, BOARD_LAYOUT.CELL_SIZE]} />
         <meshStandardMaterial
-          color={pieceColor}
-          transparent
-          opacity={PREVIEW_PIECE_LAYOUT.OPACITY}
-          emissive={PREVIEW_PIECE_LAYOUT.COLOR}
-          emissiveIntensity={0.5}
+          color={CELL_COLORS[cell.cellType] || CELL_COLORS.default}
+          emissive={decoration.emissiveColor || "black"}
+          emissiveIntensity={decoration.emissiveIntensity || 0}
         />
       </mesh>
-    </group>
-  );
-};
-
-const Cell: React.FC<{
-  cell: CellState;
-  isEffectPreview: boolean;
-  isSummonTarget: boolean;
-}> = ({ cell, isEffectPreview, isSummonTarget }) => {
-  const { selectedAlienInstanceId, selectAlienInstance } = useUIStore();
-  const { moveAlien } = useGameStore();
-  const isMoveTarget = useMemo(() => {
-    if (!selectedAlienInstanceId) return false;
-    return (
-      cell.cellType === "alien_invasion_area" &&
-      cell.dominantAlienInstanceId === selectedAlienInstanceId
-    );
-  }, [selectedAlienInstanceId, cell]);
-  const isSelected =
-    cell.cellType === "alien_core" &&
-    cell.alienInstanceId === selectedAlienInstanceId;
-  const handleCellClick = (event: ThreeEvent<MouseEvent>) => {
-    event.stopPropagation();
-    if (selectedAlienInstanceId) {
-      if (isMoveTarget) moveAlien(selectedAlienInstanceId, cell);
-      else if (cell.cellType === "alien_core")
-        selectAlienInstance(cell.alienInstanceId);
-      else selectAlienInstance(null);
-      return;
-    }
-    if (cell.cellType === "alien_core")
-      selectAlienInstance(cell.alienInstanceId);
-  };
-  return (
-    <group position={getPositionFromCoords(cell.x, cell.y)} userData={{ cell }}>
-      <mesh
-        name="cell-plane"
-        rotation={[BOARD_LAYOUT.ROTATION_X, 0, 0]}
-        onClick={handleCellClick}
-      >
-        <planeGeometry
-          args={[BOARD_LAYOUT.CELL_SIZE, BOARD_LAYOUT.CELL_SIZE]}
-        />
-        <meshStandardMaterial
-          color={getCellColor(cell.cellType)}
-          emissive={
-            isSelected
-              ? HIGHLIGHT_SETTINGS.SELECTED_COLOR
-              : HIGHLIGHT_SETTINGS.DEFAULT_COLOR
-          }
-          emissiveIntensity={
-            isSelected
-              ? HIGHLIGHT_SETTINGS.SELECTED_INTENSITY
-              : HIGHLIGHT_SETTINGS.DEFAULT_INTENSITY
-          }
-        />
-      </mesh>
-      {isMoveTarget && <Outline color={OUTLINE_LAYOUT.MOVE_TARGET_COLOR} />}
-      {isEffectPreview && !isSummonTarget && (
-        <Outline color={OUTLINE_LAYOUT.EFFECT_RANGE_COLOR} />
-      )}
+      {/* 📢 Registryから送られてきたOutline等のコンポーネントをそのまま描画 */}
+      {overlays}
     </group>
   );
 };
 
 const GameBoard3D: React.FC<{ fieldState: FieldState }> = ({ fieldState }) => {
-  const { selectedCardId, previewPlacement } = useUIStore();
-  const { playerStates, activePlayerId } = useGameStore();
+  const game = useGameStore();
+  const ui = useUIStore();
   const boardRef = useRef<Group>(null);
-  const selectedCardDef = useMemo(() => {
-    if (!selectedCardId) return null;
-    return (
-      cardMasterData.find(
-        (c) => c.id === selectedCardId.split("-instance-")[0],
-      ) ?? null
-    );
-  }, [selectedCardId]);
-  const effectPreviewCells = useMemo(() => {
-    if (!selectedCardDef || !previewPlacement) return new Set<string>();
-    const targetCell = fieldState.cells[previewPlacement.y][previewPlacement.x];
-    const facingFactor = playerStates[activePlayerId].facingFactor;
-    const range = getEffectRange(
-      selectedCardDef,
-      targetCell,
-      fieldState,
-      facingFactor,
-    );
-    return new Set(range.map((c: CellState) => `${c.x}-${c.y}`));
-  }, [
-    selectedCardDef,
-    previewPlacement,
-    fieldState,
-    activePlayerId,
-    playerStates,
-  ]);
+
+  // 📢 ガイド（PreviewPiece）などのグローバルUIを取得
+  const globalComponents = useMemo(() => 
+    InteractionRegistry.getGlobalComponents(game, ui, boardRef),
+    [game, ui]
+  );
+
   return (
     <group ref={boardRef}>
-      {fieldState.cells.flat().map((cell, index) => {
-        const isEffectPreview = effectPreviewCells.has(`${cell.x}-${cell.y}`);
-        const isSummonTarget =
-          !!previewPlacement &&
-          cell.x === previewPlacement.x &&
-          cell.y === previewPlacement.y;
-        return (
-          <Cell
-            key={`${cell.x}-${cell.y}-${index}`}
-            cell={cell}
-            isEffectPreview={isEffectPreview}
-            isSummonTarget={isSummonTarget}
-          />
-        );
-      })}
-      {selectedCardDef && previewPlacement && (
-        <PreviewPiece
-          card={selectedCardDef}
-          position={previewPlacement}
-          boardRef={boardRef}
-        />
-      )}
+      {fieldState.cells.flat().map((cell) => (
+        <Cell key={`${cell.x}-${cell.y}`} cell={cell} />
+      ))}
+      {globalComponents}
     </group>
   );
 };

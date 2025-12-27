@@ -3,14 +3,12 @@ import styled, { keyframes } from "styled-components";
 
 // --- 定数定義 ---
 
-/** アニメーション設定 */
 const ANIMATIONS = {
   APPEAR_DURATION: "0.2s",
   EXIT_DURATION: "0.5s",
   TIMING_FUNCTION: "ease-in-out",
 };
 
-/** レイアウト・スタイル設定 */
 const STYLES = {
   BACKGROUND_COLOR: "rgba(0, 0, 0, 0.8)",
   BORDER_TOP: "4px solid lightgray",
@@ -19,14 +17,12 @@ const STYLES = {
   BUTTON_HOVER_COLOR: "#45a049",
 };
 
-/** フォントサイズ設定 (メッセージの長さに応じて変動) */
 const FONT_SIZES = {
   small: "1.5em",
   medium: "2.0em",
   large: "2.5em",
 };
 
-/** フォントサイズを決定する文字数のしきい値 */
 const FONT_SIZE_THRESHOLDS = {
   small: 30,
   medium: 20,
@@ -57,7 +53,6 @@ const OverlayContainer = styled.div<{
   box-sizing: border-box;
   border-top: ${STYLES.BORDER_TOP};
 
-  /* プレイヤーサイドに応じて上下に配置し、上部プレイヤーは180度回転 */
   ${({ side }) => (side === "top" ? "top: 0;" : "bottom: 0;")}
   ${({ side }) => side === "top" && "transform: rotate(180deg);"}
 
@@ -73,7 +68,6 @@ const OverlayContainer = styled.div<{
   white-space: pre-wrap;
   pointer-events: all;
 
-  /* 表示/非表示状態に応じてアニメーションを適用 */
   animation-name: ${({ $isExiting }) => ($isExiting ? fadeOut : quickAppear)};
   animation-duration: ${({ $isExiting }) =>
     $isExiting ? ANIMATIONS.EXIT_DURATION : ANIMATIONS.APPEAR_DURATION};
@@ -114,7 +108,7 @@ const ScoreContainer = styled.div`
   display: flex;
   flex-direction: column;
   gap: 8px;
-  background-color: rgba(255, 255, 255, 0.1);
+  background-color: rgba(80, 80, 80);
   padding: 10px 20px;
   border-radius: 8px;
 `;
@@ -143,10 +137,6 @@ interface UIOverlayProps {
   };
 }
 
-/**
- * ゲームの情報を画面半分に表示するオーバーレイコンポーネント。
- * ターン表示、通知、ゲーム開始/終了画面などに使用される。
- */
 const UIOverlay: React.FC<UIOverlayProps> = ({
   show,
   message,
@@ -160,79 +150,81 @@ const UIOverlay: React.FC<UIOverlayProps> = ({
 }) => {
   const [isRendered, setIsRendered] = useState(show);
 
-  /**
-   * メッセージの文字数に応じて動的にフォントサイズを決定する。
-   * 長いメッセージは小さく、短いメッセージは大きく表示する。
-   */
+  // 表示中の情報を固定するためのステート
+  // これにより、消え始める瞬間にpropsが空になっても、フェードアウトが終わるまで表示を維持できる
+  const [displayData, setDisplayData] = useState({
+    message,
+    subMessage,
+    buttonText,
+    scoreInfo,
+  });
+
   const fontSize = useMemo(() => {
-    const len = message.length;
+    const len = displayData.message.length;
     if (len > FONT_SIZE_THRESHOLDS.small) return FONT_SIZES.small;
     if (len > FONT_SIZE_THRESHOLDS.medium) return FONT_SIZES.medium;
     return FONT_SIZES.large;
-  }, [message]);
+  }, [displayData.message]);
 
-  /**
-   * `show` propの変更を監視し、フェードアウトアニメーションのためのレンダリング遅延を管理する。
-   * `show`が`false`になっても、アニメーションが終わるまでコンポーネントをDOMに保持する。
-   */
   useEffect(() => {
-    let timer: ReturnType<typeof setTimeout>;
     if (show) {
       setIsRendered(true);
+      // 表示中は常に最新の情報を反映
+      setDisplayData({ message, subMessage, buttonText, scoreInfo });
     } else {
-      timer = setTimeout(
+      // 非表示（フェードアウト開始）時は、コンポーネント消滅までタイマー待機
+      const timer = setTimeout(
         () => setIsRendered(false),
         parseFloat(ANIMATIONS.EXIT_DURATION) * 1000,
       );
+      return () => clearTimeout(timer);
     }
-    return () => clearTimeout(timer);
-  }, [show]);
+  }, [show, message, subMessage, buttonText, scoreInfo]);
 
-  /**
-   * オーバーレイ自体がクリックされたときに、即座に非表示にするためのハンドラ。
-   * `isDismissible`がtrueの場合にのみ機能する。
-   */
   const handleContainerClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    // ボタンなど子要素のクリックイベントは無視
     if (e.target !== e.currentTarget) return;
     if (isDismissible && onDismiss) {
       onDismiss();
     }
   };
 
-  // レンダリングが不要な場合はnullを返す
   if (!isRendered) {
     return null;
   }
 
+  // 表示には内部ステート displayData を使用する
   return (
     <OverlayContainer
       $isExiting={!show}
       side={side}
       onClick={handleContainerClick}
     >
-      <Message $fontSize={fontSize}>{message}</Message>
-      {subMessage && <SubMessage>{subMessage}</SubMessage>}
+      <Message $fontSize={fontSize}>{displayData.message}</Message>
+      {displayData.subMessage && (
+        <SubMessage>{displayData.subMessage}</SubMessage>
+      )}
 
-      {scoreInfo && (
+      {displayData.scoreInfo && (
         <ScoreContainer>
           <ScoreRow>
             <span>在来種マス:</span>
             <span>
-              {scoreInfo.native} / {scoreInfo.total}
+              {displayData.scoreInfo.native} / {displayData.scoreInfo.total}
             </span>
           </ScoreRow>
           <ScoreRow>
             <span>外来種マス:</span>
             <span>
-              {scoreInfo.alien} / {scoreInfo.total}
+              {displayData.scoreInfo.alien} / {displayData.scoreInfo.total}
             </span>
           </ScoreRow>
         </ScoreContainer>
       )}
 
-      {buttonText && onButtonClick && (
-        <ActionButton onClick={onButtonClick}>{buttonText}</ActionButton>
+      {displayData.buttonText && onButtonClick && (
+        <ActionButton onClick={onButtonClick}>
+          {displayData.buttonText}
+        </ActionButton>
       )}
     </OverlayContainer>
   );

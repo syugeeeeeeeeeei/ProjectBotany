@@ -6,14 +6,22 @@ import {
   createAlienCoreCell,
 } from "@/features/field-grid/domain/cellHelpers";
 
+/** アクションのペイロード定義 */
+interface MoveAlienPayload {
+  instanceId: string;
+  targetCell: CellState;
+}
+
 /**
  * 外来種の移動を試みるロジック。
+ * Action Registryに対応するため、引数をpayloadオブジェクトにまとめています。
  */
 export const moveAlienLogic = (
   state: GameState,
-  alienInstanceId: string,
-  targetCell: CellState,
+  payload: MoveAlienPayload,
 ): GameState | string => {
+  const { instanceId: alienInstanceId, targetCell } = payload;
+
   const alien = state.activeAlienInstances[alienInstanceId];
   if (!alien) return "指定された外来種が見つかりません。";
 

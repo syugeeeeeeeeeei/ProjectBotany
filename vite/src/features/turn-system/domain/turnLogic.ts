@@ -1,51 +1,73 @@
 import { produce } from "immer";
 import { GameState, PlayerType } from "@/shared/types/game-schema";
-import { GAME_SETTINGS } from "@/shared/constants/game-config";
 import { runAlienActivationPhase } from "@/features/ecosystem-activation/domain/alienExpansion";
 import { runNativeActivationPhase } from "@/features/ecosystem-activation/domain/nativeRestoration";
 
 /**
- * ターンを進行させ、活性フェーズとリソース回復を行う。
+ * ターンを経過させるロジック。
  */
-export const progressTurnLogic = (state: GameState): GameState => {
-  if (state.isGameOver) return state;
-
+export const progressTurnLogic = (
+  state: GameState,
+  _payload?: any,
+): GameState => {
   return produce(state, (draft) => {
-    if (draft.activePlayerId === "alien") runAlienActivationPhase(draft);
-    else runNativeActivationPhase(draft);
+    // --- 1. 活性フェーズの実行 ---
+    runAlienActivationPhase(draft);
+    runNativeActivationPhase(draft);
 
-    const nextPlayerId: PlayerType =
-      draft.activePlayerId === "alien" ? "native" : "alien";
-    const nextTurn =
-      nextPlayerId === "alien" ? draft.currentTurn + 1 : draft.currentTurn;
-
-    (Object.keys(draft.playerStates) as PlayerType[]).forEach((playerId) => {
-      const player = draft.playerStates[playerId];
-      const newMaxEnv = nextTurn - 1 + player.initialEnvironment;
-      player.maxEnvironment = newMaxEnv;
-      player.currentEnvironment = newMaxEnv;
-      player.cooldownActiveCards = player.cooldownActiveCards
-        .map((c) => ({ ...c, turnsRemaining: c.turnsRemaining - 1 }))
-        .filter((c) => c.turnsRemaining > 0);
-    });
-
-    const isGameOver = nextTurn > GAME_SETTINGS.MAXIMUM_TURNS;
-    if (isGameOver && !draft.isGameOver) {
-      const nativeScore = draft.gameField.cells
-        .flat()
-        .filter((c) => c.ownerId === "native").length;
-      const alienScore = draft.gameField.cells
-        .flat()
-        .filter((c) => c.ownerId === "alien").length;
-      draft.nativeScore = nativeScore;
-      draft.alienScore = alienScore;
-      if (nativeScore > alienScore) draft.winningPlayerId = "native";
-      else if (alienScore > nativeScore) draft.winningPlayerId = "alien";
-      else draft.winningPlayerId = null;
+    // --- 2. ターン進行と交代 ---
+    const currentPlayerId = draft.activePlayerId;
+    if (currentPlayerId === "native") {
+      draft.currentTurn += 1;
     }
 
-    draft.currentTurn = nextTurn;
+    const nextPlayerId: PlayerType =
+      currentPlayerId === "alien" ? "native" : "alien";
     draft.activePlayerId = nextPlayerId;
-    draft.isGameOver = isGameOver;
+
+    const nextPlayer = draft.playerStates[nextPlayerId];
+    if (nextPlayer.maxEnvironment < 10) {
+      nextPlayer.maxEnvironment += 1;
+    }
+    nextPlayer.currentEnvironment = nextPlayer.maxEnvironment;
+
+    nextPlayer.cooldownActiveCards = nextPlayer.cooldownActiveCards
+      .map((c) => ({ ...c, turnsRemaining: c.turnsRemaining - 1 }))
+      .filter((c) => c.turnsRemaining > 0);
+
+    draft.currentPhase = "summon_phase";
+
+    // --- 3. スコア更新と勝敗判定 ---
+    // ターン終了の有無に関わらず、常に最新のスコアを計算して保持するようにします
+    let nativeCount = 0;
+    let alienCount = 0;
+
+    draft.gameField.cells.flat().forEach((cell) => {
+      if (cell.cellType === "native_area") {
+        nativeCount++;
+      } else if (
+        cell.cellType === "alien_core" ||
+        cell.cellType === "alien_invasion_area"
+      ) {
+        alienCount++;
+      }
+    });
+
+    draft.nativeScore = nativeCount;
+    draft.alienScore = alienCount;
+
+    // ゲーム終了判定
+    if (draft.currentTurn > draft.maximumTurns) {
+      draft.isGameOver = true;
+
+      // 勝者の決定
+      if (nativeCount > alienCount) {
+        draft.winningPlayerId = "native";
+      } else if (alienCount > nativeCount) {
+        draft.winningPlayerId = "alien";
+      } else {
+        draft.winningPlayerId = null; // 引き分け
+      }
+    }
   });
 };
