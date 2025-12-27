@@ -17,8 +17,20 @@ interface OutlineProps {
 }
 
 /**
- * 3D空間上で特定の領域を強調するための汎用枠線コンポーネント。
- * shared層に配置し、各機能（feature）からプロパティを指定して利用する。
+ * 3D 枠線コンポーネント (Outline)
+ * 
+ * 【動機】
+ * ゲーム盤面の特定のマスを強調表示（ハイライト）するための視覚効果を提供するためです。
+ * カードの効果範囲のプレビューや、選択中のマスの明示などに汎用的に使用されます。
+ *
+ * 【恩恵】
+ * - `ringGeometry` を使用して、マスの形状（四角形を 45 度回転させた菱形）に
+ *   フィットする細い枠線を効率的に描画します。
+ * - `yOffset` により、地面（盤面）との干渉（Z-fighting）を避けつつ、
+ *   きれいに重ねて表示することができます。
+ *
+ * 【使用法】
+ * `InteractionRegistry` の `getCellOverlays` などで、色やサイズを指定して JSX として返します。
  */
 export const Outline: React.FC<OutlineProps> = ({
   color,
@@ -28,6 +40,10 @@ export const Outline: React.FC<OutlineProps> = ({
   rotationX = -Math.PI / 2,
   rotationZ = Math.PI / 4,
 }) => (
+  /**
+   * 枠線の 3D メッシュ描画
+   * 盤面の 45 度回転したマス目に合わせ、菱形（ringGeometry の 4 端）として描画するために必要です
+   */
   <mesh position={[0, yOffset, 0]} rotation={[rotationX, 0, rotationZ]}>
     {/* 外径と内径を指定してリングを作成 */}
     <ringGeometry args={[size - thickness, size, 4, 1]} />

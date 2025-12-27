@@ -121,6 +121,26 @@ const ScoreRow = styled.div`
 
 // --- Component ---
 
+/**
+ * フルスクリーン・オーバーレイコンポーネント (UIOverlay)
+ * 
+ * 【動機】
+ * ゲームのタイトル表示、ターンの切り替え通知、リザルト画面など、
+ * ユーザーの注意を中央に集めたい情報を表示するためです。
+ * また、対面プレイ（スマホを真ん中に置く形式）を想定し、
+ * 上下のプレイヤーそれぞれに向けた情報の出し分け（回転表示など）をサポートします。
+ *
+ * 【恩恵】
+ * - `styled-components` によるアニメーション（フェードイン・アウト）により、
+ *   唐突な画面切り替えを避け、ユーザー体験を向上させます。
+ * - メッセージの長さに応じてフォントサイズを自動調整（Dynamic Font Size）するため、
+ *   はみ出しを防ぎつつ最適な視認性を確保します。
+ * - `displayData` ステートを挟むことで、非表示アニメーション中の情報消失を防いでいます。
+ *
+ * 【使用法】
+ * `App.tsx` 内で、表示したいメッセージやボタン、スコア情報を渡して配置します。
+ * `side="top"` を指定すると 180 度回転して、対面にいる相手に向けた表示になります。
+ */
 interface UIOverlayProps {
   show: boolean;
   message: string;
@@ -148,6 +168,7 @@ const UIOverlay: React.FC<UIOverlayProps> = ({
   onDismiss,
   scoreInfo,
 }) => {
+  // マウント/アンマウントの制御ステート
   const [isRendered, setIsRendered] = useState(show);
 
   // 表示中の情報を固定するためのステート
@@ -159,6 +180,10 @@ const UIOverlay: React.FC<UIOverlayProps> = ({
     scoreInfo,
   });
 
+  /**
+   * メッセージの長さに応じたフォントサイズの計算
+   * 長文がパネルからはみ出すのを防ぎ、UIの整合性を保つために必要です
+   */
   const fontSize = useMemo(() => {
     const len = displayData.message.length;
     if (len > FONT_SIZE_THRESHOLDS.small) return FONT_SIZES.small;
@@ -166,6 +191,10 @@ const UIOverlay: React.FC<UIOverlayProps> = ({
     return FONT_SIZES.large;
   }, [displayData.message]);
 
+  /**
+   * 表示切り替え時のエフェクト処理
+   * propsの変更を内部ステートに同期させ、消去時の遅延アンマウントを制御するために必要です
+   */
   useEffect(() => {
     if (show) {
       setIsRendered(true);
@@ -181,8 +210,12 @@ const UIOverlay: React.FC<UIOverlayProps> = ({
     }
   }, [show, message, subMessage, buttonText, scoreInfo]);
 
+  /**
+   * コンテナ全体のクリックハンドラ
+   * 背景タップによるオーバーレイの解除（Dismiss）機能を提供するために必要です
+   */
   const handleContainerClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (e.target !== e.currentTarget) return;
+    if (e.target !== e.currentTarget) return; // 子要素（ボタンなど）のクリックは除外
     if (isDismissible && onDismiss) {
       onDismiss();
     }

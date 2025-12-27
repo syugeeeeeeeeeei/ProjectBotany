@@ -8,6 +8,24 @@ import type { CardDefinition, PlayerType } from "@/shared/types/game-schema";
 import Card3D from "./Card3D";
 import type { DebugSettings } from "@/shared/components/debug/DebugDialog";
 
+/**
+ * 3D 手札管理コンポーネント (Hand3D)
+ * 
+ * 【動機】
+ * 手札カードの集合体（デッキ）を 3D 空間に整列させ、ユーザーが直感的にブラウズできるようにするためです。
+ * モバイル端末等での操作を想定し、フリック（スワイプ）によるページめくりや、
+ * 視点に基づいた適切な配置と傾き（Tilt）を自動計算します。
+ *
+ * 【恩恵】
+ * - `use-gesture` による高度なジェスチャーハンドリング（水平フリックでページ切り替え、垂直フリックで表示/非表示）を提供します。
+ * - プレイヤー（在来種/外来種）ごとに反転した配置（Facing Factor）を自動適用し、対戦形式のレイアウトを容易に実現します。
+ * - ページング計算（3枚ごと）を内包し、大量のカードを整理して表示できます。
+ *
+ * 【使用法】
+ * `App.tsx` 内でプレイヤーごとに配置します。`isVisible` や `currentPage` などの
+ * 状態を受け取り、シーン全体と同期して動作します。
+ */
+
 // --- 型定義 ---
 
 type CardWithInstanceId = CardDefinition & { instanceId: string };
@@ -95,6 +113,10 @@ const Hand3D: React.FC<Hand3DProps> = ({
     config: { tension: 300, friction: 20 },
   });
 
+  /**
+   * 水平方向のフリック（スワイプ）によるページ切り替え処理
+   * モバイル等のタッチデバイスで、手札を「めくる」操作感を提供するために必要です
+   */
   const handleHorizontalFlick = (state: DragState) => {
     const {
       movement: [mx],
@@ -114,6 +136,10 @@ const Hand3D: React.FC<Hand3DProps> = ({
     }
   };
 
+  /**
+   * 垂直方向のフリックによる手札の出し入れ（表示/非表示）処理
+   * 画面を広く使いたい時に、一時的に手札を画面外に隠すために必要です
+   */
   const handleVerticalFlick = (state: DragState) => {
     const {
       movement: [_, my],
@@ -156,6 +182,8 @@ const Hand3D: React.FC<Hand3DProps> = ({
     },
   );
 
+  // カードリストをページ単位（3枚ずつ）の二次元配列に変換
+  // `pages.map` を通じてページごとのグループ化描画を行うために必要です
   const pages = useMemo(() => {
     const allPages: CardWithInstanceId[][] = [];
     for (let i = 0; i < cards.length; i += HAND_LAYOUT.CARDS_PER_PAGE) {

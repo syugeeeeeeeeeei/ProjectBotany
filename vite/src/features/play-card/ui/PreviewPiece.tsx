@@ -7,8 +7,21 @@ import { useUIStore } from "@/app/store/useUIStore";
 import { CardDefinition } from "@/shared/types/game-schema";
 
 /**
- * カード配置時の「ガイド」となる3Dオブジェクト。
- * マスの上をドラッグして移動させることができます。
+ * カード配置ガイド（PreviewPiece）
+ * 
+ * 【動機】
+ * 手札から選択されたカードを盤面のどこに置こうとしているかを、
+ * フィジカルな駒のような 3D オブジェクトとして表現するためです。
+ * ユーザーが盤面上をなぞる（ドラッグ）ことで、駒がマス目に吸着（スナップ）して
+ * 移動する体験を提供します。
+ *
+ * 【恩恵】
+ * - `useGesture` と `Raycaster` を組み合わせることで、3D 空間上の任意の場所への
+ *   ポインティングを 2D のマス目座標（x, y）へと変換できます。
+ * - 透明度と発光（Emissive）を伴う 3D 表現により、検討中であることを直感的に伝えます。
+ *
+ * 【使用法】
+ * `InteractionRegistry.getGlobalComponents` を通じて、盤面上に描画されます。
  */
 const PreviewPiece: React.FC<{
   card: CardDefinition;
@@ -19,36 +32,41 @@ const PreviewPiece: React.FC<{
   const { size, camera, raycaster } = useThree();
 
   // ドラッグ操作による位置の更新ロジック
+  /**
+   * ドラッグ操作のバインド設定
+   * 3Dシーン上のポインター位置をマス目座標に変換し、配置プレビューを更新するために必要です
+   */
   const bind = useGesture(
     {
       onDrag: ({ xy: [px, py], event }) => {
         event.stopPropagation();
         if (!boardRef.current) return;
 
-        // ポインター座標を -1 ～ 1 の正規化座標に変換
+        // 1. スクリーン座標（ピクセル）を正規化デバイス座標（-1 ～ 1）に変換
         const pointer = new THREE.Vector2(
           (px / size.width) * 2 - 1,
           -(py / size.height) * 2 + 1,
         );
 
-        // カメラから盤面に向けてレイを飛ばす
+        // 2. カメラからのレイ（光線）をセットし、盤面オブジェクトとの衝突判定を行う
         raycaster.setFromCamera(pointer, camera);
         const intersects = raycaster.intersectObjects(
           boardRef.current.children,
           true,
         );
 
-        // ヒットしたオブジェクトからマス情報を取得して座標を更新
+        // 3. 衝突したオブジェクトの中から「マス目（cell-plane）」を探し、その座標を取得
         const intersectedCell = intersects.find((i) =>
           i.object.name.startsWith("cell-plane"),
         )?.object.parent?.userData?.cell;
 
+        // 4. 有効なマスの上であれば、UIストアのプレビュー座標を更新
         if (intersectedCell) {
           setPreviewPlacement({ x: intersectedCell.x, y: intersectedCell.y });
         }
       },
     },
-    { drag: { filterTaps: true } },
+    { drag: { filterTaps: true } }, // タップ操作とドラッグを区別する
   );
 
   // カードの種類に応じた色分け

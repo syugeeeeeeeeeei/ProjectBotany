@@ -35,14 +35,38 @@ const InfoItem = styled.div`
   }
 `;
 
+/**
+ * プレイヤー情報表示コンポーネント (GameInfo)
+ * 
+ * 【動機】
+ * プレイヤーの名前や現在の「環境適応力（Environment）」などのステータスを、
+ * 視覚的に分かりやすくパネル表示するためです。対戦形式であることを強調するため、
+ * 画面の両端（あるいは上下）に配置されることを想定しています。
+ *
+ * 【恩恵】
+ * - `useGameStore` を通じて常に最新のプレイヤーステータスが反映されます。
+ * - 半透明の黒背景（Glassmorphism風）を採用することで、背後の 3D シーンの
+ *   視認性を保ちつつ、情報を浮き立たせることができます。
+ *
+ * 【使用法】
+ * `App.tsx` 内で `player="alien"` または `player="native"` を指定して配置します。
+ */
 interface GameInfoProps {
   player: PlayerType;
 }
 
 const GameInfo: React.FC<GameInfoProps> = ({ player }) => {
+  // ゲームの状態を取得
   const { playerStates } = useGameStore();
   const playerData = playerStates[player];
+
+  // データが存在しない（＝機能無効など）場合は何も表示しない
   if (!playerData) return null;
+
+  /**
+   * プレイヤーステータスパネルの描画
+   * 現在のプレイヤー名、環境適応力（リソース量）を定常的に監視するために必要です
+   */
   return (
     <InfoContainer>
       <InfoItem>

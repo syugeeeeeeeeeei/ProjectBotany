@@ -1,3 +1,25 @@
+/**
+ * @file App.tsx
+ * @description アプリケーションのエントリポイントとなるメインコンポーネントです。
+ * 3Dレンダリング（React Three Fiber）と2D UI（styled-components）を統合し、
+ * ゲームのライフサイクル、ターン管理、通知システム、デバッグ設定を一括して制御します。
+ *
+ * 【動機】
+ * ゲーム全体の状態（Store）とUI表現（Canvas/HTML）を橋渡しするハブとして機能させるためです。
+ * 複雑なゲームの進行（ターン開始、終了、通知の消去など）を副作用（useEffect）として一箇所で定義することで、
+ * 整合性を保ちつつ各コンポーネントに反映させることを意図しています。
+ *
+ * 【恩恵】
+ * - 3Dシーンと2Dオーバーレイが分離・統合されているため、レイヤーごとの管理が容易になります。
+ * - グローバルなスタイル設定や、画面ロック（ターン切り替え時）などの共通機能を一括適用できます。
+ * - ゲームの開始、リセット、ターンの進行に合わせたUIの動的な切り替えが自動化されます。
+ *
+ * 【使用法】
+ * `main.tsx` から呼び出され、アプリケーション全体をラップします。
+ * 内部では `useGameStore` や `useUIStore` を通じてゲームの状態を監視し、
+ * 各機能モジュール（Features）へ必要なデータとコールバックを分配します。
+ */
+
 import { OrbitControls } from "@react-three/drei";
 import { Canvas } from "@react-three/fiber";
 import { useEffect, useMemo, useState } from "react";
@@ -142,6 +164,8 @@ function App() {
     swipeAreaHeight: 4,
   });
 
+  // ターン開始・切り替え時の演出（バナー表示と操作ロック）を制御する副作用
+  // プレイヤーにターンの交代を明示し、誤操作を防ぐために必要です
   useEffect(() => {
     if (!isGameStarted || game.isGameOver) return;
     setIsStartingTurn(true);
@@ -152,6 +176,8 @@ function App() {
     return () => clearTimeout(timer);
   }, [game.activePlayerId, game.currentTurn, isGameStarted, game.isGameOver]);
 
+  // ターンバナーを一定時間後に自動で非表示にする副作用
+  // 画面中央を塞ぎ続けないようにするために必要です
   useEffect(() => {
     if (showTurnBanner) {
       const timer = setTimeout(
@@ -162,6 +188,8 @@ function App() {
     }
   }, [showTurnBanner]);
 
+  // 外来種側の通知を一定時間後に消去する副作用
+  // 画面上に通知が残り続けるのを防ぎ、UXを向上させるために必要です
   useEffect(() => {
     if (ui.notifications.alien) {
       const timer = setTimeout(
@@ -172,6 +200,7 @@ function App() {
     }
   }, [ui.notifications.alien, ui]);
 
+  // 在来種側の通知を一定時間後に消去する副作用
   useEffect(() => {
     if (ui.notifications.native) {
       const timer = setTimeout(
@@ -182,6 +211,8 @@ function App() {
     }
   }, [ui.notifications.native, ui]);
 
+  // 全カードマスターデータから、各プレイヤーの初期デック（複製済みインスタンス）を生成
+  // ゲーム開始時に各カードに一意なIDを付与し、手札として扱えるようにするために必要です
   const { alienCards, nativeCards } = useMemo(() => {
     const duplicate = (cards: CardDefinition[]) =>
       cards.flatMap((card) =>
@@ -206,6 +237,10 @@ function App() {
     return { alienCards: alien, nativeCards: native };
   }, []);
 
+  /**
+   * UIオーバーレイに渡す表示情報をプレイヤーごとに生成する
+   * 対面プレイ時に、それぞれの向きに合わせたメッセージ（勝利・敗北・ターン等）を出すために必要です
+   */
   const getOverlayProps = (thisPlayerId: PlayerType) => {
     if (!isGameStarted)
       return {
@@ -275,6 +310,7 @@ function App() {
   const maxNativePage =
     Math.ceil(nativeCards.length / HAND_PAGING_CONFIG.CARDS_PER_PAGE) - 1;
 
+  // 何らかのオブジェクト（カードまたは配置済み個体）が選択中かどうか
   const isSelecting = !!(ui.selectedCardId || ui.selectedAlienInstanceId);
   const isAlienHandActuallyVisible =
     isAlienHandManuallyVisible &&
@@ -285,6 +321,8 @@ function App() {
     game.activePlayerId === "native" &&
     !isSelecting;
 
+  // デバッグ用UIに渡すパラメータとトグルコールバック
+  // 開発中の微調整や、モバイル実機でのテストを円滑にするために必要です
   const debugDialogProps = {
     debugSettings,
     onSetDebugSettings: setDebugSettings,

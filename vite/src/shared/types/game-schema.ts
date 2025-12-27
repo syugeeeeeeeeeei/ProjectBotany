@@ -1,3 +1,22 @@
+/**
+ * ゲーム全体のデータ構造定義 (game-schema)
+ * 
+ * 【動機】
+ * 生態系の競争という独自のゲームシステムを、TypeScript の型システムを用いて
+ * 厳密に定義するためです。マスの状態（CellType）、カードの属性（CardDefinition）、
+ * 成長ロジック（GrowthCondition）などのモデルを一元管理します。
+ *
+ * 【恩恵】
+ * - 判別可能なユニオン型（Discriminated Unions）を活用することで、
+ *   カードの種類に応じたプロパティ（駆除カードなら `postRemovalState` など）の
+ *   アクセスを型安全に行えます。
+ * - `GameState` という巨大な状態オブジェクトの構造を定義することで、
+ *   Zustand ストアの実装において補完が効き、保守性が大幅に向上します。
+ *
+ * 【使用法】
+ * アプリケーションのほぼ全てのファイルでインポートされ、
+ * ロジックや UI コンポーネントの型アノテーションとして使用されます。
+ */
 /** プレイヤーの種類を定義する */
 export type PlayerType = "native" | "alien";
 
@@ -68,19 +87,19 @@ interface CardDefinitionBase {
 /** カード効果の範囲・対象を定義する、判別可能なユニオン型 */
 type TargetingDefinition =
   | {
-      shape: "straight";
-      power: number;
-      direction: DirectionType;
-      target?: "alien_invasion_area" | "alien_core";
-    }
+    shape: "straight";
+    power: number;
+    direction: DirectionType;
+    target?: "alien_invasion_area" | "alien_core";
+  }
   | {
-      shape: "cross" | "range" | "single";
-      power: number;
-      target?: "alien_invasion_area" | "alien_core";
-    }
+    shape: "cross" | "range" | "single";
+    power: number;
+    target?: "alien_invasion_area" | "alien_core";
+  }
   | {
-      target: "species";
-    };
+    target: "species";
+  };
 
 /**
  * 外来種カードの定義
@@ -90,15 +109,15 @@ export interface AlienCard extends CardDefinitionBase {
   cardType: "alien";
   /** AlienCardは target: 'species' を持たない */
   targeting:
-    | {
-        shape: "straight";
-        power: number;
-        direction: DirectionType;
-      }
-    | {
-        shape: "cross" | "range" | "single";
-        power: number;
-      };
+  | {
+    shape: "straight";
+    power: number;
+    direction: DirectionType;
+  }
+  | {
+    shape: "cross" | "range" | "single";
+    power: number;
+  };
   /** 成長能力を持つかどうかのフラグ */
   canGrow?: boolean;
   /** 成長条件のリスト */

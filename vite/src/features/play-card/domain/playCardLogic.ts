@@ -24,7 +24,25 @@ interface PlayCardPayload {
 }
 
 /**
- * カードを使用するロジック
+ * カード使用実行ロジック (playCardLogic)
+ * 
+ * 【動機】
+ * カードの使用という極めて複雑な盤面遷移を一手に引き受けるためです。
+ * コスト消費、クールダウンの開始、実体の生成、範囲内のマスの書き換えなど、
+ * 全てのゲームルールの整合性をここで担保します。
+ *
+ * 【恩恵】
+ * - `alien`, `eradication`, `recovery` という異なるタイプのカードに対して、
+ *   それぞれ適切な状態遷移（インスタンス追加、除去、再生）を統一的に処理できます。
+ * - エラー（コスト不足、クールダウン中、配置条件違反）を文字列として返すことで、
+ *   UI 側でのアラート表示を簡潔に実装できます。
+ *
+ * 【使用法】
+ * `ActionRegistry` に `PLAY_CARD` として登録され、`useGameStore` の `dispatch` 経由で呼び出されます。
+ */
+/**
+ * カード使用ロジックの実行
+ * プレイヤーの選択をゲームステートに物理的に反映（コスト、クールダウン、盤面変化）するために必要です
  */
 export const playCardLogic = (
   state: GameState,
@@ -33,12 +51,11 @@ export const playCardLogic = (
   const { card, targetCell, cardId: instanceId } = payload;
   const player = state.playerStates[state.activePlayerId];
 
-  // 1. コストチェック
+  // 1. 各種バリデーション（コスト、クールダウン、配置位置）
   if (player.currentEnvironment < card.cost) {
     return "コストが足りません。";
   }
 
-  // 2. クールダウンチェック
   const cooldownInfo = player.cooldownActiveCards.find(
     (c) => c.cardId === instanceId,
   );
@@ -46,20 +63,20 @@ export const playCardLogic = (
     return `クールダウン中です。残り${cooldownInfo.turnsRemaining}ターン`;
   }
 
-  // 3. 配置・使用条件チェック
   if (card.cardType === "alien") {
     if (targetCell.cellType !== "native_area") {
       return "外来種は在来種エリア（緑色）にのみ配置できます。";
     }
   }
 
+  // 2. 状態更新の適用
   return produce(state, (draft) => {
     const activePlayer = draft.playerStates[draft.activePlayerId];
 
-    // コスト消費
+    // エンバイロメント（リソース）コストを消費
     activePlayer.currentEnvironment -= card.cost;
 
-    // クールダウン設定
+    // カードをクールダウン状態に設定
     if (card.cooldownTurns) {
       activePlayer.cooldownActiveCards.push({
         cardId: instanceId,
@@ -67,9 +84,9 @@ export const playCardLogic = (
       });
     }
 
-    // カード効果の適用
+    // 3. カードタイプに応じた特殊処理
     if (card.cardType === "alien") {
-      // 外来種の配置
+      // --- 外来種：新しいインスタンスを生成して配置 ---
       const newInstanceId = generateId("alien");
       draft.activeAlienInstances[newInstanceId] = {
         instanceId: newInstanceId,
@@ -88,7 +105,7 @@ export const playCardLogic = (
         newInstanceId,
       );
     } else if (card.cardType === "eradication") {
-      // 駆除効果
+      // --- 駆除：範囲内の外来種を除去 ---
       const impactCells = calculateEradicationImpact(
         card,
         targetCell,
@@ -97,14 +114,15 @@ export const playCardLogic = (
       );
       impactCells.forEach((c: CellState) => {
         const cell = draft.gameField.cells[c.y][c.x];
-        // 駆除ロジック: 侵略マスやコアを除去して空き地や再生待機にする
         if (
           cell.cellType === "alien_invasion_area" ||
           cell.cellType === "alien_core"
         ) {
+          // コアを破壊した場合はインスタンス自体を削除
           if (cell.cellType === "alien_core") {
             delete draft.activeAlienInstances[cell.alienInstanceId];
           }
+          // 駆除後の状態設定（更地にするか、再生待機にするか）
           if (card.postRemovalState === "recovery_pending_area") {
             draft.gameField.cells[c.y][c.x] = createRecoveryPendingAreaCell(
               c.x,
@@ -117,7 +135,7 @@ export const playCardLogic = (
         }
       });
     } else if (card.cardType === "recovery") {
-      // 回復効果
+      // --- 回復：範囲内の土地を再生 ---
       const impactCells = calculateRecoveryImpact(
         card,
         targetCell,
@@ -126,6 +144,7 @@ export const playCardLogic = (
       );
       impactCells.forEach((c: CellState) => {
         const cell = draft.gameField.cells[c.y][c.x];
+        // 空き地または再生待機状態のマスのみ回復可能
         if (
           cell.cellType === "empty_area" ||
           cell.cellType === "recovery_pending_area"

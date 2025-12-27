@@ -167,7 +167,19 @@ interface DebugDialogProps {
 }
 
 /**
- * ゲームの各種パラメータをリアルタイムで調整するためのデバッグ用ダイアログ。
+ * デバッグ用設定ダイアログ (DebugDialog)
+ * 
+ * 【動機】
+ * 開発中のゲームパラメータ（ジェスチャー感度、カード倍率、全画面表示など）を
+ * ブラウザ上から即座に変更し、調整（プレイヤビリティの検証）を効率化するためです。
+ *
+ * 【恩恵】
+ * - コードを書き換えて保存・リロードすることなく、スライダー等で挙動の変化を微調整できます。
+ * - フルスクリーン切り替えや手札の表示トグルなど、モバイル実機でのテストに
+ *   不可欠な便利機能を一箇所に集約しています。
+ *
+ * 【使用法】
+ * `App.tsx` の最前面に配置されます。画面右下のボタンから表示・非表示を切り替えられます。
  */
 export const DebugDialog: React.FC<DebugDialogProps> = ({
   debugSettings,
@@ -212,6 +224,10 @@ export const DebugDialog: React.FC<DebugDialogProps> = ({
       setIsFullscreen(!!document.fullscreenElement);
     };
     document.addEventListener("fullscreenchange", onFullscreenChange);
+    /**
+     * フルスクリーン解除時のクリーンアップ
+     * イベントリスナーを削除し、メモリリークを防止するために必要です
+     */
     return () =>
       document.removeEventListener("fullscreenchange", onFullscreenChange);
   }, []);

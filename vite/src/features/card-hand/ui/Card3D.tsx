@@ -3,6 +3,25 @@ import { RoundedBox, Text, useTexture } from "@react-three/drei";
 import type { ThreeEvent } from "@react-three/fiber";
 import React, { useEffect, useMemo, useState } from "react";
 import * as THREE from "three";
+
+/**
+ * 3D カードコンポーネント (Card3D)
+ * 
+ * 【動機】
+ * 個々のカードを 3D オブジェクトとして表現し、物理的なカードに触れているような
+ * 視覚体験を提供するためです。情報の階層（タイトル、画像、コスト、説明文）を 3D 空間の
+ * 厚み（Z方向のオフセット）で表現し、リッチな質感を追求しています。
+ *
+ * 【恩恵】
+ * - `react-spring` による滑らかなアニメーション（ホバー時の拡大、選択時の挙動）が可能です。
+ * - クールタイム中のグレーアウト表示や、所属プレイヤーに応じたヘッダー色など、
+ *   動的な状態変化を視覚的にフィードバックできます。
+ * - 3D 空間でのレイヤー構造により、文字の重なりや影を美しく表現できます。
+ *
+ * 【使用法】
+ * `Hand3D` コンポーネント内で使用され、`CardDefinition` データを受け取って描画されます。
+ * クリックされると `useUIStore` を通じてカードの選択状態を更新します。
+ */
 import { useUIStore } from "../../../app/store/useUIStore";
 import { useGameStore } from "../../../app/store/useGameStore";
 import type {
@@ -90,6 +109,8 @@ const Card3D: React.FC<Card3DProps> = ({ card, player, width, opacity }) => {
     config: { tension: 300, friction: 30 },
   });
 
+  // 画像のプリロードと読み込みエラー時のフォールバック処理
+  // 外部URLの画像が読み込めない場合でも、プレースホルダーを表示してUIが崩れるのを防ぐために必要です
   useEffect(() => {
     const img = new Image();
     img.crossOrigin = "Anonymous";
@@ -100,8 +121,12 @@ const Card3D: React.FC<Card3DProps> = ({ card, player, width, opacity }) => {
 
   const imageTexture = useTexture(imageUrl);
 
+  /**
+   * カードクリック時のハンドラ
+   * 手番の確認、クールタイムの判定、および選択状態のトグルを行うために必要です
+   */
   const handleCardClick = (event: ThreeEvent<MouseEvent>) => {
-    event.stopPropagation();
+    event.stopPropagation(); // 他のオブジェクト（盤面など）へのクリック伝播を防ぐ
 
     if (!isMyTurn) {
       setNotification("相手のターンです", player);
@@ -135,6 +160,8 @@ const Card3D: React.FC<Card3DProps> = ({ card, player, width, opacity }) => {
     }
   }, [card.cardType]);
 
+  // ヘッダー（タイトルエリア）の形状を Bezier 曲線を用いて生成
+  // カードの個性を出すための独自の曲線デザインを描画するために必要です
   const headerShape = useMemo(() => {
     const shape = new THREE.Shape();
     const w = CARD_WIDTH * 0.9;

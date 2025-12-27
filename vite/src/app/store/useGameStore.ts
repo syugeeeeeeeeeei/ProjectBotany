@@ -101,10 +101,21 @@ const createInitialGameState = (): GameState => ({
 });
 
 /**
- * 🎮 Project Botany メインゲームストア
- * * Zustand + Immer を使用し、イミュータブルな状態管理を実現しています。
- * Feature-based アーキテクチャに従い、ロジック自体はここには書かず、
- * ActionRegistry に登録された外部ロジックを呼び出す形をとっています。
+ * 🎮 Project Botany メインゲームストア（useGameStore）
+ * 
+ * 【動機】
+ * ゲームコアの「ステート（状態）」と「遷移（アクション）」を中央集権的に管理するためです。
+ * 複雑なボードゲームのロジックを、React のコンポーネントから分離し、
+ * 単一の信頼できる情報源（Single Source of Truth）として機能させます。
+ *
+ * 【恩恵】
+ * - Zustand + Immer により、複雑なネストを持つゲーム状態を、破壊的変更を気にせず直感的に記述できます。
+ * - `dispatch` 方式によるプラグインアークテクチャにより、新機能の追加がストア自体の変更なしで可能です。
+ * - `history`（棋譜）にすべてのアクションが記録されるため、将来的な「一手戻す」機能やリプレイの実装が容易です。
+ *
+ * 【使用法】
+ * 1. コンポーネント内で `const game = useGameStore()` としてフックを呼び出します。
+ * 2. 状態の読み取り（`game.gameField` 等）や、アクションの実行（`game.dispatch('TYPE', payload)`）に使用します。
  */
 export const useGameStore = create(
   immer<GameState & GameActions>((set, get) => ({
@@ -113,6 +124,8 @@ export const useGameStore = create(
 
     /**
      * アクションの振り分けと実行
+     * すべてのゲーム状態変更をこの1つの入口に集約することで、
+     * ログの記録（履歴）、機能拡張、デバッグを共通化するために必要です。
      */
     dispatch: (type, payload) => {
       // 1. レジストリからロジック（純粋関数）を検索
@@ -127,6 +140,7 @@ export const useGameStore = create(
       const result = logic(get(), payload);
 
       // 文字列が返ってきた場合はバリデーションエラーとして扱う
+      // ロジック側で「コスト不足」などのエラーを簡単に返せるようにするために必要です
       if (typeof result === "string") {
         return result;
       }
@@ -154,6 +168,10 @@ export const useGameStore = create(
     // これらは内部的に dispatch を呼び出すだけの薄いラッパーです。
     // UI側のコードを一度に書き換えるリスクを避けるために維持されています。
 
+    /**
+     * カードを使用する（レガシー互換用）
+     * 以前のコードベースからスムーズにプラグインアーキテクチャへ移行するために必要です
+     */
     playCard: (cardId, targetCell) => {
       // インスタンスIDからマスターデータのIDを抽出
       const cardDefId = cardId.split("-instance-")[0];
@@ -164,15 +182,24 @@ export const useGameStore = create(
       return get().dispatch("PLAY_CARD", { card, targetCell, cardId });
     },
 
+    /**
+     * 外来種を移動する（レガシー互換用）
+     */
     moveAlien: (instanceId, targetCell) => {
       return get().dispatch("MOVE_ALIEN", { instanceId, targetCell });
     },
 
+    /**
+     * ターンを進行させる（レガシー互換用）
+     */
     progressTurn: () => {
       // ターン進行にペイロードは不要なので空オブジェクトを渡す
       get().dispatch("PROGRESS_TURN", {});
     },
 
+    /**
+     * ゲームを最初からやり直す
+     */
     resetGame: () => set(createInitialGameState()),
   })),
 );

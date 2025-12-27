@@ -2,6 +2,23 @@ import React, { useEffect, useState } from "react";
 import styled from "styled-components";
 
 /**
+ * 画面上のデバッグコンソール (OnScreenConsole)
+ * 
+ * 【動機】
+ * モバイル実機など、開発者ツール（デベロッパーコンソール）が開けない環境において、
+ * ログ（`console.log`等）を直接画面上で確認できるようにするためです。
+ *
+ * 【恩恵】
+ * - 標準の `console.log/error/warn/info` を自動的にインターセプト（傍受）して表示するため、
+ *   既存のデバッグ出力をそのまま画面に流用できます。
+ * - `JSON.stringify` によるオブジェクトの自動展開機能を備えており、
+ *   複雑な内部状態の確認も容易です。
+ *
+ * 【使用法】
+ * `App.tsx` 内で、デバッグ設定に応じて条件付きレンダリングされます。
+ */
+
+/**
  * メインコンテナ
  * 画面下部に固定され、ヘッダーとログエリアを縦に並べる
  */
@@ -182,6 +199,10 @@ export const OnScreenConsole: React.FC = () => {
     console.warn = intercept("warn");
     console.info = intercept("info");
 
+    /**
+     * クリーンアップ処理
+     * コンポーネント破棄時に console へのパッチを元に戻すために必要です
+     */
     return () => {
       // 修正ポイント: 2345 対応。クリーンアップ関数が値を返さないように明示
       void Object.assign(console, originalConsole);
