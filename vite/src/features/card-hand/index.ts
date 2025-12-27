@@ -12,4 +12,9 @@
  * 【使用法】
  * `App.tsx` 等のメインシーンで `Hand3D` をインポートして配置します。
  */
+
+export const initCardHand = () => {
+	// UI機能のみのため、ロジックの初期化は不要
+};
+
 export { default as Hand3D } from "./ui/Hand3D";

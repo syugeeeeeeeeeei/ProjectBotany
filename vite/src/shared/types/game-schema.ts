@@ -1,17 +1,16 @@
 /**
  * ゲーム全体のデータ構造定義 (game-schema)
- * 
- * 【動機】
+ * * 【動機】
  * 生態系の競争という独自のゲームシステムを、TypeScript の型システムを用いて
  * 厳密に定義するためです。マスの状態（CellType）、カードの属性（CardDefinition）、
  * 成長ロジック（GrowthCondition）などのモデルを一元管理します。
  *
  * 【恩恵】
  * - 判別可能なユニオン型（Discriminated Unions）を活用することで、
- *   カードの種類に応じたプロパティ（駆除カードなら `postRemovalState` など）の
- *   アクセスを型安全に行えます。
+ * カードの種類に応じたプロパティ（駆除カードなら `postRemovalState` など）の
+ * アクセスを型安全に行えます。
  * - `GameState` という巨大な状態オブジェクトの構造を定義することで、
- *   Zustand ストアの実装において補完が効き、保守性が大幅に向上します。
+ * Zustand ストアの実装において補完が効き、保守性が大幅に向上します。
  *
  * 【使用法】
  * アプリケーションのほぼ全てのファイルでインポートされ、
@@ -205,13 +204,16 @@ export interface ActiveAlienInstance {
   currentX: number;
   /** 現在のY座標 */
   currentY: number;
-  /** 現在の侵略力 */
+
+  // --- 以下のパラメータは alien-expansion の改修により使用しない (Phase 1) ---
+  // 代わりに cardMasterData の定義を直接参照する
+  /** @deprecated 現在の侵略力（使用しない） */
   currentInvasionPower: number;
-  /** 現在の侵略形状 */
+  /** @deprecated 現在の侵略形状（使用しない） */
   currentInvasionShape: ShapeType;
-  /** 現在の成長段階 */
+  /** @deprecated 現在の成長段階（使用しない） */
   currentGrowthStage: number;
-  /** 最後の移動やアクションからの経過ターン数 */
+  /** @deprecated 最後の移動やアクションからの経過ターン数（使用しない） */
   turnsSinceLastAction: number;
 }
 

@@ -1,26 +1,26 @@
 /**
  * 🌿 Project Botany 論理機能フラグ設定
- * 
- * 【動機】
+ * * 【動機】
  * アプリケーションの各機能（Feature）を疎結合に保ち、必要に応じて特定の機能を切り離したり（Purge）、
  * 統合したり（Merge）できるプラグインライクなアーキテクチャを実現するためです。
- * 開発中の未完成な機能が他のシステムに影響を及ぼさないよう制御するガードレールとして機能します。
  *
- * 【恩恵】
- * - 特定の機能を `false` にするだけで、ロジック、UIスロット、イベントハンドリングのすべてを無効化できます。
- * - A/Bテストや、特定のプラットフォーム・環境向けに機能を制限するといった運用が用意になります。
- * - コードベースを整理された状態に保ち、機能間の依存関係を明示的に管理できます。
- *
- * 【使用法】
- * `ENABLED_FEATURES` 内のフラグを書き換えます。
- * システム各所（UIやローダー）は、このフラグを参照して動作や表示を決定します。
+ * 【変更点】
+ * - `move-alien` を false に設定 (Phase 1)
+ * - `ecosystem-activation` を廃止し、3つの新機能を追加
+ * - `alien-expansion` のみ true (Phase 3)
  */
 export const ENABLED_FEATURES = {
+	"field-grid": true,
 	"play-card": true,
-	"move-alien": true,
 	"turn-system": true,
 	"hud": true,
 	"card-hand": true,
+
+	// --- Configured per plan ---
+	"move-alien": false,           // Phase 1: 停止
+	"alien-expansion": true,       // Phase 3: 有効（新ロジック）
+	"alien-growth": false,         // Phase 2: 停止
+	"native-restoration": false,   // Phase 2: 停止
 } as const;
 
 export type FeatureKey = keyof typeof ENABLED_FEATURES;

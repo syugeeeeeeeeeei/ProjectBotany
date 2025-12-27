@@ -12,5 +12,9 @@
  * 【使用法】
  * `App.tsx` 内で、3D Canvas とは別のレイヤーとして `GameInfo` や `UIOverlay` を配置します。
  */
+
+export const initHud = () => {
+	// UI機能のみのため、ロジックの初期化は不要
+};
 export { default as GameInfo } from "./ui/GameInfo";
 export { default as UIOverlay } from "./ui/UIOverlay";

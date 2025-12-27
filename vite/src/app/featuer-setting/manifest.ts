@@ -2,21 +2,15 @@ import { FeatureKey } from "./config";
 
 /**
  * 🌿 機能マニフェスト
- * 
- * 【動機】
- * 各機能の物理的な実装（ファイル）と論理的な識別子（FeatureKey）を紐付け、
- * 実行時に動的に初期化を行うための辞書を定義します。
- * TypeScript の型システムを活用し、存在する機能に対してのみ初期化処理を定義することを保証します。
- *
- * 【恩恵】
- * - ダイナミックインポート（`import()`）を利用することで、不要な機能のコードがチャンクとして読み込まれず、
- *   初期ロードのパフォーマンスが向上します（コード分割）。
- * - 機能の追加や削除が、このマニフェストへの追記・削除という明確な形で管理できます。
- *
- * 【使用法】
+ * * 【使用法】
  * `FEATURE_MANIFEST` に `FeatureKey` をキー、非同期の初期化関数を値として登録します。
+ * 設定で true になっている機能のみ、ここから import が実行されます。
  */
 export const FEATURE_MANIFEST: Record<FeatureKey, () => Promise<void>> = {
+	"field-grid": async () => {
+		const mod = await import("@/features/field-grid");
+		mod.initFieldGrid();
+	},
 	"play-card": async () => {
 		const mod = await import("@/features/play-card");
 		mod.initPlayCard();
@@ -30,9 +24,25 @@ export const FEATURE_MANIFEST: Record<FeatureKey, () => Promise<void>> = {
 		mod.initTurnSystem();
 	},
 	"hud": async () => {
-		// HUDは現状UIのみのため初期化なし
+		const mod = await import("@/features/hud");
+		mod.initHud();
 	},
 	"card-hand": async () => {
-		// 手札は現状UIのみのため初期化なし
+		const mod = await import("@/features/card-hand");
+		mod.initCardHand();
+	},
+
+	// --- Ecosystem Features (Splitted) ---
+	"alien-expansion": async () => {
+		const mod = await import("@/features/alien-expansion");
+		mod.initAlienExpansion();
+	},
+	"alien-growth": async () => {
+		const mod = await import("@/features/alien-growth");
+		mod.initAlienGrowth();
+	},
+	"native-restoration": async () => {
+		const mod = await import("@/features/native-restoration");
+		mod.initNativeRestoration();
 	},
 };

@@ -12,4 +12,9 @@
  * 【使用法】
  * `App.tsx` 内で `GameBoard3D` を配置し、`useGameStore` から取得した `gameField` データを渡します。
  */
+
+export const initFieldGrid = () => {
+	// UI機能のみのため、ロジックの初期化は不要
+};
+
 export { default as GameBoard3D } from "./ui/GameBoard3D";
