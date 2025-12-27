@@ -1,7 +1,7 @@
 import React from "react";
 import styled from "styled-components";
-import { useGameStore } from "../../../app/store/useGameStore";
-import type { PlayerType } from "../../../shared/types/game-schema";
+import { useGameStore } from "@/app/store/useGameStore";
+import type { PlayerType } from "@/shared/types/game-schema";
 
 const STYLES = {
   BACKGROUND_COLOR: "rgba(0, 0, 0, 0.7)",

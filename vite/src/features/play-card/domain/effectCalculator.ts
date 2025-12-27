@@ -2,7 +2,7 @@ import {
   CardDefinition,
   CellState,
   FieldState,
-} from "../../../shared/types/game-schema";
+} from "@/shared/types/game-schema";
 
 /**
  * カードの効果範囲を計算する。

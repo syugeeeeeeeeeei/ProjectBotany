@@ -1,6 +1,7 @@
 /// <reference types="vitest" />
 import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
+import path from 'path'
 
 // https://vite.dev/config/
 export default defineConfig({
@@ -31,9 +32,9 @@ export default defineConfig({
       },
     },
   },
-  // test: {
-  //   globals: true,
-  //   environment: 'happy-dom', // DOMをシミュレートする環境
-  //   setupFiles: './src/setupTests.ts', // テスト実行前に読み込むファイル
-  // },
+  resolve: {
+    alias: {
+      '@': path.resolve(__dirname, './src'),
+    },
+  },
 })

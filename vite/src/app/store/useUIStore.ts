@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { immer } from "zustand/middleware/immer";
-import { PlayerType } from "../../shared/types/game-schema";
+import { PlayerType } from "@/shared/types/game-schema";
 
 interface UIState {
   selectedCardId: string | null;

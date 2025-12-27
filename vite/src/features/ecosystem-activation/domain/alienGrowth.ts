@@ -1,7 +1,4 @@
-import {
-  ActiveAlienInstance,
-  AlienCard,
-} from "../../../shared/types/game-schema";
+import { ActiveAlienInstance, AlienCard } from "@/shared/types/game-schema";
 
 /**
  * 外来種の成長条件を判定し、能力を更新する。

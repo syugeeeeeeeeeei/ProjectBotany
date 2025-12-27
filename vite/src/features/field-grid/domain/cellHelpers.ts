@@ -4,7 +4,7 @@ import {
   NativeAreaCell,
   AlienCoreCell,
   AlienInvasionAreaCell,
-} from "../../../shared/types/game-schema";
+} from "@/shared/types/game-schema";
 
 /** 空マス（EmptyAreaCell）を生成する */
 export const createEmptyAreaCell = (x: number, y: number): EmptyAreaCell => ({

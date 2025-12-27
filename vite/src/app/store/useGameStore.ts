@@ -1,17 +1,17 @@
 import { create } from "zustand";
 import { immer } from "zustand/middleware/immer";
-import { GAME_SETTINGS } from "../../shared/constants/game-config";
+import { GAME_SETTINGS } from "@/shared/constants/game-config";
 import {
   GameState,
   PlayerType,
   PlayerState,
   CellState,
-} from "../../shared/types/game-schema";
-import { createNativeAreaCell } from "../../features/field-grid/domain/cellHelpers";
-import { progressTurnLogic } from "../../features/turn-system/domain/turnLogic";
-import { playCardLogic } from "../../features/play-card/domain/playCardLogic";
-import { moveAlienLogic } from "../../features/move-alien/domain/moveAlienLogic";
-import cardMasterData from "../../data/cardMasterData";
+} from "@/shared/types/game-schema";
+import { createNativeAreaCell } from "@/features/field-grid/domain/cellHelpers";
+import { progressTurnLogic } from "@/features/turn-system/domain/turnLogic";
+import { playCardLogic } from "@/features/play-card/domain/playCardLogic";
+import { moveAlienLogic } from "@/features/move-alien/domain/moveAlienLogic";
+import cardMasterData from "@/data/cardMasterData";
 
 interface GameActions {
   playCard: (cardId: string, targetCell: CellState) => string | void;

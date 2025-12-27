@@ -3,16 +3,16 @@ import { useGesture } from "@use-gesture/react";
 import React, { useMemo, useRef } from "react";
 import * as THREE from "three";
 import { Group } from "three";
-import { GAME_SETTINGS } from "../../../shared/constants/game-config";
-import cardMasterData from "../../../data/cardMasterData";
-import { getEffectRange } from "../../play-card/domain/effectCalculator";
-import { useUIStore } from "../../../app/store/useUIStore";
-import { useGameStore } from "../../../app/store/useGameStore";
+import { GAME_SETTINGS } from "@/shared/constants/game-config";
+import cardMasterData from "@/data/cardMasterData";
+import { getEffectRange } from "@/features/play-card/domain/effectCalculator";
+import { useUIStore } from "@/app/store/useUIStore";
+import { useGameStore } from "@/app/store/useGameStore";
 import type {
   CardDefinition,
   CellState,
   FieldState,
-} from "../../../shared/types/game-schema";
+} from "@/shared/types/game-schema";
 
 // --- 定数定義 ---
 

@@ -7,14 +7,14 @@ import {
   EradicationCard,
   RecoveryCard,
   ActiveAlienInstance,
-} from "../../../shared/types/game-schema";
-import { generateId } from "../../../shared/utils/id";
+} from "@/shared/types/game-schema";
+import { generateId } from "@/shared/utils/id";
 import {
   createAlienCoreCell,
   createEmptyAreaCell,
   createRecoveryPendingAreaCell,
   createNativeAreaCell,
-} from "../../field-grid/domain/cellHelpers";
+} from "@/features/field-grid/domain/cellHelpers";
 import { getEffectRange } from "./effectCalculator";
 
 /** 外来種カードの効果を適用する */

@@ -1,8 +1,8 @@
-import { GameState } from "../../../shared/types/game-schema";
+import { GameState } from "@/shared/types/game-schema";
 import {
   createNativeAreaCell,
   createRecoveryPendingAreaCell,
-} from "../../field-grid/domain/cellHelpers";
+} from "@/features/field-grid/domain/cellHelpers";
 
 /**
  * 在来種サイドの活性フェーズ（自動再生）を実行する。

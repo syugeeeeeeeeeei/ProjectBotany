@@ -7,22 +7,22 @@ import styled, { createGlobalStyle } from "styled-components";
 import {
   DebugDialog,
   type DebugSettings,
-} from "../shared/components/debug/DebugDialog";
-import SceneController from "../shared/components/3d/SceneController";
-import type { CardDefinition, PlayerType } from "../shared/types/game-schema";
-import { useFullscreenHeight } from "../shared/hooks/useFullscreenHeight";
+} from "@/shared/components/debug/DebugDialog";
+import SceneController from "@/shared/components/3d/SceneController";
+import type { CardDefinition, PlayerType } from "@/shared/types/game-schema";
+import { useFullscreenHeight } from "@/shared/hooks/useFullscreenHeight";
 
 // Features
-import { GameBoard3D } from "../features/field-grid";
-import { Hand3D } from "../features/card-hand";
-import { GameInfo, UIOverlay } from "../features/hud";
-import { ActionButtons } from "../features/play-card";
-import { TurnEndButton } from "../features/turn-system";
+import { GameBoard3D } from "@/features/field-grid";
+import { Hand3D } from "@/features/card-hand";
+import { GameInfo, UIOverlay } from "@/features/hud";
+import { ActionButtons } from "@/features/play-card";
+import { TurnEndButton } from "@/features/turn-system";
 
 // Stores
-import cardMasterData from "../data/cardMasterData";
-import { useGameStore } from "./store/useGameStore";
-import { useUIStore } from "./store/useUIStore";
+import cardMasterData from "@/data/cardMasterData";
+import { useGameStore } from "@/app/store/useGameStore";
+import { useUIStore } from "@/app/store/useUIStore";
 
 const GLOBAL_STYLES = { BACKGROUND_COLOR: "#50342b" };
 const LAYOUT = {
@@ -180,13 +180,21 @@ function App() {
           instanceId: `${card.id}-instance-${i}`,
         })),
       );
+
+    // 外来種は単純なコスト昇順
     const alien = duplicate(
       cardMasterData.filter((c) => c.cardType === "alien"),
     ).sort((a, b) => a.cost - b.cost);
-    const native = [
-      ...duplicate(cardMasterData.filter((c) => c.cardType === "eradication")),
-      ...duplicate(cardMasterData.filter((c) => c.cardType === "recovery")),
-    ].sort((a, b) => a.cost - b.cost);
+
+    // 在来種は 駆除(コスト順) -> 回復(コスト順) の順で結合
+    const eradication = duplicate(
+      cardMasterData.filter((c) => c.cardType === "eradication"),
+    ).sort((a, b) => a.cost - b.cost);
+    const recovery = duplicate(
+      cardMasterData.filter((c) => c.cardType === "recovery"),
+    ).sort((a, b) => a.cost - b.cost);
+    const native = [...eradication, ...recovery];
+
     return { alienCards: alien, nativeCards: native };
   }, []);
 

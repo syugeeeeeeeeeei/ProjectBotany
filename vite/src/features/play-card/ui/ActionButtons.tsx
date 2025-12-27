@@ -1,10 +1,10 @@
 import React from "react";
-import { useUIStore } from "../../../app/store/useUIStore";
-import { useGameStore } from "../../../app/store/useGameStore";
+import { useUIStore } from "@/app/store/useUIStore";
+import { useGameStore } from "@/app/store/useGameStore";
 import {
   BaseActionButton,
   ActionButtonContainer,
-} from "../../../shared/components/BaseActionButton";
+} from "@/shared/components/BaseActionButton";
 import styled from "styled-components";
 
 const SummonButton = styled(BaseActionButton)`

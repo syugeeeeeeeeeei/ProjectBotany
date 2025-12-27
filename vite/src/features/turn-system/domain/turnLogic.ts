@@ -1,8 +1,8 @@
 import { produce } from "immer";
-import { GameState, PlayerType } from "../../../shared/types/game-schema";
-import { GAME_SETTINGS } from "../../../shared/constants/game-config";
-import { runAlienActivationPhase } from "../../ecosystem-activation/domain/alienExpansion";
-import { runNativeActivationPhase } from "../../ecosystem-activation/domain/nativeRestoration";
+import { GameState, PlayerType } from "@/shared/types/game-schema";
+import { GAME_SETTINGS } from "@/shared/constants/game-config";
+import { runAlienActivationPhase } from "@/features/ecosystem-activation/domain/alienExpansion";
+import { runNativeActivationPhase } from "@/features/ecosystem-activation/domain/nativeRestoration";
 
 /**
  * ターンを進行させ、活性フェーズとリソース回復を行う。

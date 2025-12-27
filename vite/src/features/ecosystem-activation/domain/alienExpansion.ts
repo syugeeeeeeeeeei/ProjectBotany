@@ -3,13 +3,13 @@ import {
   ActiveAlienInstance,
   AlienCard,
   DirectionType,
-} from "../../../shared/types/game-schema";
-import cardMasterData from "../../../data/cardMasterData";
-import { getEffectRange } from "../../play-card/domain/effectCalculator";
+} from "@/shared/types/game-schema";
+import cardMasterData from "@/data/cardMasterData";
+import { getEffectRange } from "@/features/play-card/domain/effectCalculator";
 import {
   createAlienInvasionAreaCell,
   createEmptyAreaCell,
-} from "../../field-grid/domain/cellHelpers";
+} from "@/features/field-grid/domain/cellHelpers";
 import { applyGrowthLogic } from "./alienGrowth";
 
 /**

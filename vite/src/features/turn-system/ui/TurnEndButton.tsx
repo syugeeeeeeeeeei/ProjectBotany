@@ -1,9 +1,9 @@
 import React from "react";
 import styled from "styled-components";
-import { useUIStore } from "../../../app/store/useUIStore";
-import { useGameStore } from "../../../app/store/useGameStore";
-import { BaseActionButton } from "../../../shared/components/BaseActionButton";
-import { PlayerType } from "../../../shared/types/game-schema";
+import { useUIStore } from "@/app/store/useUIStore";
+import { useGameStore } from "@/app/store/useGameStore";
+import { BaseActionButton } from "@/shared/components/BaseActionButton";
+import { PlayerType } from "@/shared/types/game-schema";
 
 const StyledTurnEndButton = styled(BaseActionButton)`
   background: linear-gradient(145deg, #81c784, #4caf50);

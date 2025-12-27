@@ -1,10 +1,10 @@
 import { produce } from "immer";
-import { GameState, CellState } from "../../../shared/types/game-schema";
-import cardMasterData from "../../../data/cardMasterData";
+import { GameState, CellState } from "@/shared/types/game-schema";
+import cardMasterData from "@/data/cardMasterData";
 import {
   createEmptyAreaCell,
   createAlienCoreCell,
-} from "../../field-grid/domain/cellHelpers";
+} from "@/features/field-grid/domain/cellHelpers";
 
 /**
  * 外来種の移動を試みるロジック。
