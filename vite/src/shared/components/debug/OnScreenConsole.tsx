@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import styled from 'styled-components';
+import React, { useEffect, useState } from "react";
+import styled from "styled-components";
 
 /**
  * メインコンテナ
@@ -15,7 +15,7 @@ const ConsoleContainer = styled.div`
   background-color: rgba(20, 20, 20, 0.85);
   backdrop-filter: blur(4px);
   color: #0f0;
-  font-family: 'Courier New', Courier, monospace;
+  font-family: "Courier New", Courier, monospace;
   border: 1px solid #444;
   border-radius: 8px;
   z-index: 9999;
@@ -79,7 +79,7 @@ const LogList = styled.div`
   flex: 1;
   overflow-y: auto;
   display: flex;
-  flex-direction: column-reverse; 
+  flex-direction: column-reverse;
   padding: 8px;
   gap: 2px;
 
@@ -101,16 +101,20 @@ const LogMessage = styled.div<{ $type: string }>`
   line-height: 1.4;
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
   color: ${({ $type }) => {
-		switch ($type) {
-			case 'error': return '#ff5555';
-			case 'warn': return '#ffb86c';
-			case 'info': return '#8be9fd';
-			default: return '#50fa7b';
-		}
-	}};
+    switch ($type) {
+      case "error":
+        return "#ff5555";
+      case "warn":
+        return "#ffb86c";
+      case "info":
+        return "#8be9fd";
+      default:
+        return "#50fa7b";
+    }
+  }};
 
   &::before {
-    content: '> ';
+    content: "> ";
     opacity: 0.5;
   }
 `;
@@ -127,79 +131,85 @@ const ShowButton = styled.button`
   padding: 5px 12px;
   font-size: 12px;
   cursor: pointer;
-  font-family: 'Courier New', Courier, monospace;
+  font-family: "Courier New", Courier, monospace;
 `;
 
 interface LogEntry {
-	id: number;
-	type: 'log' | 'error' | 'warn' | 'info';
-	message: string;
+  id: number;
+  type: "log" | "error" | "warn" | "info";
+  message: string;
 }
 
 export const OnScreenConsole: React.FC = () => {
-	const [logs, setLogs] = useState<LogEntry[]>([]);
-	const [isVisible, setIsVisible] = useState(true);
+  const [logs, setLogs] = useState<LogEntry[]>([]);
+  const [isVisible, setIsVisible] = useState(true);
 
-	const formatMessage = (args: any[]): string => {
-		return args.map(arg => {
-			if (typeof arg === 'object' && arg !== null) {
-				try {
-					return JSON.stringify(arg, null, 2);
-				} catch (e) {
-					return '[Unserializable Object]';
-				}
-			}
-			return String(arg);
-		}).join(' ');
-	};
+  const formatMessage = (args: any[]): string => {
+    return args
+      .map((arg) => {
+        if (typeof arg === "object" && arg !== null) {
+          try {
+            return JSON.stringify(arg, null, 2);
+          } catch (e) {
+            return "[Unserializable Object]";
+          }
+        }
+        return String(arg);
+      })
+      .join(" ");
+  };
 
-	useEffect(() => {
-		const originalConsole = { ...console };
+  useEffect(() => {
+    const originalConsole = { ...console };
 
-		const intercept = (type: LogEntry['type']) => (...args: any[]) => {
-			// 修正ポイント: 2556 対応。メソッドを any にキャストして spread を許可する
-			(originalConsole[type] as any)(...args);
-			setLogs(prevLogs => [
-				{ id: Date.now() + Math.random(), type, message: formatMessage(args) },
-				...prevLogs
-			]);
-		};
+    const intercept =
+      (type: LogEntry["type"]) =>
+      (...args: any[]) => {
+        // 修正ポイント: 2556 対応。メソッドを any にキャストして spread を許可する
+        (originalConsole[type] as any)(...args);
+        setLogs((prevLogs) => [
+          {
+            id: Date.now() + Math.random(),
+            type,
+            message: formatMessage(args),
+          },
+          ...prevLogs,
+        ]);
+      };
 
-		console.log = intercept('log');
-		console.error = intercept('error');
-		console.warn = intercept('warn');
-		console.info = intercept('info');
+    console.log = intercept("log");
+    console.error = intercept("error");
+    console.warn = intercept("warn");
+    console.info = intercept("info");
 
-		return () => {
-			// 修正ポイント: 2345 対応。クリーンアップ関数が値を返さないように明示
-			void Object.assign(console, originalConsole);
-		};
-	}, []);
+    return () => {
+      // 修正ポイント: 2345 対応。クリーンアップ関数が値を返さないように明示
+      void Object.assign(console, originalConsole);
+    };
+  }, []);
 
-	if (!isVisible) {
-		return (
-			<ShowButton onClick={() => setIsVisible(true)}>
-				TERMINAL: SHOW
-			</ShowButton>
-		);
-	}
+  if (!isVisible) {
+    return (
+      <ShowButton onClick={() => setIsVisible(true)}>TERMINAL: SHOW</ShowButton>
+    );
+  }
 
-	return (
-		<ConsoleContainer>
-			<ConsoleHeader>
-				<HeaderTitle>DEBUG CONSOLE</HeaderTitle>
-				<ButtonGroup>
-					<ActionButton onClick={() => setLogs([])}>Clear</ActionButton>
-					<ActionButton onClick={() => setIsVisible(false)}>Hide</ActionButton>
-				</ButtonGroup>
-			</ConsoleHeader>
-			<LogList>
-				{logs.map(log => (
-					<LogMessage key={log.id} $type={log.type}>
-						[{log.type.toUpperCase()}] {log.message}
-					</LogMessage>
-				))}
-			</LogList>
-		</ConsoleContainer>
-	);
+  return (
+    <ConsoleContainer>
+      <ConsoleHeader>
+        <HeaderTitle>DEBUG CONSOLE</HeaderTitle>
+        <ButtonGroup>
+          <ActionButton onClick={() => setLogs([])}>Clear</ActionButton>
+          <ActionButton onClick={() => setIsVisible(false)}>Hide</ActionButton>
+        </ButtonGroup>
+      </ConsoleHeader>
+      <LogList>
+        {logs.map((log) => (
+          <LogMessage key={log.id} $type={log.type}>
+            [{log.type.toUpperCase()}] {log.message}
+          </LogMessage>
+        ))}
+      </LogList>
+    </ConsoleContainer>
+  );
 };

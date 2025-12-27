@@ -1,4 +1,4 @@
-import styled from 'styled-components';
+import styled from "styled-components";
 
 /**
  * ゲーム内で使用されるアクションボタンのベーススタイル。
@@ -14,7 +14,7 @@ export const BaseActionButton = styled.button`
   cursor: pointer;
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
   transition: all 0.2s ease-in-out;
-  text-shadow: 1px 1px 2px rgba(0,0,0,0.4);
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.4);
   width: 100%;
 
   &:hover:not(:disabled) {

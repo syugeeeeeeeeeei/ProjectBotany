@@ -1,4 +1,4 @@
-import { nanoid } from 'nanoid';
+import { nanoid } from "nanoid";
 
 /**
  * ユニークなID（nanoid）を生成する。

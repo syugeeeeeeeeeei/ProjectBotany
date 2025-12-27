@@ -1,1 +1,1 @@
-export { default as Hand3D } from './ui/Hand3D';
+export { default as Hand3D } from "./ui/Hand3D";
