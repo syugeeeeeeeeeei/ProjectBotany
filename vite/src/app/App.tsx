@@ -7,7 +7,7 @@
  * 【動機】
  * ゲーム全体の状態（Store）とUI表現（Canvas/HTML）を橋渡しするハブとして機能させるためです。
  * 複雑なゲームの進行（ターン開始、終了、通知の消去など）を副作用（useEffect）として一箇所で定義することで、
- * 整合性を保ちつつ各コンポーネントに反映させることを意図しています。
+ * 整合性を保つつつ各コンポーネントに反映させることを意図しています。
  *
  * 【恩恵】
  * - 3Dシーンと2Dオーバーレイが分離・統合されているため、レイヤーごとの管理が容易になります。
@@ -20,7 +20,6 @@
  * 各機能モジュール（Features）へ必要なデータとコールバックを分配します。
  */
 
-import { OrbitControls } from "@react-three/drei";
 import { Canvas } from "@react-three/fiber";
 import { useEffect, useMemo, useState } from "react";
 import styled, { createGlobalStyle } from "styled-components";
@@ -399,12 +398,6 @@ function App() {
               onPageChange={setNativeHandPage}
               debugSettings={debugSettings}
               isInteractionLocked={isSelecting}
-            />
-            <OrbitControls
-              makeDefault
-              enableZoom={false}
-              enableRotate={false}
-              enablePan={false}
             />
             <SceneController />
           </Canvas>
