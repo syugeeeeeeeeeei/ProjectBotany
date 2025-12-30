@@ -1,6 +1,6 @@
 /**
  * ゲーム設定定数 (GAME_SETTINGS)
- * ゲームのルール定義
+ * フィールドサイズ、最大ターン数、機能フラグなどの「ゲームのルール」を一元管理
  */
 export const GAME_SETTINGS = {
   /** フィールドの幅（マス数） */
@@ -9,10 +9,10 @@ export const GAME_SETTINGS = {
   FIELD_HEIGHT: 10,
   /** ゲームの最大ターン数 */
   MAXIMUM_TURNS: 4,
-  /** 機能の有効/無効を制御するフラグ (リファクタリング中は固定) */
-  FEATURE_FLAGS: {
-    ENABLE_MOVE_ALIEN: true,
-    ENABLE_PLAY_CARD: true,
-    ENABLE_TURN_SYSTEM: true,
-  },
+
+  /** デバッグ設定 */
+  DEBUG: {
+    SHOW_GESTURE_AREA: false,
+    LOG_EVENTS: true,
+  }
 };

@@ -1,6 +1,6 @@
-import React, { Suspense } from "react";
-import { Canvas } from "@react-three/fiber";
-import { OrbitControls, PerspectiveCamera } from "@react-three/drei";
+import React, { Suspense, useEffect } from "react";
+import { Canvas, useThree } from "@react-three/fiber";
+import { OrbitControls } from "@react-three/drei";
 
 interface GameLayoutProps {
   /** 3Dシーン内に配置する要素 (盤面、駒など) */
@@ -13,22 +13,25 @@ interface GameLayoutProps {
  * 3Dシーンのカメラと操作（Controller）を管理するコンポーネント
  * GameLayoutからカメラ設定を分離し、OrbitControlsで自由な操作を提供します。
  */
-export const SceneController: React.FC = () => {
-  return (
-    <>
-      {/* makeDefault: これをメインカメラとして設定
-        position: [0, 45, 0] -> 真上からの視点
-        fov: 25 -> 望遠気味（歪みが少ない）
-      */}
-      <PerspectiveCamera makeDefault position={[0, 45, 0]} fov={25} />
+const SceneController = () => {
+  const { camera } = useThree();
 
-      <OrbitControls
-        enablePan={false}
-        enableZoom={false}
-        enableRotate={false}
-        target={[0, 0, 0]} // 常に原点（盤面中心）を見る
-      />
-    </>
+  /**
+   * コンポーネントのマウント時に一度だけカメラの初期位置と注視点を設定する。
+   * ゲーム開始時に盤面全体が正しいアングルで見えるように強制するために必要です
+   */
+  useEffect(() => {
+    camera.position.set(0, 10, 0);
+    camera.lookAt(0, 0, 0);
+  }, [camera]);
+
+  return (
+    <OrbitControls
+      makeDefault
+      enableZoom={false}
+      enableRotate={false}
+      enablePan={false}
+    />
   );
 };
 
