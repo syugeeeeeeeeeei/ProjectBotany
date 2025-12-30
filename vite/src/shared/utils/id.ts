@@ -2,7 +2,7 @@ import { nanoid } from "nanoid";
 
 /**
  * ID 生成ユーティリティ (generateId)
- * 
+ *
  * 【動機】
  * カードのインスタンス、外来種の個体、アクションログなど、
  * ゲーム内で動的に生成される多数のオブジェクトに対して、
@@ -21,5 +21,5 @@ import { nanoid } from "nanoid";
  * 動的に生成されるオブジェクトに対して、衝突のない識別番号を保証するために必要です
  */
 export const generateId = (prefix?: string): string => {
-	return prefix ? `${prefix}-${nanoid()}` : nanoid();
+  return prefix ? `${prefix}-${nanoid()}` : nanoid();
 };

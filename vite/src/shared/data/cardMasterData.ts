@@ -2,7 +2,7 @@ import { CardDefinition } from "@/shared/types/game-schema";
 
 /**
  * 🌿 Project Botany カードマスターデータ
- * 
+ *
  * 【動機】
  * ゲーム内に登場する全てのカード（外来種、駆除、回復）の属性やパラメータを一元管理するためです。
  * ロジックからデータを切り離すことで、カードの性能調整（バランス調整）や、

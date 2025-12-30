@@ -6,18 +6,18 @@ import { gameActions } from "@/core/api/actions";
  * App起動時に一度だけ実行される
  */
 export const initializeGameComposition = () => {
-	console.log("🚀 Initializing Core-Feature Architecture...");
+  console.log("🚀 Initializing Core-Feature Architecture...");
 
-	// 1. Core Systems の初期化
-	// 盤面のメモリ確保など
-	FieldSystem.initializeField();
+  // 1. Core Systems の初期化
+  // 盤面のメモリ確保など
+  FieldSystem.initializeField();
 
-	// 2. Feature の登録 (Phase 4で実装)
-	// 例: registerFeature(alienExpansionFeature);
+  // 2. Feature の登録 (Phase 4で実装)
+  // 例: registerFeature(alienExpansionFeature);
 
-	// 3. ゲーム開始
-	// 必要なら初期ステートのリセットなど
-	gameActions.system.reset();
+  // 3. ゲーム開始
+  // 必要なら初期ステートのリセットなど
+  gameActions.system.reset();
 
-	console.log("✅ Initialization Complete.");
+  console.log("✅ Initialization Complete.");
 };

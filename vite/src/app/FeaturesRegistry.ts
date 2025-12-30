@@ -7,8 +7,8 @@ import { alienExpansionFeature } from "@/features/alien-expansion";
 // import { weatherFeature } from "@/features/weather";
 
 export const FeaturesRegistry: GameFeature[] = [
-	fieldGridFeature,
-	turnSystemFeature,
-	alienExpansionFeature,
-	// weatherFeature, 
+  fieldGridFeature,
+  turnSystemFeature,
+  alienExpansionFeature,
+  // weatherFeature,
 ];

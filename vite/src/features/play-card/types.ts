@@ -5,9 +5,9 @@ import { ActionLog } from "@/shared/types/actions";
  * このFeature固有のデータ構造
  */
 export type PlayCardPayload = {
-	cardId: string;
-	targetX: number;
-	targetY: number;
+  cardId: string;
+  targetX: number;
+  targetY: number;
 };
 
 /**
@@ -24,6 +24,8 @@ export const PLAY_CARD_ACTION_TYPE = "PLAY_CARD";
  * 型ガード関数 (Type Guard)
  * 不明なアクションログが、カードプレイアクションであるかを判定する
  */
-export const isPlayCardAction = (action: ActionLog): action is PlayCardAction => {
-	return action.type === PLAY_CARD_ACTION_TYPE;
+export const isPlayCardAction = (
+  action: ActionLog,
+): action is PlayCardAction => {
+  return action.type === PLAY_CARD_ACTION_TYPE;
 };
