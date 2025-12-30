@@ -1,15 +1,11 @@
-export * from "./primitives";
-import { PlayerType, ShapeType, DirectionType, GamePhase } from "./primitives";
-import { ActionLog } from "./actions"; // 追加
-
 /**
  * ゲーム全体のデータ構造定義 (game-schema)
- * CoreとFeatureが共有する Source of Truth
  */
+export * from "./primitives";
+import { PlayerType, ShapeType, DirectionType, GamePhase, GrowthCondition, GrowthEffect } from "./primitives";
+import { ActionLog } from "./actions";
 
-// --- マス・成長定義 ---
-
-/** マスの状態（種類） */
+// --- マス定義 ---
 export type CellType =
   | "native_area"
   | "alien_core"
@@ -17,18 +13,7 @@ export type CellType =
   | "empty_area"
   | "recovery_pending_area";
 
-export interface GrowthEffect {
-  newInvasionPower?: number;
-  newInvasionShape?: ShapeType;
-}
-
-export interface GrowthCondition {
-  type: "turns_since_last_action";
-  value: number;
-}
-
 // --- カード定義 ---
-
 interface CardDefinitionBase {
   id: string;
   name: string;
@@ -42,32 +27,22 @@ interface CardDefinitionBase {
 
 type TargetingDefinition =
   | {
-      shape: "straight";
-      power: number;
-      direction: DirectionType;
-      target?: "alien_invasion_area" | "alien_core";
-    }
+    shape: ShapeType;
+    power: number;
+    direction?: DirectionType;
+    target?: "alien_invasion_area" | "alien_core";
+  }
   | {
-      shape: "cross" | "range" | "single";
-      power: number;
-      target?: "alien_invasion_area" | "alien_core";
-    }
-  | {
-      target: "species";
-    };
+    target: "species";
+  };
 
 export interface AlienCard extends CardDefinitionBase {
   cardType: "alien";
-  targeting:
-    | {
-        shape: "straight";
-        power: number;
-        direction: DirectionType;
-      }
-    | {
-        shape: "cross" | "range" | "single";
-        power: number;
-      };
+  targeting: {
+    shape: ShapeType;
+    power: number;
+    direction?: DirectionType;
+  };
   canGrow?: boolean;
   growthConditions?: GrowthCondition[];
   growthEffects?: GrowthEffect[];
@@ -88,7 +63,6 @@ export interface RecoveryCard extends CardDefinitionBase {
 export type CardDefinition = AlienCard | EradicationCard | RecoveryCard;
 
 // --- インスタンスと状態 ---
-
 export interface CardInstance {
   instanceId: string;
   cardDefinitionId: string;
@@ -110,23 +84,19 @@ export interface ActiveAlienInstance {
   instanceId: string;
   spawnedTurn: number;
   cardDefinitionId: string;
+  // 以下、legacyの仕様に基づき復元
+  currentX: number;
+  currentY: number;
 }
 
 // --- フィールド ---
-
 interface CellStateBase {
   x: number;
   y: number;
 }
 
-export interface NativeAreaCell extends CellStateBase {
-  cellType: "native_area";
-  ownerId: "native";
-}
-export interface EmptyAreaCell extends CellStateBase {
-  cellType: "empty_area";
-  ownerId: null;
-}
+export interface NativeAreaCell extends CellStateBase { cellType: "native_area"; ownerId: "native"; }
+export interface EmptyAreaCell extends CellStateBase { cellType: "empty_area"; ownerId: null; }
 export interface RecoveryPendingAreaCell extends CellStateBase {
   cellType: "recovery_pending_area";
   ownerId: null;
@@ -156,22 +126,17 @@ export interface FieldState {
   cells: CellState[][];
 }
 
-// --- ゲーム全体 ---
-
 export interface GameState {
   currentTurn: number;
   maximumTurns: number;
   activePlayerId: PlayerType;
   gameField: FieldState;
-  playerStates: {
-    [key in PlayerType]: PlayerState;
-  };
+  playerStates: { [key in PlayerType]: PlayerState };
   currentPhase: GamePhase;
   isGameOver: boolean;
   winningPlayerId: PlayerType | null;
   activeAlienInstances: { [instanceId: string]: ActiveAlienInstance };
   nativeScore: number;
   alienScore: number;
-  // 修正: ジェネリクスのデフォルト(unknown)を利用し、Core側では中身を関知しない
   history: ActionLog[];
 }

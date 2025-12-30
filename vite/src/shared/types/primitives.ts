@@ -36,3 +36,15 @@ export type DirectionType =
   | "right"
   | "vertical"
   | "horizon";
+
+/** 成長条件定義 */
+export interface GrowthCondition {
+  type: "turns_since_last_action";
+  value: number;
+}
+
+/** 成長効果定義 */
+export interface GrowthEffect {
+  newInvasionPower?: number;
+  newInvasionShape?: ShapeType;
+}

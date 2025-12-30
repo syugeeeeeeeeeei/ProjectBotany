@@ -1,32 +1,49 @@
-// src/app/App.tsx
 import React, { useEffect } from "react";
 import { GameLayout } from "@/core/ui/GameLayout";
 import { initializeGameComposition } from "./GameComposition";
-import { FeaturesRegistry } from "./FeaturesRegistry"; // 設定ファイルを読み込み
+import { GameBoard3D } from "@/features/field-grid";
+import { TurnEndButton } from "@/features/turn-system";
+import { Hand3D } from "@/features/card-hand";
+import { initPlayCardLogic } from "@/features/play-card";
+import { initAlienExpansionLogic } from "@/features/alien-expansion";
 
-export const App: React.FC = () => {
+const App: React.FC = () => {
   useEffect(() => {
+    // 1. Core 初期化
     initializeGameComposition();
 
-    // 登録された全Featureのロジックを初期化
-    FeaturesRegistry.forEach((f) => f.init?.());
+    // 2. Logic 初期化とクリーンアップの登録
+    const cleanupPlayCard = initPlayCardLogic();
+    const cleanupAlienExpansion = initAlienExpansionLogic();
+
+    // アンマウント時、または Strict Mode の再実行時にイベント購読を解除
+    return () => {
+      cleanupPlayCard();
+      cleanupAlienExpansion();
+    };
   }, []);
 
   return (
     <GameLayout
       uiOverlay={
         <>
-          {/* UIコンポーネントを自動配置 */}
-          {FeaturesRegistry.map(
-            (f) => f.components?.ui && <f.components.ui key={f.key} />,
-          )}
+          <div
+            style={{ padding: "20px", color: "white", pointerEvents: "none" }}
+          >
+            <h1 style={{ margin: 0, fontSize: "1.5rem" }}>Project Botany v2</h1>
+            <p style={{ margin: "5px 0", fontSize: "0.8rem", opacity: 0.7 }}>
+              Phase 4: Logic Implementation & Event Cleanup
+            </p>
+          </div>
+          <TurnEndButton />
         </>
       }
     >
-      {/* 3Dコンポーネントを自動配置 */}
-      {FeaturesRegistry.map(
-        (f) => f.components?.main && <f.components.main key={f.key} />,
-      )}
+      <GameBoard3D />
+      <Hand3D player="alien" />
+      <Hand3D player="native" />
     </GameLayout>
   );
 };
+
+export default App;

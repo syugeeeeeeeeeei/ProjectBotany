@@ -3090,6 +3090,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"mitt@npm:^3.0.1":
+  version: 3.0.1
+  resolution: "mitt@npm:3.0.1"
+  checksum: 10c0/3ab4fdecf3be8c5255536faa07064d05caa3dd332bd318ff02e04621f7b3069ca1de9106cfe8e7ced675abfc2bec2ce4c4ef321c4a1bb1fb29df8ae090741913
+  languageName: node
+  linkType: hard
+
 "mrmime@npm:^2.0.0":
   version: 2.0.1
   resolution: "mrmime@npm:2.0.1"
@@ -4290,6 +4297,7 @@ __metadata:
     eslint-plugin-react-refresh: "npm:^0.4.20"
     globals: "npm:^16.3.0"
     immer: "npm:^10.1.1"
+    mitt: "npm:^3.0.1"
     prettier: "npm:^3.7.4"
     react: "npm:^19.1.0"
     react-dom: "npm:^19.1.0"

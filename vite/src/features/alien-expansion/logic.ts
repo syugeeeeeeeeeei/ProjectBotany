@@ -1,68 +1,51 @@
 import { gameEventBus } from "@/core/event-bus/GameEventBus";
-import { gameActions } from "@/core/api/actions";
-// 変更: Store直接参照をやめ、新しいAPIを使用
-import { gameQuery } from "@/core/api/queries";
+import { gameQuery } from "@/core/api";
+import { FieldSystem } from "@/core/systems/FieldSystem";
+import { EffectSystem } from "@/core/systems/EffectSystem";
+import cardMasterData from "@/shared/data/cardMasterData";
 
 /**
- * 侵食ロジック
- * ターン終了直前に実行され、外来種の支配領域を広げる
+ * initAlienExpansionLogic: 自動侵食ロジックの初期化
+ * @returns クリーンアップ関数（イベント購読の解除）
  */
 export const initAlienExpansionLogic = () => {
-  gameEventBus.on("BEFORE_TURN_END", () => {
-    // ✅ Hookではなく、Vanilla API経由で状態を取得
-    const field = gameQuery.field();
-    const activePlayer = gameQuery.activePlayer();
+  const handler = () => {
+    const state = gameQuery.state();
+    if (state.activePlayerId !== "alien") return;
 
-    // 外来種のターンが終わる時のみ発動
-    if (activePlayer !== "alien") return;
+    // 優先順位に基づいたソート
+    const sortedAliens = Object.values(state.activeAlienInstances).sort((a, b) => {
+      const costA = cardMasterData.find(c => c.id === a.cardDefinitionId)?.cost ?? 0;
+      const costB = cardMasterData.find(c => c.id === b.cardDefinitionId)?.cost ?? 0;
+      return costB !== costA ? costB - costA : b.spawnedTurn - a.spawnedTurn;
+    });
 
-    console.log("🦠 Alien Expansion: Calculation Started...");
+    state.internal_mutate((draft) => {
+      sortedAliens.forEach(alien => {
+        const cardDef = cardMasterData.find(c => c.id === alien.cardDefinitionId);
+        if (!cardDef) return;
 
-    const cellsToMutate: { x: number; y: number }[] = [];
-    const width = field.width;
-    const height = field.height;
+        // 支配マスの特定
+        const owned = draft.gameField.cells.flat().filter(c =>
+          (c.cellType === 'alien_core' && c.alienInstanceId === alien.instanceId) ||
+          (c.cellType === 'alien_invasion_area' && c.dominantAlienInstanceId === alien.instanceId)
+        );
 
-    // 1. 侵食源（Core または InvasionArea）を探す
-    field.cells.flat().forEach((cell) => {
-      // 簡易ロジック: CoreまたはInvasionAreaの周囲を侵食
-      if (
-        cell.cellType === "alien_core" ||
-        cell.cellType === "alien_invasion_area"
-      ) {
-        // 上下左右の座標を計算
-        const neighbors = [
-          { x: cell.x + 1, y: cell.y },
-          { x: cell.x - 1, y: cell.y },
-          { x: cell.x, y: cell.y + 1 },
-          { x: cell.x, y: cell.y - 1 },
-        ];
-
-        neighbors.forEach((pos) => {
-          // 盤面外チェック
-          if (pos.x < 0 || pos.x >= width || pos.y < 0 || pos.y >= height)
-            return;
-
-          const targetCell = field.cells[pos.y][pos.x];
-
-          // 侵食対象: 在来種エリア(native_area) または 空き地(empty_area)
-          // 既に外来種がいる場所はスキップ
-          if (
-            targetCell.cellType === "native_area" ||
-            targetCell.cellType === "empty_area"
-          ) {
-            // 50%の確率で侵食リストに追加
-            if (Math.random() > 0.5) {
-              cellsToMutate.push(pos);
+        owned.forEach(source => {
+          const targets = EffectSystem.getEffectRange(cardDef, source, draft.gameField, 1);
+          targets.forEach(t => {
+            const cell = draft.gameField.cells[t.y][t.x];
+            if (cell.cellType === "native_area" || cell.cellType === "empty_area") {
+              draft.gameField.cells[t.y][t.x] = FieldSystem.createAlienInvasionCell(t.x, t.y, alien.instanceId);
             }
-          }
+          });
         });
-      }
+      });
     });
+  };
 
-    // 2. 変更を適用
-    cellsToMutate.forEach((pos) => {
-      console.log(`  -> Expanding to (${pos.x}, ${pos.y})`);
-      gameActions.field.mutateCell(pos.x, pos.y, "alien_invasion_area");
-    });
-  });
+  gameEventBus.on("BEFORE_TURN_END", handler);
+
+  // クリーンアップ関数を返す
+  return () => gameEventBus.off("BEFORE_TURN_END", handler);
 };
