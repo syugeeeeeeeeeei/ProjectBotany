@@ -3,8 +3,24 @@ import { immer } from "zustand/middleware/immer";
 import { GAME_SETTINGS } from "@/shared/constants/game-config";
 import { GameState, PlayerState, CellState } from "@/shared/types/game-schema";
 import { PlayerType } from "@/shared/types/primitives";
+import cardMasterData from "@/shared/data/cardMasterData"; // カードデータのインポート
 
-// --- 初期化ヘルパー (Systemsに持っていくべきだが、初期値設定のためここに配置) ---
+// 簡易ID生成 (shared/utils/id.ts があればそれを使う)
+const generateId = () => Math.random().toString(36).substr(2, 9);
+
+/**
+ * 初期デッキ生成ヘルパー
+ */
+const createInitialLibrary = (playerType: PlayerType) => {
+	// テスト用にカードを数枚配布
+	return cardMasterData
+		.filter(c => c.cardType === (playerType === "alien" ? "alien" : "eradication") || c.cardType === "recovery")
+		.slice(0, 5) // 最初の5枚だけ
+		.map(card => ({
+			instanceId: `${card.id}-instance-${generateId()}`,
+			cardDefinitionId: card.id
+		}));
+};
 
 const createInitialPlayerState = (id: PlayerType, name: string): PlayerState => ({
 	playerId: id,
@@ -13,7 +29,7 @@ const createInitialPlayerState = (id: PlayerType, name: string): PlayerState => 
 	initialEnvironment: 1,
 	currentEnvironment: 1,
 	maxEnvironment: 1,
-	cardLibrary: [],
+	cardLibrary: createInitialLibrary(id), // ここでカードを持たせる
 	cooldownActiveCards: [],
 	limitedCardsUsedCount: {},
 });

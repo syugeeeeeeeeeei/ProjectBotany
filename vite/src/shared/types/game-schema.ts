@@ -1,5 +1,6 @@
 export * from "./primitives";
 import { PlayerType, ShapeType, DirectionType, GamePhase } from "./primitives";
+import { ActionLog } from "./actions"; // 追加
 
 /**
  * ゲーム全体のデータ構造定義 (game-schema)
@@ -109,16 +110,6 @@ export interface ActiveAlienInstance {
 	instanceId: string;
 	spawnedTurn: number;
 	cardDefinitionId: string;
-	currentX: number;
-	currentY: number;
-	/** @deprecated */
-	currentInvasionPower: number;
-	/** @deprecated */
-	currentInvasionShape: ShapeType;
-	/** @deprecated */
-	currentGrowthStage: number;
-	/** @deprecated */
-	turnsSinceLastAction: number;
 }
 
 // --- フィールド ---
@@ -167,23 +158,6 @@ export interface FieldState {
 
 // --- ゲーム全体 ---
 
-/**
- * 棋譜（アクションログ）の定義
- */
-export interface ActionLog {
-	/** ログのユニークID */
-	actionId: string;
-	/** アクション名 (例: 'MOVE_ALIEN') */
-	type: string;
-	/** アクションのパラメータ */
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	payload: any;
-	/** 実行時刻 */
-	timestamp: number;
-	/** 実行時のターン数 */
-	turn: number;
-}
-
 export interface GameState {
 	currentTurn: number;
 	maximumTurns: number;
@@ -198,6 +172,6 @@ export interface GameState {
 	activeAlienInstances: { [instanceId: string]: ActiveAlienInstance };
 	nativeScore: number;
 	alienScore: number;
+	// 修正: ジェネリクスのデフォルト(unknown)を利用し、Core側では中身を関知しない
 	history: ActionLog[];
 }
-

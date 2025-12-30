@@ -1,29 +1,32 @@
+// src/app/App.tsx
 import React, { useEffect } from "react";
 import { GameLayout } from "@/core/ui/GameLayout";
 import { initializeGameComposition } from "./GameComposition";
+import { FeaturesRegistry } from "./FeaturesRegistry"; // 設定ファイルを読み込み
 
-const App: React.FC = () => {
-  // マウント時に一度だけ初期化を実行
+export const App: React.FC = () => {
   useEffect(() => {
     initializeGameComposition();
+
+    // 登録された全Featureのロジックを初期化
+    FeaturesRegistry.forEach((f) => f.init?.());
   }, []);
 
   return (
     <GameLayout
       uiOverlay={
-        <div style={{ padding: "20px", color: "white", pointerEvents: "auto" }}>
-          <h1>Project Botany v2</h1>
-          <p>Phase 3: Core Wiring Complete.</p>
-          <p style={{ fontSize: "0.8rem", color: "#aaa" }}>
-            Waiting for Features (Board, Cards...) to be injected.
-          </p>
-        </div>
+        <>
+          {/* UIコンポーネントを自動配置 */}
+          {FeaturesRegistry.map(
+            (f) => f.components?.ui && <f.components.ui key={f.key} />,
+          )}
+        </>
       }
     >
-      {/* ここに将来 GameBoard3D などが入る */}
-      {/* <GameBoard3D /> */}
+      {/* 3Dコンポーネントを自動配置 */}
+      {FeaturesRegistry.map(
+        (f) => f.components?.main && <f.components.main key={f.key} />,
+      )}
     </GameLayout>
   );
 };
-
-export default App;

@@ -12,7 +12,35 @@ const createCell = (x: number, y: number, type: CellType): CellState => {
 			return { ...base, cellType: "native_area", ownerId: "native" };
 		case "empty_area":
 			return { ...base, cellType: "empty_area", ownerId: null };
-		// 他のタイプも必要に応じて追加。一旦デフォルトはNativeかEmpty
+
+		// ▼ 追加: 外来種侵略エリア
+		case "alien_invasion_area":
+			return {
+				...base,
+				cellType: "alien_invasion_area",
+				ownerId: "alien",
+				// 本来はカードや外来種IDを渡すべきですが、Phase 4動作確認用としてダミーIDを設定
+				dominantAlienInstanceId: "temp-id"
+			};
+
+		// ▼ 追加: 外来種コア
+		case "alien_core":
+			return {
+				...base,
+				cellType: "alien_core",
+				ownerId: "alien",
+				alienInstanceId: "temp-id"
+			};
+
+		// ▼ 追加: 再生待機エリア
+		case "recovery_pending_area":
+			return {
+				...base,
+				cellType: "recovery_pending_area",
+				ownerId: null,
+				recoveryPendingTurn: useGameStore.getState().currentTurn + 1
+			};
+
 		default:
 			return { ...base, cellType: "native_area", ownerId: "native" };
 	}
