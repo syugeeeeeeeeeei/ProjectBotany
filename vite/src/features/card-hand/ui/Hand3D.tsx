@@ -17,12 +17,20 @@ type CardWithInstanceId = CardDefinition & { instanceId: string };
 const Hand3D: React.FC<{ player: PlayerType }> = ({ player }) => {
   const playerState = useGameQuery.usePlayer(player);
   const { selectedCardId, deselectCard, isInteractionLocked } = useUIStore();
-  // エラー原因の未使用変数を削除
+  const activePlayerId = useGameQuery.useActivePlayer();
 
   const [isVisible, setIsVisible] = useState(true);
   const [currentPage, setCurrentPage] = useState(0);
 
   const facingFactor = playerState?.facingFactor ?? 1;
+
+  // --- 1. ロジック追加: 手番と選択状態の判定 ---
+  const isMyTurn = activePlayerId === player;
+  const isAnyCardSelected = !!selectedCardId;
+
+  // 表示制御: 手番でなければ強制非表示、手番ならUI操作(isVisible)に従う
+  // ただし、カード選択中(詠唱中)は、手札全体としては「表示」位置に留まる必要がある（選択カードを見せるため）
+  const effectiveIsVisible = isMyTurn && isVisible;
 
   const cards = useMemo(() => {
     if (!playerState) return [];
@@ -54,8 +62,9 @@ const Hand3D: React.FC<{ player: PlayerType }> = ({ player }) => {
     config: DESIGN.HAND.ANIMATION.PAGE_TRANSITION,
   });
 
+  // Z位置の制御: 手番外なら HIDDEN (画面外) へ
   const { zPos } = useSpring({
-    zPos: isVisible
+    zPos: effectiveIsVisible
       ? DESIGN.HAND.Z_POSITIONS.VISIBLE
       : DESIGN.HAND.Z_POSITIONS.HIDDEN,
     config: DESIGN.HAND.ANIMATION.SPRING_CONFIG,
@@ -100,11 +109,13 @@ const Hand3D: React.FC<{ player: PlayerType }> = ({ player }) => {
       },
       onClick: ({ event }) => {
         event.stopPropagation();
-        if (isVisibleRef.current && selectedCardId) deselectCard();
+        // カード選択中に背景（ジェスチャーエリア）をクリックしたらキャンセル
+        if (effectiveIsVisible && selectedCardId) deselectCard();
       },
     },
     {
-      enabled: !isInteractionLocked,
+      // 手番外、または操作ロック中はジェスチャー無効
+      enabled: !isInteractionLocked && isMyTurn,
       drag: {
         filterTaps: true,
         threshold: DESIGN.HAND.GESTURE_THRESHOLDS.DRAG,
@@ -163,7 +174,8 @@ const Hand3D: React.FC<{ player: PlayerType }> = ({ player }) => {
                 player={player}
                 facingFactor={facingFactor as 1 | -1}
                 isSelected={selectedCardId === card.instanceId}
-                isVisible={isVisible}
+                isAnySelected={isAnyCardSelected} // 追加: 誰かが選択されているか
+                isVisible={effectiveIsVisible}
               />
             ))}
           </group>
@@ -179,8 +191,17 @@ const CardInLine: React.FC<{
   player: PlayerType;
   facingFactor: 1 | -1;
   isSelected: boolean;
+  isAnySelected: boolean;
   isVisible: boolean;
-}> = ({ card, index, player, facingFactor, isSelected, isVisible }) => {
+}> = ({
+  card,
+  index,
+  player,
+  facingFactor,
+  isSelected,
+  isAnySelected,
+  isVisible,
+}) => {
   const pageWidth = getHandPageWidth();
   const xPos =
     facingFactor *
@@ -188,12 +209,25 @@ const CardInLine: React.FC<{
       index * (DESIGN.HAND.CARD_WIDTH + DESIGN.HAND.CARD_SPACING) +
       DESIGN.HAND.CARD_WIDTH / 2);
 
-  // useSpring から SpringValue を取得
+  // --- 2. ロジック追加: 不透明度の計算 ---
+  // - 手札自体が表示OFFなら 0
+  // - 何かが選択されている場合:
+  //    - 自分が選択されている -> 1 (表示)
+  //    - 自分が選択されていない -> 0 (Hide)
+  // - 何も選択されていない場合 -> 1 (通常表示)
+  const targetOpacity = !isVisible
+    ? 0.5
+    : isAnySelected
+      ? isSelected
+        ? 1
+        : 0.5
+      : 1;
+
   const { z, opacity } = useSpring({
     z: isSelected
       ? facingFactor * DESIGN.HAND.ANIMATION.Z_POS_SELECTED
       : facingFactor * DESIGN.HAND.ANIMATION.Z_POS_DEFAULT,
-    opacity: isVisible ? 1 : isSelected ? 1 : 0.5,
+    opacity: targetOpacity,
     config: DESIGN.HAND.ANIMATION.SPRING_CONFIG,
   });
 
@@ -211,7 +245,7 @@ const CardInLine: React.FC<{
           card={card}
           player={player}
           width={DESIGN.HAND.CARD_WIDTH}
-          opacity={opacity} // SpringValue をそのまま渡す
+          opacity={opacity}
         />
       </group>
     </animated.group>
