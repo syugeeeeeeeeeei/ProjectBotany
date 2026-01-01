@@ -1,15 +1,16 @@
+// src/features/card-hand/components/Hand3D.tsx
 import React from "react";
 import { animated, to, useSpring } from "@react-spring/three";
 import { Plane } from "@react-three/drei";
 import type { PlayerType, CardDefinition } from "@/shared/types/game-schema";
 
 import { useHandLogic } from "../hooks/useHandLogic";
-import { CardLayout, HandLayout } from "@/features/card-hand/domain/cardLayout";
+import { HandLayout } from "../domain/cardLayout";
 import Card3D from "./Card3D";
 
 type CardWithInstanceId = CardDefinition & { instanceId: string };
 
-const CardWrapper: React.FC<{
+interface CardWrapperProps {
   card: CardWithInstanceId;
   index: number;
   player: PlayerType;
@@ -17,7 +18,9 @@ const CardWrapper: React.FC<{
   isSelected: boolean;
   isAnySelected: boolean;
   isVisible: boolean;
-}> = ({
+}
+
+const CardWrapper: React.FC<CardWrapperProps> = ({
   card,
   index,
   player,
@@ -26,28 +29,18 @@ const CardWrapper: React.FC<{
   isAnySelected,
   isVisible,
 }) => {
-  const pageWidth = HandLayout.getPageWidth();
-  const cardWidth = CardLayout.SIZE.WIDTH;
-  const spacing = HandLayout.CARD_SPACING;
+  const xLocal = HandLayout.calcCardXLocal(index, facingFactor);
 
-  const xLocal =
-    (-pageWidth / 2 + index * (cardWidth + spacing) + cardWidth / 2) *
-    facingFactor;
-
-  const targetOpacity = !isVisible
-    ? 0.5
-    : isAnySelected
-      ? isSelected
-        ? 1
-        : 0.5
-      : 1;
+  const targetOpacity = HandLayout.calcTargetOpacity({
+    isVisible,
+    isAnySelected,
+    isSelected,
+  });
 
   const { z, opacity } = useSpring({
-    z: isSelected
-      ? facingFactor * HandLayout.ANIMATION.Z_SELECTED
-      : facingFactor * HandLayout.ANIMATION.Z_DEFAULT,
+    z: HandLayout.calcTargetZ({ isSelected, facingFactor }),
     opacity: targetOpacity,
-    config: { tension: 300, friction: 20 },
+    config: HandLayout.ANIMATION.SPRING_CONFIG,
   });
 
   return (
@@ -71,36 +64,43 @@ const Hand3D: React.FC<{ player: PlayerType }> = ({ player }) => {
 
   if (state.cards.length === 0) return null;
 
+  // pagination (pure)
   const pages: CardWithInstanceId[][] = [];
   for (let i = 0; i < state.cards.length; i += HandLayout.CARDS_PER_PAGE) {
     pages.push(state.cards.slice(i, i + HandLayout.CARDS_PER_PAGE));
   }
 
+  const gesturePlaneArgs = HandLayout.calcGesturePlaneArgs(layout.pageWidth);
+
   return (
     <animated.group
       position={to([layout.zPos], (z) => [
-        0,
+        HandLayout.POSITION.X,
         HandLayout.POSITION.Y,
         z * layout.facingFactor,
       ])}
     >
       {/* Gesture Area */}
       <Plane
-        args={[layout.pageWidth + 4, 4]}
+        args={gesturePlaneArgs}
         rotation={[
-          HandLayout.GESTURE_AREA.ROTATION.X,
-          HandLayout.GESTURE_AREA.ROTATION.Y,
-          HandLayout.GESTURE_AREA.ROTATION.Z,
+          HandLayout.GESTURE.ROTATION.X,
+          HandLayout.GESTURE.ROTATION.Y,
+          HandLayout.GESTURE.ROTATION.Z,
         ]}
         position={[
-          HandLayout.GESTURE_AREA.POSITION.X,
-          HandLayout.GESTURE_AREA.POSITION.Y,
-          HandLayout.GESTURE_AREA.POSITION.Z,
+          HandLayout.GESTURE.POSITION.X,
+          HandLayout.GESTURE.POSITION.Y,
+          HandLayout.GESTURE.POSITION.Z,
         ]}
         {...bindGesture()}
       >
         {/* [重要]他のコンポーネントを分断しないようにdepthWriteをfalseにする */}
-        <meshStandardMaterial transparent opacity={0} depthWrite={false} />
+        <meshStandardMaterial
+          transparent
+          opacity={HandLayout.GESTURE.MATERIAL.OPACITY}
+          depthWrite={HandLayout.GESTURE.MATERIAL.DEPTH_WRITE}
+        />
       </Plane>
 
       {/* Cards List */}
@@ -108,11 +108,11 @@ const Hand3D: React.FC<{ player: PlayerType }> = ({ player }) => {
         {pages.map((pageCards, pageIndex) => (
           <group
             key={pageIndex}
-            position-x={
-              pageIndex *
-              (layout.pageWidth + HandLayout.PAGE_SPACING) *
-              layout.facingFactor
-            }
+            position-x={HandLayout.calcPageOffsetX({
+              pageIndex,
+              pageWidth: layout.pageWidth,
+              facingFactor: layout.facingFactor,
+            })}
           >
             {pageCards.map((card, cardIndex) => (
               <CardWrapper

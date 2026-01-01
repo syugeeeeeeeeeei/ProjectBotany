@@ -37,59 +37,73 @@ export const useHandLogic = (player: PlayerType) => {
 			.filter((c): c is CardWithInstanceId => c !== null);
 	}, [playerState]);
 
-	const maxPage = Math.max(
-		0,
-		Math.ceil(cards.length / HandLayout.CARDS_PER_PAGE) - 1
-	);
+	const maxPage = Math.max(0, Math.ceil(cards.length / HandLayout.CARDS_PER_PAGE) - 1);
 
-	// アニメーション
-	const pageWidth = HandLayout.getPageWidth();
+	// NOTE: HandLayout.PAGE_WIDTH は CardLayout.BASE.WIDTH から派生する “静的” な幅。
+	// cards数に依存しない「1ページの基準幅」としてこちらを使う。
+	const pageWidth = HandLayout.PAGE_WIDTH;
+
+	// アニメーション（横ページ送り）
 	const { xPos } = useSpring({
-		xPos: -currentPage * (pageWidth + HandLayout.PAGE_SPACING) * facingFactor,
-		config: { tension: 300, friction: 30 },
+		xPos: -currentPage * (pageWidth + HandLayout.PAGE_GAP_X) * facingFactor,
+		config: HandLayout.ANIMATION.SPRING_CONFIG,
 	});
 
+	// アニメーション（表示/非表示Z）
 	const { zPos } = useSpring({
-		zPos: effectiveIsVisible ? HandLayout.POSITION.Z_VISIBLE : HandLayout.POSITION.Z_HIDDEN,
-		config: { tension: 300, friction: 20 },
+		zPos: effectiveIsVisible ? HandLayout.POSITION.Z.VISIBLE : HandLayout.POSITION.Z.HIDDEN,
+		config: HandLayout.ANIMATION.SPRING_CONFIG,
 	});
 
 	// ジェスチャー
 	const bindGesture = useGesture(
 		{
-			onDrag: ({ movement: [mx, my], velocity: [vx, vy], direction: [dx, dy], last, tap, event }) => {
+			onDrag: ({
+				movement: [mx, my],
+				velocity: [vx, vy],
+				direction: [dx, dy],
+				last,
+				tap,
+				event,
+			}) => {
 				if (tap || !last) return;
 				event.stopPropagation();
 
+				// “意味のある数字” は HandLayout に寄せたいが、
+				// ここはジェスチャー閾値なので HandLayout.GESTURE に切り出してもOK。
 				const FLICK_DIST = 45;
 				const FLICK_VEL = 0.5;
 
+				// 横フリック：ページ送り
 				if (Math.abs(mx) > Math.abs(my)) {
 					if (Math.abs(mx) > FLICK_DIST && Math.abs(vx) > FLICK_VEL) {
 						const pageDir = -Math.sign(dx) * facingFactor;
 						setCurrentPage((prev) => Math.max(0, Math.min(maxPage, prev + pageDir)));
 					}
-				} else {
-					if (Math.abs(my) > FLICK_DIST && Math.abs(vy) > FLICK_VEL * 0.5) {
-						const isUp = dy * facingFactor < 0;
-						const isDown = dy * facingFactor > 0;
+					return;
+				}
 
-						if (isDown && isVisible) setIsVisible(false);
-						else if (isUp && !isVisible) setIsVisible(true);
-					}
+				// 縦フリック：手札表示/非表示
+				if (Math.abs(my) > FLICK_DIST && Math.abs(vy) > FLICK_VEL * 0.5) {
+					const isUp = dy * facingFactor < 0;
+					const isDown = dy * facingFactor > 0;
+
+					if (isDown && isVisible) setIsVisible(false);
+					else if (isUp && !isVisible) setIsVisible(true);
 				}
 			},
+
 			onClick: ({ event }) => {
 				event.stopPropagation();
 				if (effectiveIsVisible && selectedCardId) {
 					gameActions.ui.deselectCard();
 				}
-			}
+			},
 		},
 		{
 			enabled: !isInteractionLocked && isMyTurn,
-			drag: { filterTaps: true, threshold: 10 }
-		}
+			drag: { filterTaps: true, threshold: 10 },
+		},
 	);
 
 	return {
@@ -98,13 +112,13 @@ export const useHandLogic = (player: PlayerType) => {
 			currentPage,
 			effectiveIsVisible,
 			isAnyCardSelected,
-			selectedCardId
+			selectedCardId,
 		},
 		layout: {
 			facingFactor,
 			zPos,
 			xPos,
-			pageWidth
+			pageWidth,
 		},
 		bindGesture,
 	};

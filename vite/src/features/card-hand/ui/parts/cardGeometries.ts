@@ -6,16 +6,25 @@ import { CardLayout } from "../../domain/cardLayout";
  */
 export const createHeaderShape = (width: number, height: number): THREE.Shape => {
 	const shape = new THREE.Shape();
-	const contentWidth = width * CardLayout.RATIOS.CONTENT_WIDTH;
-	const headerThickness = CardLayout.SIZE.HEIGHT * 0.15;
-	const headerBaselineY = height / 2 - CardLayout.HEADER_CURVE.TOP_Y_OFFSET;
 
+	const contentWidth = width * CardLayout.RATIOS.CONTENT_WIDTH;
+
+	// 旧: CardLayout.SIZE.HEIGHT * 0.15
+	// 新: CardLayout.BASE.HEIGHT を参照（カード高さに対する割合）
+	const headerThickness = CardLayout.BASE.HEIGHT * 0.15;
+
+	// 旧: CardLayout.HEADER_CURVE.TOP_Y_OFFSET
+	// 新: CardLayout.COMPONENTS.HEADER.TOP_Y_OFFSET
+	const headerBaselineY = height / 2 - CardLayout.COMPONENTS.HEADER.TOP_Y_OFFSET;
+
+	// 旧: CardLayout.HEADER_CURVE.*（FIX/PEAKなど）
+	// 新: CardLayout.COMPONENTS.HEADER.*（SIDE_EDGE_FIX/PEAK_AMPLITUDEなど）
 	const {
 		BEZIER_CONTROL_X_RATIO,
 		BEZIER_TANGENT_X_RATIO,
-		FIX: sideEdgeYOffset,
-		PEAK: curveAmplitude
-	} = CardLayout.HEADER_CURVE;
+		SIDE_EDGE_FIX: sideEdgeYOffset,
+		PEAK_AMPLITUDE: curveAmplitude,
+	} = CardLayout.COMPONENTS.HEADER;
 
 	const left = -contentWidth / 2;
 	const right = contentWidth / 2;
@@ -30,7 +39,7 @@ export const createHeaderShape = (width: number, height: number): THREE.Shape =>
 		-contentWidth * BEZIER_CONTROL_X_RATIO,
 		headerBaselineY + curveAmplitude,
 		-contentWidth * BEZIER_TANGENT_X_RATIO,
-		headerBaselineY
+		headerBaselineY,
 	);
 
 	shape.bezierCurveTo(
@@ -39,7 +48,7 @@ export const createHeaderShape = (width: number, height: number): THREE.Shape =>
 		contentWidth * BEZIER_TANGENT_X_RATIO,
 		headerBaselineY,
 		right,
-		headerBaselineY - sideEdgeYOffset
+		headerBaselineY - sideEdgeYOffset,
 	);
 
 	shape.lineTo(right, bottomY);
@@ -54,7 +63,11 @@ export const createHeaderShape = (width: number, height: number): THREE.Shape =>
  * @param height 高さ
  * @param radius 角丸の半径
  */
-export const createRoundedRectShape = (width: number, height: number, radius: number): THREE.Shape => {
+export const createRoundedRectShape = (
+	width: number,
+	height: number,
+	radius: number,
+): THREE.Shape => {
 	const shape = new THREE.Shape();
 	const x = -width / 2;
 	const y = -height / 2;

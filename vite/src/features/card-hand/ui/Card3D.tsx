@@ -1,3 +1,4 @@
+// src/features/cards/components/Card3D.tsx
 import React, { useMemo } from "react";
 import { animated, SpringValue } from "@react-spring/three";
 import { RoundedBox, Text, useTexture } from "@react-three/drei";
@@ -19,43 +20,38 @@ const AnimatedMeshBasicMaterial = animated.meshBasicMaterial as any;
 interface Card3DProps {
   card: CardDefinition & { instanceId: string };
   player: PlayerType;
-  width?: number; // カード全体の幅 (RoundedBoxの幅)
   opacity: SpringValue<number> | number;
 }
 
-const Card3D: React.FC<Card3DProps> = ({
-  card,
-  player,
-  width = CardLayout.SIZE.WIDTH,
-  opacity,
-}) => {
+/**
+ * Card3D
+ * - 静的カード運用前提：外部から幅は受け取らず、CardLayout.BASE.WIDTH を採用する。
+ * - 将来可変にしたい場合は CardLayout.calc(width) に width を渡すだけで対応できる。
+ */
+const Card3D: React.FC<Card3DProps> = ({ card, player, opacity }) => {
   const { state, data, handlers } = useCardLogic({ card, player });
   const texture = useTexture(data.textureUrl);
 
-  // 定数ショートカット
-  const { SIZE, Z_OFFSETS, RATIOS, POS, COLORS } = CardLayout;
+  // Shortcuts
+  const { BASE, Z, RATIOS, COMPONENTS, COLORS } = CardLayout;
 
-  // ジオメトリ生成
+  // Static width (no props)
+  const cardWidth = BASE.WIDTH;
 
-  // 1. Base形状: 外枠(width)から、縁の太さ分だけ小さくする
-  const baseWidth = width - SIZE.BORDER_THICKNESS * 2;
-  const baseHeight = SIZE.HEIGHT - SIZE.BORDER_THICKNESS * 2;
-  // 角丸半径も少し調整すると自然だが、ここではシンプルにSIZE.RADIUSを使用（または少し小さくする）
-  const baseRadius = Math.max(0, SIZE.RADIUS - SIZE.BORDER_THICKNESS / 2);
+  // Derived values
+  const { surfaceZ, innerWidth, innerHeight, innerCornerRadius } =
+    CardLayout.calc(cardWidth);
 
+  // Shapes
   const baseShape = useMemo(
-    () => createRoundedRectShape(baseWidth, baseHeight, baseRadius),
-    [baseWidth, baseHeight, baseRadius],
+    () => createRoundedRectShape(innerWidth, innerHeight, innerCornerRadius),
+    [innerWidth, innerHeight, innerCornerRadius],
   );
 
   const headerShape = useMemo(
-    () => createHeaderShape(width, SIZE.HEIGHT),
-    [width, SIZE.HEIGHT],
+    () => createHeaderShape(cardWidth, BASE.HEIGHT),
+    [cardWidth, BASE.HEIGHT],
   );
-
-  // Z座標の基準
-  // RoundedBoxの中心が(0,0,0)なので、表面のZは THICKNESS / 2
-  const surfaceZ = SIZE.THICKNESS / 2;
 
   return (
     <animated.group
@@ -69,22 +65,27 @@ const Card3D: React.FC<Card3DProps> = ({
       --------------------------------------------------- */}
       <RoundedBox
         castShadow
-        args={[SIZE.WIDTH, SIZE.HEIGHT, SIZE.THICKNESS]}
-        radius={SIZE.RADIUS}
+        args={[
+          COMPONENTS.BORDER_BOX.WIDTH,
+          COMPONENTS.BORDER_BOX.HEIGHT,
+          COMPONENTS.BORDER_BOX.THICKNESS,
+        ]}
+        radius={BASE.CORNER_RADIUS}
       >
         <AnimatedMeshStandardMaterial
-          color={COLORS.BORDER} // #B8860B
+          color={COLORS.BORDER}
           emissive={state.isSelected ? COLORS.BORDER : "black"}
           emissiveIntensity={state.isSelected ? 0.5 : 0}
           transparent
           opacity={opacity}
         />
       </RoundedBox>
+
       {/* ---------------------------------------------------
-          Layer 2: Base (Plane/Shape)
+          Layer 2: Inner Base (Shape)
           RoundedBoxの上に置く背景。少し小さいので下が縁に見える。
       --------------------------------------------------- */}
-      <mesh position={[0, 0, surfaceZ + Z_OFFSETS.BASE]}>
+      <mesh position={[0, 0, surfaceZ + Z.BASE_BG]}>
         <shapeGeometry args={[baseShape]} />
         <AnimatedMeshStandardMaterial
           color={COLORS.CARD_UI.BASE_BG}
@@ -94,12 +95,11 @@ const Card3D: React.FC<Card3DProps> = ({
       </mesh>
 
       {/* ---------------------------------------------------
-          Layer 3: Contents (Plane)
-          Baseの上に配置する要素群
+          Layer 3: Contents
       --------------------------------------------------- */}
 
-      {/* 3.1 ヘッダー */}
-      <group position={[0, 0, surfaceZ + Z_OFFSETS.HEADER_BG]}>
+      {/* 3.1 Header */}
+      <group position={[0, 0, surfaceZ + Z.HEADER_BG]}>
         <mesh>
           <shapeGeometry args={[headerShape]} />
           <AnimatedMeshBasicMaterial
@@ -108,23 +108,30 @@ const Card3D: React.FC<Card3DProps> = ({
             opacity={opacity}
           />
         </mesh>
+
         <Text
-          position={[0, SIZE.HEIGHT / 2 - POS.NAME_Y_FROM_TOP, Z_OFFSETS.TEXT]}
-          fontSize={0.14}
+          position={[
+            0,
+            BASE.HEIGHT / 2 - COMPONENTS.TEXT.NAME.Y_FROM_TOP,
+            Z.TEXT,
+          ]}
+          fontSize={COMPONENTS.TEXT.NAME.FONT_SIZE}
           fontWeight="bold"
           color={COLORS.CARD_UI.TEXT_WHITE}
           anchorX="center"
           anchorY="middle"
-          maxWidth={width * RATIOS.CONTENT_WIDTH}
+          maxWidth={cardWidth * RATIOS.CONTENT_WIDTH}
         >
           {card.name}
         </Text>
       </group>
 
-      {/* 3.2 画像エリア */}
-      <animated.mesh position={[0, 0.4, surfaceZ + Z_OFFSETS.IMAGE_BG]}>
+      {/* 3.2 Image area */}
+      <animated.mesh
+        position={[0, COMPONENTS.IMAGE.GROUP_Y, surfaceZ + Z.IMAGE_BG]}
+      >
         <planeGeometry
-          args={[width * RATIOS.CONTENT_WIDTH, RATIOS.IMAGE_HEIGHT]}
+          args={[cardWidth * RATIOS.CONTENT_WIDTH, RATIOS.IMAGE_PLANE_HEIGHT]}
         />
         <AnimatedMeshStandardMaterial
           map={texture}
@@ -133,43 +140,53 @@ const Card3D: React.FC<Card3DProps> = ({
         />
       </animated.mesh>
 
-      {/* 3.3 説明文エリア */}
-      <group position={[0, POS.DESC_Y, surfaceZ + Z_OFFSETS.DESC_BG]}>
-        {/* 背景 */}
+      {/* 3.3 Description area */}
+      <group position={[0, COMPONENTS.TEXT.DESC.GROUP_Y, surfaceZ + Z.DESC_BG]}>
+        {/* background */}
         <mesh>
-          <planeGeometry args={[width * RATIOS.CONTENT_WIDTH, 1.15]} />
+          <planeGeometry
+            args={[
+              cardWidth * RATIOS.CONTENT_WIDTH,
+              COMPONENTS.DESC_PANEL.PLANE_HEIGHT,
+            ]}
+          />
           <AnimatedMeshBasicMaterial
             color={COLORS.CARD_UI.DESC_BG}
             transparent
             opacity={opacity}
           />
         </mesh>
-        {/* テキスト */}
+
+        {/* text */}
         <Text
-          position={[0, POS.DESC_TEXT_Y_OFFSET, Z_OFFSETS.TEXT]}
-          fontSize={0.095}
+          position={[0, COMPONENTS.TEXT.DESC.TEXT_Y_OFFSET, Z.TEXT]}
+          fontSize={COMPONENTS.TEXT.DESC.FONT_SIZE}
           color={COLORS.CARD_UI.TEXT_BLACK}
           anchorX="center"
           anchorY="top"
-          maxWidth={width * RATIOS.DESC_WIDTH}
-          lineHeight={1.2}
+          maxWidth={cardWidth * RATIOS.DESC_WIDTH}
+          lineHeight={COMPONENTS.TEXT.DESC.LINE_HEIGHT}
         >
           {card.description}
         </Text>
       </group>
 
-      {/* 3.4 クールタイムオーバーレイ */}
+      {/* 3.4 Cooldown overlay */}
       {state.isCooldown && (
-        <group position={[0, 0, surfaceZ + Z_OFFSETS.OVERLAY]}>
+        <group position={[0, 0, surfaceZ + Z.OVERLAY]}>
           <mesh>
-            {/* 全体を覆うため width を使用 */}
-            <planeGeometry args={[width, SIZE.HEIGHT]} />
-            <meshBasicMaterial color="gray" transparent opacity={0.6} />
+            <planeGeometry args={[cardWidth, BASE.HEIGHT]} />
+            <meshBasicMaterial
+              color={COMPONENTS.OVERLAY.COLOR}
+              transparent
+              opacity={COMPONENTS.OVERLAY.OPACITY}
+            />
           </mesh>
+
           <Text
-            position={[0, 0, 0.01]}
+            position={[0, 0, COMPONENTS.TEXT.COOLDOWN.Z_IN_OVERLAY]}
             fontWeight="bold"
-            fontSize={0.5}
+            fontSize={COMPONENTS.TEXT.COOLDOWN.FONT_SIZE}
             color={COLORS.CARD_UI.TEXT_WHITE}
             anchorX="center"
             anchorY="middle"
