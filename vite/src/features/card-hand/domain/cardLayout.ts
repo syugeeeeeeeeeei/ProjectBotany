@@ -1,10 +1,9 @@
-// src/shared/constants/cardLayout.ts
 import { DESIGN } from "@/shared/constants/design-tokens";
 
 /**
  * Card 3D Layout Tokens
  * - 3Dカードの寸法/レイヤー順/配置/タイポグラフィなど、描画に必要な「不変の定数」と
- *   そこから導出できる「派生値」をまとめる。
+ * そこから導出できる「派生値」をまとめる。
  *
  * NOTE:
  * - Card3D は静的コンポーネント運用前提のため、基本幅は BASE.WIDTH を使用する。
@@ -23,7 +22,7 @@ export const CardLayout = {
 		},
 	},
 
-	// --- 2) Z layering offsets (on top of surfaceZ) ---
+	// --- 2) Z layering offsets ---
 	Z: {
 		BASE_BG: 0,
 		HEADER_BG: 0.002,
@@ -42,32 +41,12 @@ export const CardLayout = {
 	// --- 4) Area specific layout ---
 	AREAS: {
 		BASE_INNER: {
-			get WIDTH() {
-				return (
-					CardLayout.CARD_BASE.WIDTH - CardLayout.CARD_BASE.BORDER_THICKNESS * 2
-				);
-			},
-			get HEIGHT() {
-				return (
-					CardLayout.CARD_BASE.HEIGHT -
-					CardLayout.CARD_BASE.BORDER_THICKNESS * 2
-				);
-			},
-			get CONTENT_WIDTH() {
-				return this.WIDTH - 0.1;
-			},
-			get CONTENT_HEIGHT() {
-				return this.HEIGHT - 0.1;
-			},
-			get THICKNESS() {
-				return CardLayout.CARD_BASE.THICKNESS;
-			},
+			get WIDTH() { return CardLayout.CARD_BASE.WIDTH - CardLayout.CARD_BASE.BORDER_THICKNESS * 2; },
+			get HEIGHT() { return CardLayout.CARD_BASE.HEIGHT - CardLayout.CARD_BASE.BORDER_THICKNESS * 2; },
+			get CONTENT_WIDTH() { return this.WIDTH - 0.1; },
+			get CONTENT_HEIGHT() { return this.HEIGHT - 0.1; },
 			get CORNER_RADIUS() {
-				return Math.max(
-					0,
-					CardLayout.CARD_BASE.CORNER_RADIUS -
-					CardLayout.CARD_BASE.BORDER_THICKNESS / 2,
-				);
+				return Math.max(0, CardLayout.CARD_BASE.CORNER_RADIUS - CardLayout.CARD_BASE.BORDER_THICKNESS / 2);
 			},
 			get POSITION(): [x: number, y: number, z: number] {
 				return [0, 0, CardLayout.CARD_BASE.Z_SURFACE + CardLayout.Z.BASE_BG];
@@ -76,72 +55,62 @@ export const CardLayout = {
 
 		HEADER: {
 			TOP_Y_OFFSET: 0.01,
-			BEZIER_CONTROL_X_RATIO: 1 / 3,
-			BEZIER_TANGENT_X_RATIO: 1 / 6,
 			SIDE_EDGE_Y_OFFSET: 0.05,
 			CURVE_AMPLITUDE: 0.06,
+			BEZIER_CONTROL_X_RATIO: 1 / 3,
+			BEZIER_TANGENT_X_RATIO: 1 / 6,
+			get SIZE(): [width: number, height: number] {
+				return [CardLayout.AREAS.BASE_INNER.CONTENT_WIDTH, CardLayout.AREAS.BASE_INNER.CONTENT_HEIGHT / 6];
+			},
+			get TOP_LINE(): number { return CardLayout.AREAS.BASE_INNER.CONTENT_HEIGHT / 2 - this.TOP_Y_OFFSET; },
+			get CENTER_LINE(): number { return this.TOP_LINE - this.SIZE[1] / 2; },
+			get BOTTOM_LINE(): number { return this.TOP_LINE - this.SIZE[1]; },
 			get POSITION(): [x: number, y: number, z: number] {
 				return [0, 0, CardLayout.CARD_BASE.Z_SURFACE + CardLayout.Z.HEADER_BG];
 			},
-			get SIZE(): [width: number, height: number] {
+		},
+
+		COST: {
+			RADIUS: 0.13,
+			X_OFFSET: 0.15, // 右端からの距離
+			Y_OFFSET: 0.15, // 上端からの距離
+			get POSITION(): [x: number, y: number, z: number] {
 				return [
-					CardLayout.AREAS.BASE_INNER.CONTENT_WIDTH,
-					CardLayout.AREAS.BASE_INNER.CONTENT_HEIGHT / 6,
+					CardLayout.CARD_BASE.WIDTH / 2 - this.X_OFFSET,
+					CardLayout.CARD_BASE.HEIGHT / 2 - this.Y_OFFSET,
+					CardLayout.CARD_BASE.Z_SURFACE + CardLayout.Z.COST_BG
 				];
 			},
-			get TOP_LINE(): number {
-				return (
-					CardLayout.AREAS.BASE_INNER.CONTENT_HEIGHT / 2 - this.TOP_Y_OFFSET
-				);
-			},
-			get BOTTOM_LINE(): number {
-				return this.TOP_LINE - this.SIZE[1];
-			},
-			get CENTER_LINE(): number {
-				return this.TOP_LINE - this.SIZE[1] / 2;
-			},
 		},
+
 		IMAGE: {
 			TOP_Y_OFFSET: 0.01,
 			IMAGE_PLANE_HEIGHT: 0.9,
-			get TOP_LINE(): number {
-				return (
-					CardLayout.AREAS.HEADER.BOTTOM_LINE -
-					this.SIZE[1] / 2 -
-					this.TOP_Y_OFFSET
-				);
-			},
-			get BOTTOM_LINE(): number {
-				return this.TOP_LINE - this.IMAGE_PLANE_HEIGHT * 1.2;
-			},
-			get POSITION(): [x: number, y: number, z: number] {
-				return [
-					0,
-					this.TOP_LINE,
-					CardLayout.CARD_BASE.Z_SURFACE + CardLayout.Z.IMAGE_BG,
-				];
-			},
 			get SIZE(): [width: number, height: number] {
-				return [
-					CardLayout.AREAS.BASE_INNER.CONTENT_WIDTH,
-					this.IMAGE_PLANE_HEIGHT,
-				];
+				return [CardLayout.AREAS.BASE_INNER.CONTENT_WIDTH, this.IMAGE_PLANE_HEIGHT];
+			},
+			get TOP_LINE(): number { return CardLayout.AREAS.HEADER.BOTTOM_LINE - this.TOP_Y_OFFSET; },
+			get CENTER_LINE(): number { return this.TOP_LINE - this.SIZE[1] / 2; },
+			get BOTTOM_LINE(): number { return this.TOP_LINE - this.SIZE[1]; },
+			get POSITION(): [x: number, y: number, z: number] {
+				return [0, this.CENTER_LINE, CardLayout.CARD_BASE.Z_SURFACE + CardLayout.Z.IMAGE_BG];
 			},
 		},
+
 		DESC: {
-			TOP_Y_OFFSET: 0.2,
-			PLANE_HEIGHT: 1.2,
-			get POSITION(): [x: number, y: number, z: number] {
-				return [
-					0,
-					CardLayout.AREAS.IMAGE.BOTTOM_LINE,
-					CardLayout.CARD_BASE.Z_SURFACE + CardLayout.Z.DESC_BG,
-				];
-			},
+			TOP_Y_OFFSET: 0.05,
+			PLANE_HEIGHT: 1.15,
 			get SIZE(): [width: number, height: number] {
 				return [CardLayout.AREAS.BASE_INNER.CONTENT_WIDTH, this.PLANE_HEIGHT];
 			},
+			get TOP_LINE(): number { return CardLayout.AREAS.IMAGE.BOTTOM_LINE - this.TOP_Y_OFFSET; },
+			get CENTER_LINE(): number { return this.TOP_LINE - this.SIZE[1] / 2; },
+			get BOTTOM_LINE(): number { return this.TOP_LINE - this.SIZE[1]; },
+			get POSITION(): [x: number, y: number, z: number] {
+				return [0, this.CENTER_LINE, CardLayout.CARD_BASE.Z_SURFACE + CardLayout.Z.DESC_BG];
+			},
 		},
+
 		COOLDOWN: {
 			OPACITY: 0.6,
 			COLOR: "gray",
@@ -155,49 +124,50 @@ export const CardLayout = {
 
 		TEXT: {
 			HEADER: {
-				Y_FROM_TOP: 0,
 				FONT: "MPLUS1p-Bold.ttf",
 				FONT_SIZE: 0.14,
-				FONT_WEIGHT: "bold",
-				ANCHOR_X: "center",
-				ANCHOR_Y: "middle",
+				ANCHOR_X: "center" as const,
+				ANCHOR_Y: "middle" as const,
 				get POSITION(): [x: number, y: number, z: number] {
 					return [0, CardLayout.AREAS.HEADER.CENTER_LINE, CardLayout.Z.TEXT];
 				},
 			},
+			COST: {
+				FONT: "MPLUS1p-Bold.ttf",
+				FONT_SIZE: 0.16,
+				COLOR: "black",
+				get POSITION(): [x: number, y: number, z: number] {
+					return [0, 0, CardLayout.Z.TEXT]; // 親Circleからの相対
+				},
+			},
 			DESC: {
-				TOP_Y_OFFSET: 0.56,
 				FONT: "MPLUS1p-Regular.ttf",
 				FONT_SIZE: 0.09,
 				LINE_HEIGHT: 1.2,
-				ANCHOR_X: "center",
-				ANCHOR_Y: "top",
-				OVERFLOW_WRAP: "break-word",
+				ANCHOR_X: "center" as const,
+				ANCHOR_Y: "top" as const,
+				OVERFLOW_WRAP: "break-word" as const,
+				PADDING_TOP: 0.05,
 				get POSITION(): [x: number, y: number, z: number] {
-					return [
-						0,
-						CardLayout.AREAS.TEXT.DESC.TOP_Y_OFFSET,
-						CardLayout.Z.TEXT,
-					];
+					return [0, CardLayout.AREAS.DESC.PLANE_HEIGHT / 2 - this.PADDING_TOP, CardLayout.Z.TEXT];
 				},
 				get MAX_WIDTH() {
 					return CardLayout.AREAS.BASE_INNER.CONTENT_WIDTH - 0.12;
 				},
 			},
 			COOLDOWN: {
+				FONT: "MPLUS1p-Bold.ttf",
 				FONT_SIZE: 0.5,
-				Z_IN_OVERLAY: 0.01,
-				FONT_WEIGHT: "bold",
-				ANCHOR_X: "center",
-				ANCHOR_Y: "middle",
+				COLOR: "white",
+				ANCHOR_X: "center" as const,
+				ANCHOR_Y: "middle" as const,
 				get POSITION(): [x: number, y: number, z: number] {
-					return [0, 0, CardLayout.AREAS.TEXT.COOLDOWN.Z_IN_OVERLAY];
+					return [0, 0, CardLayout.Z.TEXT];
 				},
 			},
 		},
 	},
 
-	// --- 5) Colors ---
 	COLORS: {
 		BORDER: "#B8860B",
 		...DESIGN.COLORS,
