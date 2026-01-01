@@ -1,316 +1,180 @@
+import React, { useMemo } from "react";
 import { animated, SpringValue } from "@react-spring/three";
 import { RoundedBox, Text, useTexture } from "@react-three/drei";
-import type { ThreeEvent } from "@react-three/fiber";
-import React, { useEffect, useMemo, useState } from "react";
-import * as THREE from "three";
-import { useUIStore } from "@/core/store/uiStore";
-import { useGameQuery } from "@/core/api/queries";
 import type { CardDefinition, PlayerType } from "@/shared/types/game-schema";
-import { DESIGN } from "@/shared/constants/design-tokens";
 
-// TypeScript の型推論エラー (ts2589) 回避のために any でキャスト
+import { useCardLogic } from "../hooks/useCardLogic";
+import { CardLayout } from "../domain/cardLayout";
+import {
+  createHeaderShape,
+  createRoundedRectShape,
+} from "./parts/cardGeometries";
+
+// 型定義の回避
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const AnimatedMeshStandardMaterial = animated.meshStandardMaterial as any;
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const AnimatedMeshBasicMaterial = animated.meshBasicMaterial as any;
 
-const { CARD, COLORS } = DESIGN;
-
 interface Card3DProps {
   card: CardDefinition & { instanceId: string };
   player: PlayerType;
-  width: number;
+  width?: number; // カード全体の幅 (RoundedBoxの幅)
   opacity: SpringValue<number> | number;
 }
 
-const Card3D: React.FC<Card3DProps> = ({ card, player, width, opacity }) => {
-  const [isHovered, setIsHovered] = useState(false);
-  const [imageUrl, setImageUrl] = useState(
-    "https://placehold.co/256x160/ccc/999?text=No+Image",
+const Card3D: React.FC<Card3DProps> = ({
+  card,
+  player,
+  width = CardLayout.SIZE.WIDTH,
+  opacity,
+}) => {
+  const { state, data, handlers } = useCardLogic({ card, player });
+  const texture = useTexture(data.textureUrl);
+
+  // 定数ショートカット
+  const { SIZE, Z_OFFSETS, RATIOS, POS, COLORS } = CardLayout;
+
+  // ジオメトリ生成
+
+  // 1. Base形状: 外枠(width)から、縁の太さ分だけ小さくする
+  const baseWidth = width - SIZE.BORDER_THICKNESS * 2;
+  const baseHeight = SIZE.HEIGHT - SIZE.BORDER_THICKNESS * 2;
+  // 角丸半径も少し調整すると自然だが、ここではシンプルにSIZE.RADIUSを使用（または少し小さくする）
+  const baseRadius = Math.max(0, SIZE.RADIUS - SIZE.BORDER_THICKNESS / 2);
+
+  const baseShape = useMemo(
+    () => createRoundedRectShape(baseWidth, baseHeight, baseRadius),
+    [baseWidth, baseHeight, baseRadius],
   );
 
-  const { selectCard, deselectCard, selectedCardId, setNotification } =
-    useUIStore();
-  const activePlayerId = useGameQuery.useActivePlayer();
-  const playerState = useGameQuery.usePlayer(player);
-
-  const cooldownInfo = playerState?.cooldownActiveCards.find(
-    (c) => c.cardId === card.instanceId,
+  const headerShape = useMemo(
+    () => createHeaderShape(width, SIZE.HEIGHT),
+    [width, SIZE.HEIGHT],
   );
-  const isCooldown = !!cooldownInfo;
-  const isSelected = selectedCardId === card.instanceId;
-  const isMyTurn = activePlayerId === player;
-  const isPlayable = isMyTurn && !isCooldown;
 
-  useEffect(() => {
-    const img = new Image();
-    img.crossOrigin = "Anonymous";
-    img.onload = () => setImageUrl(card.imagePath);
-    img.src = card.imagePath;
-  }, [card.imagePath]);
-
-  const imageTexture = useTexture(imageUrl);
-
-  const handleCardClick = (event: ThreeEvent<MouseEvent>) => {
-    event.stopPropagation();
-    if (!isMyTurn) {
-      setNotification("相手のターンです", player);
-      return;
-    }
-    if (isCooldown) {
-      setNotification(
-        `このカードはあと${cooldownInfo?.turnsRemaining}ターン使用できません。`,
-        player,
-      );
-      return;
-    }
-    if (isSelected) {
-      deselectCard();
-      return;
-    }
-    selectCard(card.instanceId);
-  };
-
-  const headerColor = useMemo(() => {
-    switch (card.cardType) {
-      case "alien":
-        return COLORS.CARD_TYPES.ALIEN;
-      case "eradication":
-        return COLORS.CARD_TYPES.ERADICATION;
-      case "recovery":
-        return COLORS.CARD_TYPES.RECOVERY;
-      default:
-        return COLORS.CARD_TYPES.DEFAULT;
-    }
-  }, [card.cardType]);
-
-  const headerShape = useMemo(() => {
-    const shape = new THREE.Shape();
-    const w = width * CARD.SCALE.CONTENT_WIDTH_RATIO;
-    const h = CARD.HEADER.HEIGHT;
-    const topY = CARD.HEIGHT / 2 - CARD.HEADER.TOP_Y_OFFSET;
-    const { BEZIER_CONTROL_X_RATIO, BEZIER_TANGENT_X_RATIO } = CARD.HEADER;
-    const { HEADER_CURVE_FIX, HEADER_CURVE_PEAK } = CARD.OFFSET;
-
-    shape.moveTo(-w / 2, topY - h);
-    shape.lineTo(-w / 2, topY - HEADER_CURVE_FIX);
-    shape.bezierCurveTo(
-      -w / 2,
-      topY,
-      -w * BEZIER_CONTROL_X_RATIO,
-      topY + HEADER_CURVE_PEAK,
-      -w * BEZIER_TANGENT_X_RATIO,
-      topY,
-    );
-    shape.bezierCurveTo(
-      0,
-      topY - HEADER_CURVE_PEAK,
-      w * BEZIER_TANGENT_X_RATIO,
-      topY,
-      w / 2,
-      topY - HEADER_CURVE_FIX,
-    );
-    shape.lineTo(w / 2, topY - h);
-    shape.closePath();
-    return shape;
-  }, [width]);
+  // Z座標の基準
+  // RoundedBoxの中心が(0,0,0)なので、表面のZは THICKNESS / 2
+  const surfaceZ = SIZE.THICKNESS / 2;
 
   return (
     <animated.group
-      onPointerEnter={(e: ThreeEvent<PointerEvent>) => {
-        e.stopPropagation();
-        if (isPlayable) setIsHovered(true);
-      }}
-      onPointerLeave={(e: ThreeEvent<PointerEvent>) => {
-        e.stopPropagation();
-        setIsHovered(false);
-      }}
-      onClick={handleCardClick}
+      onClick={handlers.onClick}
+      onPointerEnter={handlers.onPointerEnter}
+      onPointerLeave={handlers.onPointerLeave}
     >
-      {/* 1. 外枠 (Border) - Shadow追加 */}
+      {/* ---------------------------------------------------
+          Layer 1: Border & Body (RoundedBox)
+          一番下のレイヤー。これがカードの最大サイズ。
+      --------------------------------------------------- */}
       <RoundedBox
         castShadow
-        args={[
-          width + CARD.SCALE.BORDER_GROWTH,
-          CARD.HEIGHT + CARD.SCALE.BORDER_GROWTH,
-          CARD.LAYER_DEPTHS.BORDER,
-        ]}
-        radius={CARD.RADIUS}
+        args={[SIZE.WIDTH, SIZE.HEIGHT, SIZE.THICKNESS]}
+        radius={SIZE.RADIUS}
       >
         <AnimatedMeshStandardMaterial
-          color={
-            isSelected
-              ? COLORS.CARD_UI.BORDER_SELECTED
-              : isHovered
-                ? COLORS.CARD_UI.BORDER_HOVER
-                : COLORS.CARD_UI.BORDER_DEFAULT
-          }
-          emissive={isSelected ? COLORS.CARD_UI.BORDER_SELECTED : "black"}
-          emissiveIntensity={isSelected ? 0.5 : 0}
+          color={COLORS.BORDER} // #B8860B
+          emissive={state.isSelected ? COLORS.BORDER : "black"}
+          emissiveIntensity={state.isSelected ? 0.5 : 0}
           transparent
           opacity={opacity}
         />
       </RoundedBox>
-
-      {/* 2. ベース面 - Shadow追加 */}
-      <RoundedBox
-        castShadow
-        args={[width, CARD.HEIGHT, CARD.LAYER_DEPTHS.BASE]}
-        radius={CARD.RADIUS}
-      >
+      {/* ---------------------------------------------------
+          Layer 2: Base (Plane/Shape)
+          RoundedBoxの上に置く背景。少し小さいので下が縁に見える。
+      --------------------------------------------------- */}
+      <mesh position={[0, 0, surfaceZ + Z_OFFSETS.BASE]}>
+        <shapeGeometry args={[baseShape]} />
         <AnimatedMeshStandardMaterial
           color={COLORS.CARD_UI.BASE_BG}
           transparent
           opacity={opacity}
         />
-      </RoundedBox>
+      </mesh>
 
-      {/* 3. ヘッダーエリア */}
-      <group position={[0, 0, CARD.LAYER_DEPTHS.HEADER]}>
+      {/* ---------------------------------------------------
+          Layer 3: Contents (Plane)
+          Baseの上に配置する要素群
+      --------------------------------------------------- */}
+
+      {/* 3.1 ヘッダー */}
+      <group position={[0, 0, surfaceZ + Z_OFFSETS.HEADER_BG]}>
         <mesh>
           <shapeGeometry args={[headerShape]} />
           <AnimatedMeshBasicMaterial
-            color={headerColor}
+            color={data.headerColor}
             transparent
             opacity={opacity}
           />
         </mesh>
         <Text
-          position={[
-            0,
-            CARD.HEIGHT * CARD.NAME_TEXT.Y_OFFSET_RATIO -
-              CARD.NAME_TEXT.Y_OFFSET_FIXED,
-            CARD.OFFSET.Z_HEADER_TEXT,
-          ]}
-          fontSize={CARD.NAME_TEXT.FONT_SIZE}
+          position={[0, SIZE.HEIGHT / 2 - POS.NAME_Y_FROM_TOP, Z_OFFSETS.TEXT]}
+          fontSize={0.14}
           fontWeight="bold"
           color={COLORS.CARD_UI.TEXT_WHITE}
           anchorX="center"
           anchorY="middle"
-          maxWidth={width * CARD.SCALE.CONTENT_WIDTH_RATIO}
+          maxWidth={width * RATIOS.CONTENT_WIDTH}
         >
           {card.name}
         </Text>
-        {/* コスト表示 */}
-        <group
-          position={[
-            width * CARD.COST_CIRCLE.X_OFFSET_RATIO - CARD.COST_CIRCLE.Y_OFFSET,
-            CARD.HEIGHT / 2 - CARD.COST_CIRCLE.Y_OFFSET,
-            0.0001,
-          ]}
-        >
-          <mesh>
-            <circleGeometry args={[CARD.COST_CIRCLE.RADIUS, 32]} />
-            <AnimatedMeshBasicMaterial
-              color={COLORS.CARD_UI.BORDER_DEFAULT}
-              opacity={opacity}
-            />
-          </mesh>
-          <Text
-            position={[0, 0, 0.01]}
-            fontSize={CARD.COST_CIRCLE.TEXT_FONT_SIZE}
-            color={COLORS.CARD_UI.TEXT_BLACK}
-            fontWeight="bold"
-            anchorX="center"
-            anchorY="middle"
-          >
-            {card.cost}
-          </Text>
-        </group>
       </group>
 
-      {/* 4. 画像エリア */}
-      <animated.mesh
-        position={[0, CARD.IMAGE_AREA.Y_POSITION, CARD.LAYER_DEPTHS.IMAGE]}
-      >
+      {/* 3.2 画像エリア */}
+      <animated.mesh position={[0, 0.4, surfaceZ + Z_OFFSETS.IMAGE_BG]}>
         <planeGeometry
-          args={[
-            width * CARD.SCALE.CONTENT_WIDTH_RATIO,
-            CARD.SCALE.IMAGE_HEIGHT,
-          ]}
+          args={[width * RATIOS.CONTENT_WIDTH, RATIOS.IMAGE_HEIGHT]}
         />
         <AnimatedMeshStandardMaterial
-          map={imageTexture}
+          map={texture}
           transparent
           opacity={opacity}
         />
       </animated.mesh>
 
-      {/* 5. 説明文エリア - 二重背景の復元 */}
-      <group
-        position={[
-          0,
-          CARD.DESCRIPTION_AREA.Y_POSITION,
-          CARD.LAYER_DEPTHS.DESCRIPTION,
-        ]}
-      >
-        {/* 白いテキスト背景 */}
+      {/* 3.3 説明文エリア */}
+      <group position={[0, POS.DESC_Y, surfaceZ + Z_OFFSETS.DESC_BG]}>
+        {/* 背景 */}
         <mesh>
-          <planeGeometry
-            args={[
-              width * CARD.SCALE.CONTENT_WIDTH_RATIO,
-              CARD.DESCRIPTION_AREA.HEIGHT,
-            ]}
-          />
+          <planeGeometry args={[width * RATIOS.CONTENT_WIDTH, 1.15]} />
           <AnimatedMeshBasicMaterial
             color={COLORS.CARD_UI.DESC_BG}
             transparent
             opacity={opacity}
           />
         </mesh>
-        {/* 背面の装飾（金色の台座） - Legacyデザインの復元 */}
-        <mesh position={[0, 0, -0.001]}>
-          <planeGeometry
-            args={[
-              width - 0.15, // Legacy準拠の計算式
-              CARD.DESCRIPTION_AREA.BG_HEIGHT,
-            ]}
-          />
-          <AnimatedMeshBasicMaterial
-            color={COLORS.CARD_UI.BORDER_DEFAULT}
-            transparent
-            opacity={opacity}
-          />
-        </mesh>
+        {/* テキスト */}
         <Text
-          position={[
-            0,
-            CARD.DESCRIPTION_AREA.TEXT_Y_OFFSET,
-            CARD.OFFSET.Z_DESC_TEXT,
-          ]}
-          fontSize={CARD.DESCRIPTION_AREA.TEXT_FONT_SIZE}
+          position={[0, POS.DESC_TEXT_Y_OFFSET, Z_OFFSETS.TEXT]}
+          fontSize={0.095}
           color={COLORS.CARD_UI.TEXT_BLACK}
           anchorX="center"
           anchorY="top"
-          maxWidth={width * CARD.SCALE.DESC_WIDTH_RATIO}
-          lineHeight={CARD.DESCRIPTION_AREA.LINE_HEIGHT}
-          overflowWrap="break-word"
+          maxWidth={width * RATIOS.DESC_WIDTH}
+          lineHeight={1.2}
         >
           {card.description}
         </Text>
       </group>
 
-      {/* 6. クールタイムオーバーレイ - 復元 */}
-      {isCooldown && (
-        <group>
-          <mesh position={[0, 0, CARD.LAYER_DEPTHS.COOLDOWN_OVERLAY]}>
-            <planeGeometry
-              args={[
-                width + CARD.SCALE.BORDER_GROWTH,
-                CARD.HEIGHT + CARD.SCALE.BORDER_GROWTH,
-              ]}
-            />
+      {/* 3.4 クールタイムオーバーレイ */}
+      {state.isCooldown && (
+        <group position={[0, 0, surfaceZ + Z_OFFSETS.OVERLAY]}>
+          <mesh>
+            {/* 全体を覆うため width を使用 */}
+            <planeGeometry args={[width, SIZE.HEIGHT]} />
             <meshBasicMaterial color="gray" transparent opacity={0.6} />
           </mesh>
           <Text
-            position={[0, 0, CARD.LAYER_DEPTHS.COOLDOWN_TEXT]}
+            position={[0, 0, 0.01]}
             fontWeight="bold"
             fontSize={0.5}
             color={COLORS.CARD_UI.TEXT_WHITE}
             anchorX="center"
             anchorY="middle"
           >
-            {cooldownInfo?.turnsRemaining}
+            {data.cooldownTurns}
           </Text>
         </group>
       )}

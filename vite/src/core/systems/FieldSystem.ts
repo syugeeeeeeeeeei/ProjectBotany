@@ -1,6 +1,6 @@
 import {
   CellState,
-  CellType, // setCellType で使用
+  CellType,
   EmptyAreaCell,
   RecoveryPendingAreaCell,
   NativeAreaCell,
@@ -48,7 +48,7 @@ export class FieldSystem {
     });
   }
 
-  /** 任意のセルオブジェクトで上書き */
+  /** 任意のセルオブジェクトで上書き (インスタンスごとの置換) */
   static setCell(x: number, y: number, cell: CellState) {
     useGameStore.getState().internal_mutate((draft) => {
       if (draft.gameField.cells[y]?.[x]) {
@@ -57,16 +57,39 @@ export class FieldSystem {
     });
   }
 
+  /** * セルの内部状態を部分的に更新 (プロパティ書き換え用) 
+   * action.field.updateCell から呼び出される
+   */
+  static mutateCell(x: number, y: number, updater: (cell: CellState) => void) {
+    useGameStore.getState().internal_mutate((draft) => {
+      const cell = draft.gameField.cells[y]?.[x];
+      if (cell) {
+        // Immerのドラフト状態のcellをupdaterに渡して直接変更させる
+        updater(cell);
+      }
+    });
+  }
+
   /** 特定のタイプに変更（簡易更新用） */
   static setCellType(x: number, y: number, type: CellType) {
     useGameStore.getState().internal_mutate((draft) => {
-      // type 引数を使用してエラーを解消
       let newCell: CellState;
+      // 型に応じて適切な生成メソッドを呼ぶ
       switch (type) {
-        case "empty_area": newCell = this.createEmptyCell(x, y); break;
-        case "native_area": newCell = this.createNativeCell(x, y); break;
-        // その他のタイプも必要に応じて作成
-        default: newCell = this.createNativeCell(x, y);
+        case "empty_area":
+          newCell = this.createEmptyCell(x, y);
+          break;
+        case "native_area":
+          newCell = this.createNativeCell(x, y);
+          break;
+        case "recovery_pending_area":
+          // ※注: 本来はターン数などの引数が必要だが、簡易的な型変更としてデフォルト値を設定
+          newCell = this.createRecoveryPendingCell(x, y, 0);
+          break;
+        // 他のタイプが必要な場合はここに追加
+        default:
+          // デフォルトフォールバック
+          newCell = this.createNativeCell(x, y);
       }
       draft.gameField.cells[y][x] = newCell;
     });

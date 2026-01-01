@@ -1,7 +1,8 @@
 import { TurnSystem } from "@/core/systems/TurnSystem";
 import { FieldSystem } from "@/core/systems/FieldSystem";
 import { useGameStore } from "@/core/store/gameStore";
-import { CellType, CellState } from "@/shared/types/game-schema";
+import { useUIStore } from "@/core/store/uiStore";
+import { CellType, CellState, PlayerType } from "@/shared/types/game-schema";
 import { ActionLog } from "@/shared/types/actions";
 
 // 簡易ID生成
@@ -26,13 +27,17 @@ export const gameActions = {
     },
   },
 
-  /** 履歴操作 (追加) */
+  /** UI操作 (新規追加) */
+  ui: {
+    selectCard: (cardId: string) => useUIStore.getState().selectCard(cardId),
+    deselectCard: () => useUIStore.getState().deselectCard(),
+    hoverCell: (cell: CellState | null) => useUIStore.getState().hoverCell(cell),
+    notify: (message: string, player?: PlayerType) =>
+      useUIStore.getState().setNotification(message, player),
+  },
+
+  /** 履歴操作 */
   history: {
-    /**
-     * アクションログを追加する
-     * @param type アクション識別子 (Featureで定義)
-     * @param payload アクション詳細データ (Featureで定義)
-     */
     add: (type: string, payload: unknown) => {
       useGameStore.getState().internal_mutate((draft) => {
         const log: ActionLog = {
@@ -43,8 +48,6 @@ export const gameActions = {
           turn: draft.currentTurn,
         };
         draft.history.push(log);
-
-        // 開発用ログ
         if (import.meta.env.DEV) {
           console.log(`📜 History Added: [${type}]`, payload);
         }
@@ -52,7 +55,7 @@ export const gameActions = {
     },
   },
 
-  /** ゲーム全体 */
+  /** システム操作 */
   system: {
     reset: () => {
       useGameStore.getState().reset();
