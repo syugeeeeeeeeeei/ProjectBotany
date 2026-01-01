@@ -31,7 +31,8 @@ export const gameActions = {
   ui: {
     selectCard: (cardId: string) => useUIStore.getState().selectCard(cardId),
     deselectCard: () => useUIStore.getState().deselectCard(),
-    hoverCell: (cell: CellState | null) => useUIStore.getState().hoverCell(cell),
+    hoverCell: (cell: CellState | null) =>
+      useUIStore.getState().hoverCell(cell),
     notify: (message: string, player?: PlayerType) =>
       useUIStore.getState().setNotification(message, player),
   },

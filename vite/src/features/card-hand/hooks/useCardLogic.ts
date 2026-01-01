@@ -10,10 +10,33 @@ type UseCardLogicProps = {
 	player: PlayerType;
 };
 
-export const useCardLogic = ({ card, player }: UseCardLogicProps) => {
+export type UseCardLogicResult = {
+	state: {
+		isHovered: boolean;
+		isSelected: boolean;
+		isPlayable: boolean;
+		isCooldown: boolean;
+	};
+	data: {
+		textureUrl: string;
+		headerColor: string;
+		borderStateColor: string;
+		cooldownTurns?: number;
+	};
+	handlers: {
+		onClick: (e: ThreeEvent<MouseEvent>) => void;
+		onPointerEnter: (e: ThreeEvent<PointerEvent>) => void;
+		onPointerLeave: (e: ThreeEvent<PointerEvent>) => void;
+	};
+};
+
+export const useCardLogic = ({
+	card,
+	player,
+}: UseCardLogicProps): UseCardLogicResult => {
 	const [isHovered, setIsHovered] = useState(false);
 	const [textureUrl, setTextureUrl] = useState<string>(
-		"https://placehold.co/256x160/ccc/999?text=Loading"
+		"https://placehold.co/256x160/ccc/999?text=Loading",
 	);
 
 	// Core API経由でデータを取得
@@ -23,7 +46,7 @@ export const useCardLogic = ({ card, player }: UseCardLogicProps) => {
 
 	// 状態判定
 	const cooldownInfo = playerState?.cooldownActiveCards.find(
-		(c) => c.cardId === card.instanceId
+		(c) => c.cardId === card.instanceId,
 	);
 	const isCooldown = !!cooldownInfo;
 	const isSelected = selectedCardId === card.instanceId;
@@ -49,7 +72,7 @@ export const useCardLogic = ({ card, player }: UseCardLogicProps) => {
 		if (isCooldown) {
 			gameActions.ui.notify(
 				`このカードはあと${cooldownInfo?.turnsRemaining}ターン使用できません。`,
-				player
+				player,
 			);
 			return;
 		}
@@ -74,10 +97,14 @@ export const useCardLogic = ({ card, player }: UseCardLogicProps) => {
 	// 表示色の計算
 	const headerColor = useMemo(() => {
 		switch (card.cardType) {
-			case "alien": return CardColors.CARD_TYPES.ALIEN;
-			case "eradication": return CardColors.CARD_TYPES.ERADICATION;
-			case "recovery": return CardColors.CARD_TYPES.RECOVERY;
-			default: return CardColors.CARD_TYPES.DEFAULT;
+			case "alien":
+				return CardColors.CARD_TYPES.ALIEN;
+			case "eradication":
+				return CardColors.CARD_TYPES.ERADICATION;
+			case "recovery":
+				return CardColors.CARD_TYPES.RECOVERY;
+			default:
+				return CardColors.CARD_TYPES.DEFAULT;
 		}
 	}, [card.cardType]);
 
@@ -93,7 +120,7 @@ export const useCardLogic = ({ card, player }: UseCardLogicProps) => {
 			textureUrl,
 			headerColor,
 			borderStateColor,
-			cooldownTurns: cooldownInfo?.turnsRemaining
+			cooldownTurns: cooldownInfo?.turnsRemaining,
 		},
 		handlers: {
 			onClick: handleClick,

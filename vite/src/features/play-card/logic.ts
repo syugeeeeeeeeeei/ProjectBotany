@@ -21,14 +21,14 @@ export const initPlayCardLogic = () => {
     const player = state.playerStates[state.activePlayerId];
 
     // カード定義の特定
-    const cardDef = cardMasterData.find(c => selectedCardId.startsWith(c.id));
+    const cardDef = cardMasterData.find((c) => selectedCardId.startsWith(c.id));
     if (!cardDef) return;
 
     // 履歴の追加
     gameActions.history.add(PLAY_CARD_ACTION_TYPE, {
       cardId: selectedCardId,
       x: targetCell.x,
-      y: targetCell.y
+      y: targetCell.y,
     });
 
     state.internal_mutate((draft) => {
@@ -40,36 +40,62 @@ export const initPlayCardLogic = () => {
           cardDefinitionId: cardDef.id,
           currentX: targetCell.x,
           currentY: targetCell.y,
-          spawnedTurn: draft.currentTurn
+          spawnedTurn: draft.currentTurn,
         };
-        draft.gameField.cells[targetCell.y][targetCell.x] = FieldSystem.createAlienCoreCell(targetCell.x, targetCell.y, newId);
-      }
-      else if (cardDef.cardType === "eradication" || cardDef.cardType === "recovery") {
+        draft.gameField.cells[targetCell.y][targetCell.x] =
+          FieldSystem.createAlienCoreCell(targetCell.x, targetCell.y, newId);
+      } else if (
+        cardDef.cardType === "eradication" ||
+        cardDef.cardType === "recovery"
+      ) {
         // 駆除・回復の範囲計算
-        const impact = EffectSystem.getEffectRange(cardDef, targetCell, draft.gameField, player.facingFactor);
+        const impact = EffectSystem.getEffectRange(
+          cardDef,
+          targetCell,
+          draft.gameField,
+          player.facingFactor,
+        );
 
-        impact.forEach(c => {
+        impact.forEach((c) => {
           const current = draft.gameField.cells[c.y][c.x];
 
           if (cardDef.cardType === "eradication") {
-            if (current.cellType === "alien_invasion_area" || current.cellType === "alien_core") {
-              if (current.cellType === "alien_core") delete draft.activeAlienInstances[current.alienInstanceId];
-              draft.gameField.cells[c.y][c.x] = cardDef.postRemovalState === "recovery_pending_area"
-                ? FieldSystem.createRecoveryPendingCell(c.x, c.y, draft.currentTurn)
-                : FieldSystem.createEmptyCell(c.x, c.y);
+            if (
+              current.cellType === "alien_invasion_area" ||
+              current.cellType === "alien_core"
+            ) {
+              if (current.cellType === "alien_core")
+                delete draft.activeAlienInstances[current.alienInstanceId];
+              draft.gameField.cells[c.y][c.x] =
+                cardDef.postRemovalState === "recovery_pending_area"
+                  ? FieldSystem.createRecoveryPendingCell(
+                      c.x,
+                      c.y,
+                      draft.currentTurn,
+                    )
+                  : FieldSystem.createEmptyCell(c.x, c.y);
             }
           } else if (cardDef.cardType === "recovery") {
-            if (current.cellType === "empty_area" || current.cellType === "recovery_pending_area") {
-              draft.gameField.cells[c.y][c.x] = cardDef.postRecoveryState === "native_area"
-                ? FieldSystem.createNativeCell(c.x, c.y)
-                : FieldSystem.createRecoveryPendingCell(c.x, c.y, draft.currentTurn);
+            if (
+              current.cellType === "empty_area" ||
+              current.cellType === "recovery_pending_area"
+            ) {
+              draft.gameField.cells[c.y][c.x] =
+                cardDef.postRecoveryState === "native_area"
+                  ? FieldSystem.createNativeCell(c.x, c.y)
+                  : FieldSystem.createRecoveryPendingCell(
+                      c.x,
+                      c.y,
+                      draft.currentTurn,
+                    );
             }
           }
         });
       }
 
       // コスト消費
-      draft.playerStates[draft.activePlayerId].currentEnvironment -= cardDef.cost;
+      draft.playerStates[draft.activePlayerId].currentEnvironment -=
+        cardDef.cost;
     });
 
     selectCard(null);

@@ -12,79 +12,188 @@ import { DESIGN } from "@/shared/constants/design-tokens";
  */
 export const CardLayout = {
 	// --- 1) Base physical size ---
-	BASE: {
+	CARD_BASE: {
 		WIDTH: 1.8,
-		HEIGHT: 2.7,
-		THICKNESS: 0.05,
-		CORNER_RADIUS: 0.1,
-
+		HEIGHT: 2.8,
+		THICKNESS: 0.1,
+		CORNER_RADIUS: 0.05,
 		BORDER_THICKNESS: 0.06,
+		get Z_SURFACE() {
+			return this.THICKNESS - 0.049;
+		},
 	},
 
 	// --- 2) Z layering offsets (on top of surfaceZ) ---
 	Z: {
-		BASE_BG: 0.001,
+		BASE_BG: 0,
 		HEADER_BG: 0.002,
 		IMAGE_BG: 0.003,
 		DESC_BG: 0.003,
 		COST_BG: 0.004,
 		TEXT: 0.01,
-		HIGHLIGHT: 0.02,
 		OVERLAY: 0.05,
 	},
 
 	// --- 3) Ratios ---
 	RATIOS: {
-		CONTENT_WIDTH: 0.85,
 		DESC_WIDTH: 0.75,
-		IMAGE_PLANE_HEIGHT: 0.9,
 	},
 
-	// --- 4) Component specific layout ---
-	COMPONENTS: {
-		// RoundedBox border/body
-		BORDER_BOX: {
-			WIDTH: 1.8,
-			HEIGHT: 2.7,
-			THICKNESS: 0.05,
+	// --- 4) Area specific layout ---
+	AREAS: {
+		BASE_INNER: {
+			get WIDTH() {
+				return (
+					CardLayout.CARD_BASE.WIDTH - CardLayout.CARD_BASE.BORDER_THICKNESS * 2
+				);
+			},
+			get HEIGHT() {
+				return (
+					CardLayout.CARD_BASE.HEIGHT -
+					CardLayout.CARD_BASE.BORDER_THICKNESS * 2
+				);
+			},
+			get CONTENT_WIDTH() {
+				return this.WIDTH - 0.1;
+			},
+			get CONTENT_HEIGHT() {
+				return this.HEIGHT - 0.1;
+			},
+			get THICKNESS() {
+				return CardLayout.CARD_BASE.THICKNESS;
+			},
+			get CORNER_RADIUS() {
+				return Math.max(
+					0,
+					CardLayout.CARD_BASE.CORNER_RADIUS -
+					CardLayout.CARD_BASE.BORDER_THICKNESS / 2,
+				);
+			},
+			get POSITION(): [x: number, y: number, z: number] {
+				return [0, 0, CardLayout.CARD_BASE.Z_SURFACE + CardLayout.Z.BASE_BG];
+			},
 		},
 
 		HEADER: {
-			TOP_Y_OFFSET: 0.05,
+			TOP_Y_OFFSET: 0.01,
 			BEZIER_CONTROL_X_RATIO: 1 / 3,
 			BEZIER_TANGENT_X_RATIO: 1 / 6,
-			SIDE_EDGE_FIX: 0.1,
-			PEAK_AMPLITUDE: 0.05,
+			SIDE_EDGE_Y_OFFSET: 0.05,
+			CURVE_AMPLITUDE: 0.06,
+			get POSITION(): [x: number, y: number, z: number] {
+				return [0, 0, CardLayout.CARD_BASE.Z_SURFACE + CardLayout.Z.HEADER_BG];
+			},
+			get SIZE(): [width: number, height: number] {
+				return [
+					CardLayout.AREAS.BASE_INNER.CONTENT_WIDTH,
+					CardLayout.AREAS.BASE_INNER.CONTENT_HEIGHT / 6,
+				];
+			},
+			get TOP_LINE(): number {
+				return (
+					CardLayout.AREAS.BASE_INNER.CONTENT_HEIGHT / 2 - this.TOP_Y_OFFSET
+				);
+			},
+			get BOTTOM_LINE(): number {
+				return this.TOP_LINE - this.SIZE[1];
+			},
+			get CENTER_LINE(): number {
+				return this.TOP_LINE - this.SIZE[1] / 2;
+			},
+		},
+		IMAGE: {
+			TOP_Y_OFFSET: 0.01,
+			IMAGE_PLANE_HEIGHT: 0.9,
+			get TOP_LINE(): number {
+				return (
+					CardLayout.AREAS.HEADER.BOTTOM_LINE -
+					this.SIZE[1] / 2 -
+					this.TOP_Y_OFFSET
+				);
+			},
+			get BOTTOM_LINE(): number {
+				return this.TOP_LINE - this.IMAGE_PLANE_HEIGHT * 1.2;
+			},
+			get POSITION(): [x: number, y: number, z: number] {
+				return [
+					0,
+					this.TOP_LINE,
+					CardLayout.CARD_BASE.Z_SURFACE + CardLayout.Z.IMAGE_BG,
+				];
+			},
+			get SIZE(): [width: number, height: number] {
+				return [
+					CardLayout.AREAS.BASE_INNER.CONTENT_WIDTH,
+					this.IMAGE_PLANE_HEIGHT,
+				];
+			},
+		},
+		DESC: {
+			TOP_Y_OFFSET: 0.2,
+			PLANE_HEIGHT: 1.2,
+			get POSITION(): [x: number, y: number, z: number] {
+				return [
+					0,
+					CardLayout.AREAS.IMAGE.BOTTOM_LINE,
+					CardLayout.CARD_BASE.Z_SURFACE + CardLayout.Z.DESC_BG,
+				];
+			},
+			get SIZE(): [width: number, height: number] {
+				return [CardLayout.AREAS.BASE_INNER.CONTENT_WIDTH, this.PLANE_HEIGHT];
+			},
+		},
+		COOLDOWN: {
+			OPACITY: 0.6,
+			COLOR: "gray",
+			get POSITION(): [x: number, y: number, z: number] {
+				return [0, 0, CardLayout.CARD_BASE.Z_SURFACE + CardLayout.Z.OVERLAY];
+			},
+			get SIZE(): [width: number, height: number] {
+				return [CardLayout.CARD_BASE.WIDTH, CardLayout.CARD_BASE.HEIGHT];
+			},
 		},
 
 		TEXT: {
-			NAME: {
-				Y_FROM_TOP: 0.35,
+			HEADER: {
+				Y_FROM_TOP: 0,
+				FONT: "MPLUS1p-Bold.ttf",
 				FONT_SIZE: 0.14,
+				FONT_WEIGHT: "bold",
+				ANCHOR_X: "center",
+				ANCHOR_Y: "middle",
+				get POSITION(): [x: number, y: number, z: number] {
+					return [0, CardLayout.AREAS.HEADER.CENTER_LINE, CardLayout.Z.TEXT];
+				},
 			},
 			DESC: {
-				GROUP_Y: -0.68,
-				TEXT_Y_OFFSET: 0.52,
-				FONT_SIZE: 0.095,
+				TOP_Y_OFFSET: 0.56,
+				FONT: "MPLUS1p-Regular.ttf",
+				FONT_SIZE: 0.09,
 				LINE_HEIGHT: 1.2,
+				ANCHOR_X: "center",
+				ANCHOR_Y: "top",
+				OVERFLOW_WRAP: "break-word",
+				get POSITION(): [x: number, y: number, z: number] {
+					return [
+						0,
+						CardLayout.AREAS.TEXT.DESC.TOP_Y_OFFSET,
+						CardLayout.Z.TEXT,
+					];
+				},
+				get MAX_WIDTH() {
+					return CardLayout.AREAS.BASE_INNER.CONTENT_WIDTH - 0.12;
+				},
 			},
 			COOLDOWN: {
 				FONT_SIZE: 0.5,
 				Z_IN_OVERLAY: 0.01,
+				FONT_WEIGHT: "bold",
+				ANCHOR_X: "center",
+				ANCHOR_Y: "middle",
+				get POSITION(): [x: number, y: number, z: number] {
+					return [0, 0, CardLayout.AREAS.TEXT.COOLDOWN.Z_IN_OVERLAY];
+				},
 			},
-		},
-
-		IMAGE: {
-			GROUP_Y: 0.4,
-		},
-
-		DESC_PANEL: {
-			PLANE_HEIGHT: 1.15,
-		},
-
-		OVERLAY: {
-			OPACITY: 0.6,
-			COLOR: "gray",
 		},
 	},
 
@@ -92,30 +201,6 @@ export const CardLayout = {
 	COLORS: {
 		BORDER: "#B8860B",
 		...DESIGN.COLORS,
-	},
-
-	/**
-	 * 派生値の計算（widthを差し替えたくなった時もここで吸収）
-	 */
-	calc(width: number) {
-		const { BASE } = this;
-
-		const surfaceZ = BASE.THICKNESS / 2;
-
-		const innerWidth = width - BASE.BORDER_THICKNESS * 2;
-		const innerHeight = BASE.HEIGHT - BASE.BORDER_THICKNESS * 2;
-
-		const innerCornerRadius = Math.max(
-			0,
-			BASE.CORNER_RADIUS - BASE.BORDER_THICKNESS / 2,
-		);
-
-		return {
-			surfaceZ,
-			innerWidth,
-			innerHeight,
-			innerCornerRadius,
-		};
 	},
 } as const;
 
@@ -126,7 +211,7 @@ export const CardLayout = {
 export const HandLayout = {
 	// --- pagination ---
 	CARDS_PER_PAGE: 3,
-	CARD_GAP_X: 0.8,
+	CARD_GAP_X: 1.1,
 	PAGE_GAP_X: 3, // 1ページ分のスペース。十分に大きく。
 
 	// --- base placement ---
@@ -141,7 +226,7 @@ export const HandLayout = {
 
 	// --- card transform in hand ---
 	CARD: {
-		SCALE: 1.28,
+		SCALE: 1.5,
 		ROTATION: {
 			X: (facingFactor: number) => (Math.PI / 2.2) * -facingFactor,
 			Y: (facingFactor: number) => ((1 - facingFactor) / 2) * Math.PI,
@@ -183,7 +268,7 @@ export const HandLayout = {
 	/** 1ページ分の横幅 */
 	get PAGE_WIDTH() {
 		return (
-			this.CARDS_PER_PAGE * CardLayout.BASE.WIDTH +
+			this.CARDS_PER_PAGE * CardLayout.CARD_BASE.WIDTH +
 			(this.CARDS_PER_PAGE - 1) * this.CARD_GAP_X
 		);
 	},
@@ -191,12 +276,11 @@ export const HandLayout = {
 	/** カードのローカルX（page内） */
 	calcCardXLocal(index: number, facingFactor: number) {
 		const pageWidth = this.PAGE_WIDTH;
-		const cardWidth = CardLayout.BASE.WIDTH;
+		const cardWidth = CardLayout.CARD_BASE.WIDTH;
 		const gap = this.CARD_GAP_X;
 
 		// 左端基準 → 中央揃え
-		const x =
-			-pageWidth / 2 + index * (cardWidth + gap) + cardWidth / 2;
+		const x = -pageWidth / 2 + index * (cardWidth + gap) + cardWidth / 2;
 
 		return x * facingFactor;
 	},
@@ -218,13 +302,18 @@ export const HandLayout = {
 	/** 選択状態からZアニメーションターゲットを決定 */
 	calcTargetZ(params: { isSelected: boolean; facingFactor: number }) {
 		const { isSelected, facingFactor } = params;
-		const zBase = isSelected ? this.ANIMATION.Z_SELECTED : this.ANIMATION.Z_DEFAULT;
+		const zBase = isSelected
+			? this.ANIMATION.Z_SELECTED
+			: this.ANIMATION.Z_DEFAULT;
 		return facingFactor * zBase;
 	},
 
 	/** gesture planeのサイズ（pageWidthから派生） */
 	calcGesturePlaneArgs(pageWidth: number): [number, number] {
-		return [pageWidth + this.GESTURE.PLANE_PADDING_X, this.GESTURE.PLANE_HEIGHT] as const;
+		return [
+			pageWidth + this.GESTURE.PLANE_PADDING_X,
+			this.GESTURE.PLANE_HEIGHT,
+		] as const;
 	},
 
 	/** page の offset X（pageIndexから） */

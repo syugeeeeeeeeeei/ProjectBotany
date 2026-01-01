@@ -37,7 +37,10 @@ export const useHandLogic = (player: PlayerType) => {
 			.filter((c): c is CardWithInstanceId => c !== null);
 	}, [playerState]);
 
-	const maxPage = Math.max(0, Math.ceil(cards.length / HandLayout.CARDS_PER_PAGE) - 1);
+	const maxPage = Math.max(
+		0,
+		Math.ceil(cards.length / HandLayout.CARDS_PER_PAGE) - 1,
+	);
 
 	// NOTE: HandLayout.PAGE_WIDTH は CardLayout.BASE.WIDTH から派生する “静的” な幅。
 	// cards数に依存しない「1ページの基準幅」としてこちらを使う。
@@ -51,7 +54,9 @@ export const useHandLogic = (player: PlayerType) => {
 
 	// アニメーション（表示/非表示Z）
 	const { zPos } = useSpring({
-		zPos: effectiveIsVisible ? HandLayout.POSITION.Z.VISIBLE : HandLayout.POSITION.Z.HIDDEN,
+		zPos: effectiveIsVisible
+			? HandLayout.POSITION.Z.VISIBLE
+			: HandLayout.POSITION.Z.HIDDEN,
 		config: HandLayout.ANIMATION.SPRING_CONFIG,
 	});
 
@@ -78,7 +83,9 @@ export const useHandLogic = (player: PlayerType) => {
 				if (Math.abs(mx) > Math.abs(my)) {
 					if (Math.abs(mx) > FLICK_DIST && Math.abs(vx) > FLICK_VEL) {
 						const pageDir = -Math.sign(dx) * facingFactor;
-						setCurrentPage((prev) => Math.max(0, Math.min(maxPage, prev + pageDir)));
+						setCurrentPage((prev) =>
+							Math.max(0, Math.min(maxPage, prev + pageDir)),
+						);
 					}
 					return;
 				}

@@ -43,10 +43,10 @@ export const DESIGN = {
       BORDER_DEFAULT: "#B8860B",
       BORDER_HOVER: "#FAD02C",
       BORDER_SELECTED: "#FFD700",
-      BASE_BG: "#F5EFE6",
+      BASE_BG: "#e8e6dd",
       TEXT_WHITE: "#FFFFFF",
       TEXT_BLACK: "#000000",
       DESC_BG: "#FFFFFF",
     },
-  }
+  },
 } as const;

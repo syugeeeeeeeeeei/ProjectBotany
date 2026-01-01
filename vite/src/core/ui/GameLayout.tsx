@@ -11,15 +11,10 @@ interface GameLayoutProps {
 
 /**
  * 3Dシーンのカメラと操作（Controller）を管理するコンポーネント
- * GameLayoutからカメラ設定を分離し、OrbitControlsで自由な操作を提供します。
  */
 const SceneController = () => {
   const { camera } = useThree();
 
-  /**
-   * コンポーネントのマウント時に一度だけカメラの初期位置と注視点を設定する。
-   * ゲーム開始時に盤面全体が正しいアングルで見えるように強制するために必要です
-   */
   useEffect(() => {
     camera.position.set(0, 10, 0);
     camera.lookAt(0, 0, 0);
@@ -28,9 +23,9 @@ const SceneController = () => {
   return (
     <OrbitControls
       makeDefault
-      enableZoom={false}
-      enableRotate={false}
-      enablePan={false}
+      // enableZoom={false}
+      // enableRotate={false}
+      // enablePan={false}
     />
   );
 };
@@ -38,12 +33,10 @@ const SceneController = () => {
 /**
  * 3Dシーンの基本設定 (ライト、カメラ、操作)
  */
-const SceneSetup: React.FC = () => {
+const SceneSetup = () => {
   return (
     <>
-      {/* カメラと操作系をここに配置 */}
       <SceneController />
-
       <color attach="background" args={["#1a1a1a"]} />
       <ambientLight intensity={0.6} />
       <directionalLight
@@ -52,16 +45,17 @@ const SceneSetup: React.FC = () => {
         castShadow
         shadow-mapSize={[2048, 2048]}
       />
-      {/* 簡易的な床（デバッグ用） */}
       <gridHelper args={[20, 20, 0x444444, 0x222222]} position={[0, -0.1, 0]} />
     </>
   );
 };
 
-export const GameLayout: React.FC<GameLayoutProps> = ({
-  children,
-  uiOverlay,
-}) => {
+/**
+ * GameLayoutコンポーネント
+ * ※ 以前のコードから React.FC の型注釈を削除（または統一）し、
+ * Fast Refreshがコンポーネントとして正しく認識できるようにします。
+ */
+export const GameLayout = ({ children, uiOverlay }: GameLayoutProps) => {
   return (
     <div
       style={{
@@ -72,7 +66,6 @@ export const GameLayout: React.FC<GameLayoutProps> = ({
         backgroundColor: "#000",
       }}
     >
-      {/* Layer 1: 3D Scene */}
       <div
         style={{
           width: "100%",
@@ -81,11 +74,7 @@ export const GameLayout: React.FC<GameLayoutProps> = ({
           zIndex: 0,
         }}
       >
-        <Canvas
-          shadows
-          // 削除: camera={{ position: ... }} は SceneController に移動しました
-          dpr={[1, 2]}
-        >
+        <Canvas shadows dpr={[1, 2]}>
           <Suspense fallback={null}>
             <SceneSetup />
             {children}
@@ -93,7 +82,6 @@ export const GameLayout: React.FC<GameLayoutProps> = ({
         </Canvas>
       </div>
 
-      {/* Layer 2: 2D UI Overlay */}
       <div
         style={{
           width: "100%",

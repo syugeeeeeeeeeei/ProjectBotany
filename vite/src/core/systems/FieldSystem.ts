@@ -24,16 +24,46 @@ export class FieldSystem {
     return { x, y, cellType: "native_area", ownerId: "native" };
   }
 
-  static createRecoveryPendingCell(x: number, y: number, turn: number): RecoveryPendingAreaCell {
-    return { x, y, cellType: "recovery_pending_area", ownerId: null, recoveryPendingTurn: turn };
+  static createRecoveryPendingCell(
+    x: number,
+    y: number,
+    turn: number,
+  ): RecoveryPendingAreaCell {
+    return {
+      x,
+      y,
+      cellType: "recovery_pending_area",
+      ownerId: null,
+      recoveryPendingTurn: turn,
+    };
   }
 
-  static createAlienCoreCell(x: number, y: number, instanceId: string): AlienCoreCell {
-    return { x, y, cellType: "alien_core", ownerId: "alien", alienInstanceId: instanceId };
+  static createAlienCoreCell(
+    x: number,
+    y: number,
+    instanceId: string,
+  ): AlienCoreCell {
+    return {
+      x,
+      y,
+      cellType: "alien_core",
+      ownerId: "alien",
+      alienInstanceId: instanceId,
+    };
   }
 
-  static createAlienInvasionCell(x: number, y: number, dominantId: string): AlienInvasionAreaCell {
-    return { x, y, cellType: "alien_invasion_area", ownerId: "alien", dominantAlienInstanceId: dominantId };
+  static createAlienInvasionCell(
+    x: number,
+    y: number,
+    dominantId: string,
+  ): AlienInvasionAreaCell {
+    return {
+      x,
+      y,
+      cellType: "alien_invasion_area",
+      ownerId: "alien",
+      dominantAlienInstanceId: dominantId,
+    };
   }
 
   // --- システムアクション ---
@@ -43,7 +73,9 @@ export class FieldSystem {
     useGameStore.getState().internal_mutate((draft) => {
       const { FIELD_WIDTH, FIELD_HEIGHT } = GAME_SETTINGS;
       draft.gameField.cells = Array.from({ length: FIELD_HEIGHT }, (_, y) =>
-        Array.from({ length: FIELD_WIDTH }, (_, x) => this.createNativeCell(x, y))
+        Array.from({ length: FIELD_WIDTH }, (_, x) =>
+          this.createNativeCell(x, y),
+        ),
       );
     });
   }
@@ -57,7 +89,7 @@ export class FieldSystem {
     });
   }
 
-  /** * セルの内部状態を部分的に更新 (プロパティ書き換え用) 
+  /** * セルの内部状態を部分的に更新 (プロパティ書き換え用)
    * action.field.updateCell から呼び出される
    */
   static mutateCell(x: number, y: number, updater: (cell: CellState) => void) {

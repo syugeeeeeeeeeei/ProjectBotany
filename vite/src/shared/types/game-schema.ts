@@ -2,7 +2,14 @@
  * ゲーム全体のデータ構造定義 (game-schema)
  */
 export * from "./primitives";
-import { PlayerType, ShapeType, DirectionType, GamePhase, GrowthCondition, GrowthEffect } from "./primitives";
+import {
+  PlayerType,
+  ShapeType,
+  DirectionType,
+  GamePhase,
+  GrowthCondition,
+  GrowthEffect,
+} from "./primitives";
 import { ActionLog } from "./actions";
 
 // --- マス定義 ---
@@ -27,14 +34,14 @@ interface CardDefinitionBase {
 
 type TargetingDefinition =
   | {
-    shape: ShapeType;
-    power: number;
-    direction?: DirectionType;
-    target?: "alien_invasion_area" | "alien_core";
-  }
+      shape: ShapeType;
+      power: number;
+      direction?: DirectionType;
+      target?: "alien_invasion_area" | "alien_core";
+    }
   | {
-    target: "species";
-  };
+      target: "species";
+    };
 
 export interface AlienCard extends CardDefinitionBase {
   cardType: "alien";
@@ -95,8 +102,14 @@ interface CellStateBase {
   y: number;
 }
 
-export interface NativeAreaCell extends CellStateBase { cellType: "native_area"; ownerId: "native"; }
-export interface EmptyAreaCell extends CellStateBase { cellType: "empty_area"; ownerId: null; }
+export interface NativeAreaCell extends CellStateBase {
+  cellType: "native_area";
+  ownerId: "native";
+}
+export interface EmptyAreaCell extends CellStateBase {
+  cellType: "empty_area";
+  ownerId: null;
+}
 export interface RecoveryPendingAreaCell extends CellStateBase {
   cellType: "recovery_pending_area";
   ownerId: null;

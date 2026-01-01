@@ -14,5 +14,5 @@ export const GAME_SETTINGS = {
   DEBUG: {
     SHOW_GESTURE_AREA: false,
     LOG_EVENTS: true,
-  }
+  },
 };

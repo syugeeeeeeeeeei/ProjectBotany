@@ -20,7 +20,8 @@ export const useGameQuery = {
   ui: {
     useSelectedCardId: () => useUIStore((state) => state.selectedCardId),
     useSelectedCell: () => useUIStore((state) => state.selectedCell),
-    useIsInteractionLocked: () => useUIStore((state) => state.isInteractionLocked),
+    useIsInteractionLocked: () =>
+      useUIStore((state) => state.isInteractionLocked),
     useNotification: () => useUIStore((state) => state.notification),
   },
 };
@@ -41,5 +42,5 @@ export const gameQuery = {
   ui: {
     selectedCardId: () => useUIStore.getState().selectedCardId,
     selectedCell: () => useUIStore.getState().selectedCell,
-  }
+  },
 };
