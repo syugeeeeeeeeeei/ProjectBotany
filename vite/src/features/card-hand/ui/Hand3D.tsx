@@ -1,4 +1,4 @@
-// src/features/card-hand/components/Hand3D.tsx
+// src/features/card-hand/ui/Hand3D.tsx
 import React from "react";
 import { animated, to, useSpring } from "@react-spring/three";
 import { Plane } from "@react-three/drei";
@@ -38,7 +38,13 @@ const CardWrapper: React.FC<CardWrapperProps> = ({
   });
 
   const { z, opacity } = useSpring({
-    z: HandLayout.calcTargetZ({ isSelected, facingFactor }),
+    // 修正：isVisible と isAnySelected を渡す
+    z: HandLayout.calcTargetZ({
+      isSelected,
+      isAnySelected,
+      isVisible,
+      facingFactor,
+    }),
     opacity: targetOpacity,
     config: HandLayout.ANIMATION.SPRING_CONFIG,
   });
@@ -53,7 +59,11 @@ const CardWrapper: React.FC<CardWrapperProps> = ({
         ]}
         scale={HandLayout.CARD.SCALE}
       >
-        <Card3D card={card} player={player} opacity={opacity} />
+        <Card3D
+          card={card}
+          player={player}
+          opacity={opacity as unknown as number}
+        />
       </group>
     </animated.group>
   );
@@ -64,7 +74,6 @@ const Hand3D: React.FC<{ player: PlayerType }> = ({ player }) => {
 
   if (state.cards.length === 0) return null;
 
-  // pagination (pure)
   const pages: CardWithInstanceId[][] = [];
   for (let i = 0; i < state.cards.length; i += HandLayout.CARDS_PER_PAGE) {
     pages.push(state.cards.slice(i, i + HandLayout.CARDS_PER_PAGE));
@@ -95,7 +104,6 @@ const Hand3D: React.FC<{ player: PlayerType }> = ({ player }) => {
         ]}
         {...bindGesture()}
       >
-        {/* [重要]他のコンポーネントを分断しないようにdepthWriteをfalseにする */}
         <meshStandardMaterial
           transparent
           opacity={HandLayout.GESTURE.MATERIAL.OPACITY}
@@ -122,7 +130,7 @@ const Hand3D: React.FC<{ player: PlayerType }> = ({ player }) => {
                 player={player}
                 facingFactor={layout.facingFactor}
                 isSelected={state.selectedCardId === card.instanceId}
-                isAnySelected={state.isAnyCardSelected}
+                isAnySelected={state.isMyCardSelected} // 修正：自分の手札の選択状況のみを渡す
                 isVisible={state.effectiveIsVisible}
               />
             ))}

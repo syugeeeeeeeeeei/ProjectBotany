@@ -1,13 +1,8 @@
+// src/features/card-hand/domain/cardLayout.ts
 import { DESIGN } from "@/shared/constants/design-tokens";
 
 /**
  * Card 3D Layout Tokens
- * - 3Dカードの寸法/レイヤー順/配置/タイポグラフィなど、描画に必要な「不変の定数」と
- * そこから導出できる「派生値」をまとめる。
- *
- * NOTE:
- * - Card3D は静的コンポーネント運用前提のため、基本幅は BASE.WIDTH を使用する。
- * - 外部入力（可変幅）が必要になった場合でも、calc(width) を通すことで一箇所で調整できる。
  */
 export const CardLayout = {
 	// --- 1) Base physical size ---
@@ -71,9 +66,9 @@ export const CardLayout = {
 		},
 
 		COST: {
-			RADIUS: 0.13,
-			X_OFFSET: 0.15, // 右端からの距離
-			Y_OFFSET: 0.15, // 上端からの距離
+			RADIUS: 0.125,
+			X_OFFSET: 0.19,
+			Y_OFFSET: 0.19,
 			get POSITION(): [x: number, y: number, z: number] {
 				return [
 					CardLayout.CARD_BASE.WIDTH / 2 - this.X_OFFSET,
@@ -137,7 +132,7 @@ export const CardLayout = {
 				FONT_SIZE: 0.16,
 				COLOR: "black",
 				get POSITION(): [x: number, y: number, z: number] {
-					return [0, 0, CardLayout.Z.TEXT]; // 親Circleからの相対
+					return [0, 0, CardLayout.Z.TEXT];
 				},
 			},
 			DESC: {
@@ -176,15 +171,12 @@ export const CardLayout = {
 
 /**
  * Hand (cards list) Layout Tokens
- * - “不変の数字” + “意味のある派生計算”をここに集約する。
  */
 export const HandLayout = {
-	// --- pagination ---
 	CARDS_PER_PAGE: 3,
 	CARD_GAP_X: 1.1,
-	PAGE_GAP_X: 3, // 1ページ分のスペース。十分に大きく。
+	PAGE_GAP_X: 3,
 
-	// --- base placement ---
 	POSITION: {
 		X: 0,
 		Y: 2.2,
@@ -194,7 +186,6 @@ export const HandLayout = {
 		},
 	},
 
-	// --- card transform in hand ---
 	CARD: {
 		SCALE: 1.5,
 		ROTATION: {
@@ -204,38 +195,22 @@ export const HandLayout = {
 		},
 	},
 
-	// --- gesture plane ---
 	GESTURE: {
-		PLANE_PADDING_X: 4, // pageWidth に足す余白
+		PLANE_PADDING_X: 4,
 		PLANE_HEIGHT: 4,
-
-		ROTATION: {
-			X: -Math.PI / 2,
-			Y: 0,
-			Z: 0,
-		},
-		POSITION: {
-			X: 0,
-			Y: -0.2,
-			Z: -0.15,
-		},
-		MATERIAL: {
-			OPACITY: 0,
-			DEPTH_WRITE: false,
-		},
+		ROTATION: { X: -Math.PI / 2, Y: 0, Z: 0 },
+		POSITION: { X: 0, Y: -0.2, Z: -0.15 },
+		MATERIAL: { OPACITY: 0, DEPTH_WRITE: false },
 	},
 
-	// --- animation values ---
 	ANIMATION: {
 		Z_SELECTED: -0.5,
+		Z_OTHER_HIDDEN: 2.5,
 		Z_DEFAULT: 0,
 		SPRING_CONFIG: { tension: 300, friction: 20 },
-		OPACITY_DIM: 0.5, // 見えない/非選択の暗転
+		OPACITY_DIM: 0.5,
 	},
 
-	// -------- Derived Values / Helpers --------
-
-	/** 1ページ分の横幅 */
 	get PAGE_WIDTH() {
 		return (
 			this.CARDS_PER_PAGE * CardLayout.CARD_BASE.WIDTH +
@@ -243,19 +218,15 @@ export const HandLayout = {
 		);
 	},
 
-	/** カードのローカルX（page内） */
 	calcCardXLocal(index: number, facingFactor: number) {
 		const pageWidth = this.PAGE_WIDTH;
 		const cardWidth = CardLayout.CARD_BASE.WIDTH;
 		const gap = this.CARD_GAP_X;
-
-		// 左端基準 → 中央揃え
 		const x = -pageWidth / 2 + index * (cardWidth + gap) + cardWidth / 2;
-
 		return x * facingFactor;
 	},
 
-	/** 表示状態からターゲットopacityを決定 */
+	/** 修正：選択カードはHide状態でもOpacity 1にする */
 	calcTargetOpacity(params: {
 		isVisible: boolean;
 		isAnySelected: boolean;
@@ -264,21 +235,39 @@ export const HandLayout = {
 		const { isVisible, isAnySelected, isSelected } = params;
 		const dim = this.ANIMATION.OPACITY_DIM;
 
-		if (!isVisible) return dim;
-		if (!isAnySelected) return 1;
-		return isSelected ? 1 : dim;
+		if (isSelected) return 1; // 選択されていれば常に表示
+		if (!isVisible) return dim; // 手札が隠れていれば暗く
+		if (!isAnySelected) return 1; // 誰も選択されていなければ通常表示
+		return dim; // 他のカードが選択中なら暗く
 	},
 
-	/** 選択状態からZアニメーションターゲットを決定 */
-	calcTargetZ(params: { isSelected: boolean; facingFactor: number }) {
-		const { isSelected, facingFactor } = params;
-		const zBase = isSelected
-			? this.ANIMATION.Z_SELECTED
-			: this.ANIMATION.Z_DEFAULT;
-		return facingFactor * zBase;
+	/** 修正：Hide状態でも選択カードだけをShow状態にする計算を追加 */
+	calcTargetZ(params: { isSelected: boolean; isAnySelected: boolean; isVisible: boolean; facingFactor: number }) {
+		const { isSelected, isAnySelected, isVisible, facingFactor } = params;
+
+		if (isSelected) {
+			if (isVisible) {
+				// 通常表示中：少し手前に浮かせる
+				return facingFactor * this.ANIMATION.Z_SELECTED;
+			} else {
+				// 手札Hide中：全体がHIDDEN(6.0)にいるため、VISIBLE(3.5)付近まで浮かせるオフセット
+				// 目標位置(3.0) = VISIBLE(3.5) + Z_SELECTED(-0.5)
+				const popupOffset = (this.POSITION.Z.VISIBLE + this.ANIMATION.Z_SELECTED) - this.POSITION.Z.HIDDEN;
+				return facingFactor * popupOffset;
+			}
+		}
+
+		// 手札全体がHIDDENなら、他の非選択カードはオフセットなし（沈んだまま）
+		if (!isVisible) return 0;
+
+		// 通常表示中で他のカードが選択されている場合、ひっこめる
+		if (isAnySelected) {
+			return facingFactor * this.ANIMATION.Z_OTHER_HIDDEN;
+		}
+
+		return 0;
 	},
 
-	/** gesture planeのサイズ（pageWidthから派生） */
 	calcGesturePlaneArgs(pageWidth: number): [number, number] {
 		return [
 			pageWidth + this.GESTURE.PLANE_PADDING_X,
@@ -286,7 +275,6 @@ export const HandLayout = {
 		] as const;
 	},
 
-	/** page の offset X（pageIndexから） */
 	calcPageOffsetX(params: {
 		pageIndex: number;
 		pageWidth: number;
@@ -297,5 +285,4 @@ export const HandLayout = {
 	},
 } as const;
 
-// 色定義はSharedから利用
 export const CardColors = DESIGN.COLORS;

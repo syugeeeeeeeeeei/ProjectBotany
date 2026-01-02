@@ -1,3 +1,4 @@
+// src/features/card-hand/hooks/useHandLogic.ts
 import { useState, useMemo } from "react";
 import { useSpring } from "@react-spring/three";
 import { useGesture } from "@use-gesture/react";
@@ -13,7 +14,6 @@ export const useHandLogic = (player: PlayerType) => {
 	const playerState = useGameQuery.usePlayer(player);
 	const activePlayerId = useGameQuery.useActivePlayer();
 
-	// UI状態もAPI経由で取得
 	const selectedCardId = useGameQuery.ui.useSelectedCardId();
 	const isInteractionLocked = useGameQuery.ui.useIsInteractionLocked();
 
@@ -22,7 +22,6 @@ export const useHandLogic = (player: PlayerType) => {
 
 	const facingFactor = playerState?.facingFactor ?? 1;
 	const isMyTurn = activePlayerId === player;
-	const isAnyCardSelected = !!selectedCardId;
 
 	const effectiveIsVisible = isMyTurn && isVisible;
 
@@ -37,22 +36,24 @@ export const useHandLogic = (player: PlayerType) => {
 			.filter((c): c is CardWithInstanceId => c !== null);
 	}, [playerState]);
 
+	// 修正：自分の手札のカードがどれか選択されているか (他プレイヤーの選択に反応しないようにする)
+	const isMyCardSelected = useMemo(() => {
+		if (!selectedCardId) return false;
+		return cards.some((c) => c.instanceId === selectedCardId);
+	}, [cards, selectedCardId]);
+
 	const maxPage = Math.max(
 		0,
 		Math.ceil(cards.length / HandLayout.CARDS_PER_PAGE) - 1,
 	);
 
-	// NOTE: HandLayout.PAGE_WIDTH は CardLayout.BASE.WIDTH から派生する “静的” な幅。
-	// cards数に依存しない「1ページの基準幅」としてこちらを使う。
 	const pageWidth = HandLayout.PAGE_WIDTH;
 
-	// アニメーション（横ページ送り）
 	const { xPos } = useSpring({
 		xPos: -currentPage * (pageWidth + HandLayout.PAGE_GAP_X) * facingFactor,
 		config: HandLayout.ANIMATION.SPRING_CONFIG,
 	});
 
-	// アニメーション（表示/非表示Z）
 	const { zPos } = useSpring({
 		zPos: effectiveIsVisible
 			? HandLayout.POSITION.Z.VISIBLE
@@ -60,7 +61,6 @@ export const useHandLogic = (player: PlayerType) => {
 		config: HandLayout.ANIMATION.SPRING_CONFIG,
 	});
 
-	// ジェスチャー
 	const bindGesture = useGesture(
 		{
 			onDrag: ({
@@ -74,12 +74,9 @@ export const useHandLogic = (player: PlayerType) => {
 				if (tap || !last) return;
 				event.stopPropagation();
 
-				// “意味のある数字” は HandLayout に寄せたいが、
-				// ここはジェスチャー閾値なので HandLayout.GESTURE に切り出してもOK。
 				const FLICK_DIST = 45;
 				const FLICK_VEL = 0.5;
 
-				// 横フリック：ページ送り
 				if (Math.abs(mx) > Math.abs(my)) {
 					if (Math.abs(mx) > FLICK_DIST && Math.abs(vx) > FLICK_VEL) {
 						const pageDir = -Math.sign(dx) * facingFactor;
@@ -90,7 +87,6 @@ export const useHandLogic = (player: PlayerType) => {
 					return;
 				}
 
-				// 縦フリック：手札表示/非表示
 				if (Math.abs(my) > FLICK_DIST && Math.abs(vy) > FLICK_VEL * 0.5) {
 					const isUp = dy * facingFactor < 0;
 					const isDown = dy * facingFactor > 0;
@@ -118,7 +114,7 @@ export const useHandLogic = (player: PlayerType) => {
 			cards,
 			currentPage,
 			effectiveIsVisible,
-			isAnyCardSelected,
+			isMyCardSelected, // 修正：追加
 			selectedCardId,
 		},
 		layout: {
