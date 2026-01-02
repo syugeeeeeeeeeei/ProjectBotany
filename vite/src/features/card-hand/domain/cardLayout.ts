@@ -28,10 +28,6 @@ export const CardLayout = {
 		OVERLAY: 0.05,
 	},
 
-	// --- 3) Ratios ---
-	RATIOS: {
-		DESC_WIDTH: 0.75,
-	},
 
 	// --- 4) Area specific layout ---
 	AREAS: {
@@ -182,7 +178,7 @@ export const HandLayout = {
 		Y: 2.2,
 		Z: {
 			VISIBLE: 3.5,
-			HIDDEN: 6.0,
+			HIDDEN: 7
 		},
 	},
 
@@ -204,8 +200,7 @@ export const HandLayout = {
 	},
 
 	ANIMATION: {
-		Z_SELECTED: -0.5,
-		Z_OTHER_HIDDEN: 2.5,
+		Z_SELECTED: 2.5,
 		Z_DEFAULT: 0,
 		SPRING_CONFIG: { tension: 300, friction: 20 },
 		OPACITY_DIM: 0.5,
@@ -248,12 +243,13 @@ export const HandLayout = {
 		if (isSelected) {
 			if (isVisible) {
 				// 通常表示中：少し手前に浮かせる
+				// return facingFactor * this.ANIMATION.Z_SELECTED;
 				return facingFactor * this.ANIMATION.Z_SELECTED;
 			} else {
 				// 手札Hide中：全体がHIDDEN(6.0)にいるため、VISIBLE(3.5)付近まで浮かせるオフセット
 				// 目標位置(3.0) = VISIBLE(3.5) + Z_SELECTED(-0.5)
-				const popupOffset = (this.POSITION.Z.VISIBLE + this.ANIMATION.Z_SELECTED) - this.POSITION.Z.HIDDEN;
-				return facingFactor * popupOffset;
+				const showBaseLine = this.ANIMATION.Z_SELECTED - this.POSITION.Z.VISIBLE;
+				return facingFactor * showBaseLine;
 			}
 		}
 
@@ -262,7 +258,7 @@ export const HandLayout = {
 
 		// 通常表示中で他のカードが選択されている場合、ひっこめる
 		if (isAnySelected) {
-			return facingFactor * this.ANIMATION.Z_OTHER_HIDDEN;
+			return facingFactor * (this.POSITION.Z.HIDDEN - this.POSITION.Z.VISIBLE);
 		}
 
 		return 0;
