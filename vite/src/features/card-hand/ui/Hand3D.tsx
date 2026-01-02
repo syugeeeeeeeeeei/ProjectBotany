@@ -5,7 +5,7 @@ import { Plane } from "@react-three/drei";
 import type { PlayerType, CardDefinition } from "@/shared/types/game-schema";
 
 import { useHandLogic } from "../hooks/useHandLogic";
-import { HandLayout } from "../domain/cardLayout";
+import { HandLayout } from "../domain/HandLayout"; // 分離したLayoutファイル
 import Card3D from "./Card3D";
 
 type CardWithInstanceId = CardDefinition & { instanceId: string };
@@ -37,34 +37,36 @@ const CardWrapper: React.FC<CardWrapperProps> = ({
     isSelected,
   });
 
-  const { z, opacity } = useSpring({
-    // 修正：isVisible と isAnySelected を渡す
-    z: HandLayout.calcTargetZ({
-      isSelected,
-      isAnySelected,
-      isVisible,
-      facingFactor,
-    }),
+  const targetZ = HandLayout.calcTargetZ({
+    isSelected,
+    isAnySelected,
+    isVisible,
+    facingFactor,
+  });
+
+  // 改善ポイント:
+  // 位置、回転、透明度を1つのSpringでまとめて制御し、groupのネストを削減
+  const spring = useSpring({
+    position: [xLocal, 0, targetZ] as [number, number, number],
+    rotation: [
+      HandLayout.CARD.ROTATION.X(facingFactor),
+      HandLayout.CARD.ROTATION.Y(facingFactor),
+      HandLayout.CARD.ROTATION.Z,
+    ] as [number, number, number],
     opacity: targetOpacity,
     config: HandLayout.ANIMATION.SPRING_CONFIG,
   });
 
   return (
-    <animated.group position-x={xLocal} position-z={z}>
-      <group
-        rotation={[
-          HandLayout.CARD.ROTATION.X(facingFactor),
-          HandLayout.CARD.ROTATION.Y(facingFactor),
-          HandLayout.CARD.ROTATION.Z,
-        ]}
-        scale={HandLayout.CARD.SCALE}
-      >
-        <Card3D
-          card={card}
-          player={player}
-          opacity={opacity as unknown as number}
-        />
-      </group>
+    <animated.group
+      position={spring.position}
+      rotation={spring.rotation as unknown as [number, number, number]}
+    >
+      <Card3D
+        card={card}
+        player={player}
+        opacity={spring.opacity as unknown as number}
+      />
     </animated.group>
   );
 };
@@ -111,7 +113,7 @@ const Hand3D: React.FC<{ player: PlayerType }> = ({ player }) => {
         />
       </Plane>
 
-      {/* Cards List */}
+      {/* Cards List - Scale groupを削除 */}
       <animated.group position-x={layout.xPos}>
         {pages.map((pageCards, pageIndex) => (
           <group
@@ -130,7 +132,7 @@ const Hand3D: React.FC<{ player: PlayerType }> = ({ player }) => {
                 player={player}
                 facingFactor={layout.facingFactor}
                 isSelected={state.selectedCardId === card.instanceId}
-                isAnySelected={state.isMyCardSelected} // 修正：自分の手札の選択状況のみを渡す
+                isAnySelected={state.isMyCardSelected}
                 isVisible={state.effectiveIsVisible}
               />
             ))}

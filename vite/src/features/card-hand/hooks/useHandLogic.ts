@@ -6,7 +6,7 @@ import { useGameQuery } from "@/core/api/queries";
 import { gameActions } from "@/core/api/actions";
 import type { PlayerType, CardDefinition } from "@/shared/types/game-schema";
 import cardMasterData from "@/shared/data/cardMasterData";
-import { HandLayout } from "../domain/cardLayout";
+import { HandLayout } from "../domain/HandLayout"; // 修正: 分離したファイルからインポート
 
 type CardWithInstanceId = CardDefinition & { instanceId: string };
 
@@ -25,7 +25,6 @@ export const useHandLogic = (player: PlayerType) => {
 
 	const effectiveIsVisible = isMyTurn && isVisible;
 
-	// カードリスト生成
 	const cards = useMemo(() => {
 		if (!playerState) return [];
 		return playerState.cardLibrary
@@ -36,7 +35,6 @@ export const useHandLogic = (player: PlayerType) => {
 			.filter((c): c is CardWithInstanceId => c !== null);
 	}, [playerState]);
 
-	// 修正：自分の手札のカードがどれか選択されているか (他プレイヤーの選択に反応しないようにする)
 	const isMyCardSelected = useMemo(() => {
 		if (!selectedCardId) return false;
 		return cards.some((c) => c.instanceId === selectedCardId);
@@ -114,7 +112,7 @@ export const useHandLogic = (player: PlayerType) => {
 			cards,
 			currentPage,
 			effectiveIsVisible,
-			isMyCardSelected, // 修正：追加
+			isMyCardSelected,
 			selectedCardId,
 		},
 		layout: {

@@ -1,5 +1,6 @@
+// src/features/card-hand/ui/parts/cardGeometries.ts
 import * as THREE from "three";
-import { CardLayout } from "../../domain/cardLayout";
+import { CardLayout } from "../../domain/CardLayout"; // パスはそのまま、中身が変わっている
 
 type Vec2 = Readonly<{ x: number; y: number }>;
 
@@ -46,7 +47,9 @@ const deriveHeaderWavePoints = (): HeaderWavePoints => {
 
   const [width] = header.SIZE;
 
-  const baselineY = header.TOP_LINE; // ヘッダーエリアの上辺（波の基準線）
+  // CardLayoutの改修で、これらは絶対座標計算用のヘルパーとして定義されている
+  // 形状生成ロジックは相対座標（width/height）で計算するため、ここで取得するのは「形状のY座標」
+  const baselineY = header.TOP_LINE;
   const bottomY = header.BOTTOM_LINE;
 
   const halfW = width / 2;
@@ -99,15 +102,9 @@ const buildHeaderWaveCurves = (p: HeaderWavePoints) => {
 };
 
 type CreateHeaderShapeOptions = Readonly<{
-  /** true: カーブを一切使わず、四角形として描画（デバッグ用） */
   debugNoCurves?: boolean;
 }>;
 
-/**
- * カードヘッダー形状を生成する
- * - 通常: 波状（ベジェ2本）
- * - デバッグ: カーブ無しの四角形
- */
 export const createHeaderShape = (
   options: CreateHeaderShapeOptions = {},
 ): THREE.Shape => {
@@ -116,19 +113,16 @@ export const createHeaderShape = (
   const shape = new THREE.Shape();
   const points = deriveHeaderWavePoints();
 
-  // ---- common start (bottom-left) ----
   shape.moveTo(points.leftBottom.x, points.leftBottom.y);
 
   if (debugNoCurves) {
-    // ===== Debug: NO CURVES (pure rectangle) =====
-    shape.lineTo(points.leftTop.x, points.leftTop.y); // left edge
-    shape.lineTo(points.rightTop.x, points.rightTop.y); // top edge
-    shape.lineTo(points.rightBottom.x, points.rightBottom.y); // right edge
+    shape.lineTo(points.leftTop.x, points.leftTop.y);
+    shape.lineTo(points.rightTop.x, points.rightTop.y);
+    shape.lineTo(points.rightBottom.x, points.rightBottom.y);
     shape.closePath();
     return shape;
   }
 
-  // ===== Normal: wave + side dip =====
   const { leftCurve, rightCurve } = buildHeaderWaveCurves(points);
 
   shape.lineTo(points.leftSideDip.x, points.leftSideDip.y);
@@ -140,9 +134,6 @@ export const createHeaderShape = (
   return shape;
 };
 
-/**
- * 角丸の長方形形状を生成する (Base用)
- */
 export const createRoundedRectShape = (): THREE.Shape => {
   const shape = new THREE.Shape();
 
@@ -158,19 +149,15 @@ export const createRoundedRectShape = (): THREE.Shape => {
 
   shape.moveTo(leftX, bottomY + radius);
 
-  // left edge
   shape.lineTo(leftX, topY - radius);
   shape.quadraticCurveTo(leftX, topY, leftX + radius, topY);
 
-  // top edge
   shape.lineTo(rightX - radius, topY);
   shape.quadraticCurveTo(rightX, topY, rightX, topY - radius);
 
-  // right edge
   shape.lineTo(rightX, bottomY + radius);
   shape.quadraticCurveTo(rightX, bottomY, rightX - radius, bottomY);
 
-  // bottom edge
   shape.lineTo(leftX + radius, bottomY);
   shape.quadraticCurveTo(leftX, bottomY, leftX, bottomY + radius);
 

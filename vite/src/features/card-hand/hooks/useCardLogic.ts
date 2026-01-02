@@ -1,9 +1,10 @@
+// src/features/card-hand/hooks/useCardLogic.ts
 import { useMemo, useState, useEffect } from "react";
 import type { ThreeEvent } from "@react-three/fiber";
 import { useGameQuery } from "@/core/api/queries";
 import { gameActions } from "@/core/api/actions";
 import type { CardDefinition, PlayerType } from "@/shared/types/game-schema";
-import { CardColors } from "../domain/cardLayout";
+import { CardColors } from "../domain/CardLayout";
 
 type UseCardLogicProps = {
 	card: CardDefinition & { instanceId: string };
@@ -39,12 +40,10 @@ export const useCardLogic = ({
 		"https://placehold.co/256x160/ccc/999?text=Loading",
 	);
 
-	// Core API経由でデータを取得
 	const selectedCardId = useGameQuery.ui.useSelectedCardId();
 	const activePlayerId = useGameQuery.useActivePlayer();
 	const playerState = useGameQuery.usePlayer(player);
 
-	// 状態判定
 	const cooldownInfo = playerState?.cooldownActiveCards.find(
 		(c) => c.cardId === card.instanceId,
 	);
@@ -53,7 +52,6 @@ export const useCardLogic = ({
 	const isMyTurn = activePlayerId === player;
 	const isPlayable = isMyTurn && !isCooldown;
 
-	// テクスチャ読み込み
 	useEffect(() => {
 		const img = new Image();
 		img.crossOrigin = "Anonymous";
@@ -61,7 +59,6 @@ export const useCardLogic = ({
 		img.onload = () => setTextureUrl(card.imagePath);
 	}, [card.imagePath]);
 
-	// イベントハンドラ (Store直接操作禁止 → Action経由)
 	const handleClick = (e: ThreeEvent<MouseEvent>) => {
 		e.stopPropagation();
 
@@ -94,7 +91,6 @@ export const useCardLogic = ({
 		setIsHovered(false);
 	};
 
-	// 表示色の計算
 	const headerColor = useMemo(() => {
 		switch (card.cardType) {
 			case "alien":

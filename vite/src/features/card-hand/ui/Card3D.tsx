@@ -6,7 +6,7 @@ import * as THREE from "three";
 import type { CardDefinition, PlayerType } from "@/shared/types/game-schema";
 
 import { useCardLogic, UseCardLogicResult } from "../hooks/useCardLogic";
-import { CardLayout } from "../domain/cardLayout";
+import { CardLayout } from "../domain/CardLayout";
 import {
   createHeaderShape,
   createRoundedRectShape,
@@ -34,13 +34,18 @@ const Card3D: React.FC<Card3DProps> = ({ card, player, opacity }) => {
       onPointerEnter={handlers.onPointerEnter}
       onPointerLeave={handlers.onPointerLeave}
     >
+      {/* 改善ポイント: 
+        パーツごとのgroupを排除し、すべてのパーツをCard3D直下の座標系(カード中心)で配置します。
+        各パーツコンポーネントは座標(position)を受け取るか、内部でCardLayoutの絶対座標定義を使用します。
+      */}
+
       {/* Layer 1: Border */}
       <CardBase state={state} opacity={opacity} />
 
       {/* Layer 2: Inner Background */}
       <CardBaseInner baseShape={baseShape} opacity={opacity} />
 
-      {/* Layer 3: Contents */}
+      {/* Layer 3: Contents (Header, Cost, Image, Desc) */}
       <CardContentHeader
         card={card}
         opacity={opacity}
@@ -62,7 +67,7 @@ const Card3D: React.FC<Card3DProps> = ({ card, player, opacity }) => {
 
 export default Card3D;
 
-// --- Sub Components ---
+// --- Sub Components (Flat Layout) ---
 
 const CardBase = ({
   state,
@@ -120,8 +125,8 @@ const CardContentHeader = ({
 }) => {
   const { AREAS, COLORS } = CardLayout;
   return (
-    <group position={AREAS.HEADER.POSITION}>
-      <mesh>
+    <>
+      <mesh position={AREAS.HEADER.POSITION}>
         <shapeGeometry args={[headerShape]} />
         <AnimatedMeshBasicMaterial
           color={data.headerColor}
@@ -140,11 +145,10 @@ const CardContentHeader = ({
       >
         {card.name}
       </Text>
-    </group>
+    </>
   );
 };
 
-/** コスト表示エリア */
 const CardContentCost = ({
   card,
   opacity,
@@ -154,8 +158,8 @@ const CardContentCost = ({
 }) => {
   const { AREAS, COLORS } = CardLayout;
   return (
-    <group position={AREAS.COST.POSITION}>
-      <mesh>
+    <>
+      <mesh position={AREAS.COST.POSITION}>
         <circleGeometry args={[AREAS.COST.RADIUS, 32]} />
         <AnimatedMeshBasicMaterial
           color={COLORS.BORDER}
@@ -173,7 +177,7 @@ const CardContentCost = ({
       >
         {card.cost}
       </Text>
-    </group>
+    </>
   );
 };
 
@@ -202,8 +206,8 @@ const CardContentDescription = ({
 }) => {
   const { AREAS, COLORS } = CardLayout;
   return (
-    <group position={AREAS.DESC.POSITION}>
-      <mesh>
+    <>
+      <mesh position={AREAS.DESC.POSITION}>
         <planeGeometry args={AREAS.DESC.SIZE} />
         <AnimatedMeshBasicMaterial
           color={COLORS.CARD_UI.DESC_BG}
@@ -224,11 +228,10 @@ const CardContentDescription = ({
       >
         {card.description}
       </Text>
-    </group>
+    </>
   );
 };
 
-/** クールダウンオーバーレイ */
 const CardOverlayCooldown = ({
   state,
   data,
@@ -242,8 +245,8 @@ const CardOverlayCooldown = ({
   if (!state.isCooldown) return null;
 
   return (
-    <group position={AREAS.COOLDOWN.POSITION}>
-      <mesh>
+    <>
+      <mesh position={AREAS.COOLDOWN.POSITION}>
         <planeGeometry args={AREAS.COOLDOWN.SIZE} />
         <meshBasicMaterial
           color={AREAS.COOLDOWN.COLOR}
@@ -261,6 +264,6 @@ const CardOverlayCooldown = ({
       >
         {data.cooldownTurns}
       </Text>
-    </group>
+    </>
   );
 };
