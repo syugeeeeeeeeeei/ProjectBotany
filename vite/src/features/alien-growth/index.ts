@@ -1,7 +1,7 @@
 // vite/src/features/alien-growth/index.ts
-import { initAlienGrowthLogic } from "./logic";
+import { initAlienGrowth } from "./logic";
 
 export const alienGrowthFeature = {
 	key: "alien-growth",
-	init: initAlienGrowthLogic,
+	init: initAlienGrowth,
 };

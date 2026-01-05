@@ -1,6 +1,6 @@
 // vite/src/core/types/events.ts
 import { ReactNode } from "react";
-import { GameState, CellState, PlayerType } from "@/shared/types/game-schema";
+import { GameState, CellState, PlayerType } from "@/shared/types";
 
 /**
  * Core Event Map
@@ -16,9 +16,17 @@ export type CoreEventMap = {
   ROUND_START: GameState;
   /** ターン開始時 (PlayerTypeを指定) */
   TURN_START: { playerId: PlayerType };
-  /** ラウンド終了処理直前 (Featureの割り込み処理用) */
+
+  /** ラウンド終了処理直前 (任意のフック用) */
   BEFORE_ROUND_END: GameState;
-  /** ターン終了前 (旧仕様との互換または細かいフック用) */
+
+  // ★追加: ラウンド終了時の処理フェーズ
+  /** 拡散フェーズ (Expansion) */
+  PROCESS_EXPANSION: GameState;
+  /** 成長フェーズ (Growth) */
+  PROCESS_GROWTH: GameState;
+
+  /** ターン終了前 */
   BEFORE_TURN_END: GameState;
   /** ラウンド終了時 */
   ROUND_END: GameState;

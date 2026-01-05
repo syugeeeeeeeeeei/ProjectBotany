@@ -3,7 +3,7 @@ import { RoundSystem } from "@/core/systems/RoundSystem";
 import { FieldSystem } from "@/core/systems/FieldSystem";
 import { useGameStore } from "@/core/store/gameStore";
 import { useUIStore } from "@/core/store/uiStore";
-import { CellType, CellState, PlayerType } from "@/shared/types/game-schema";
+import { CellType, CellState, PlayerType } from "@/shared/types";
 import { ActionLog } from "@/shared/types/actions";
 
 // 簡易ID生成

@@ -4,7 +4,7 @@ import { useSpring } from "@react-spring/three";
 import { useGesture } from "@use-gesture/react";
 import { useGameQuery } from "@/core/api/queries";
 import { gameActions } from "@/core/api/actions";
-import type { PlayerType, CardDefinition } from "@/shared/types/game-schema";
+import type { PlayerType, CardDefinition } from "@/shared/types";
 import cardMasterData from "@/shared/data/cardMasterData";
 import { HandLayout } from "../domain/HandLayout"; // 修正: 分離したファイルからインポート
 

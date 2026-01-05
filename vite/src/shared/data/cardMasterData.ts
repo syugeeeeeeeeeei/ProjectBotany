@@ -1,295 +1,251 @@
-import { CardDefinition } from "@/shared/types/game-schema";
-
 /**
- * 🌿 Project Botany カードマスターデータ
- *
- * 【動機】
- * ゲーム内に登場する全てのカード（外来種、駆除、回復）の属性やパラメータを一元管理するためです。
- * ロジックからデータを切り離すことで、カードの性能調整（バランス調整）や、
- * 新しいカードの追加をコードの修正なしに、データ定義の追記だけで行えるようにします。
- *
- * 【恩恵】
- * - カードの種類（`cardType`）ごとに異なるプロパティ（侵略力、駆除後の状態など）を型安全に定義できます。
- * - 各カードの「フレーバーテキスト（説明文）」や「画像パス」がまとまっており、UI表示にそのまま利用できます。
- * - `growthConditions` などの複雑な条件を構造化データとして持たせることで、拡張性の高い挙動を実現できます。
- *
- * 【使用法】
- * 1. `useGameStore` の初期化や、手札の生成ロジックでこの配列を参照します。
- * 2. 開発者は新しいカードを作成する際、既存のデータ構造に倣ってこの配列に要素を追加します。
+ * src/shared/data/cardMasterData.ts
+ * プロジェクト「侵緑」カードマスターデータ
  */
-const cardMasterData: CardDefinition[] = [
-  // --- 外来種カード定義 ---
-  // alien: 自身を「コア」として配置し、周囲に「侵略マス」を広げる攻撃的なカード群です
+
+import { CardDefinition } from "../types/card";
+
+export const cardMasterData: CardDefinition[] = [
+  // =================================================================
+  // 🌵 外来種カード (Alien Cards)
+  // [共通仕様] ターゲット: 裸地(Bare), 配置時: 種(Seed), 成長: 休眠1R後に成体化
+  // =================================================================
   {
     id: "alien-1",
     name: "ナガミヒナゲシ",
     description:
-      "特定外来生物ではないが、近年数を増やし侵略性が警戒される。\n少し毒があり、あまり警戒されずに徐々に勢力を広げる。\n\n[侵略]：左右1マス\n[クールタイム]：1ターン",
+      "【拡散】左右1マス\n【反撃】なし\n\n近年急増している外来種。拡散力は低いが、コストが軽く、隙間に入り込んでくる。",
     cost: 1,
     cardType: "alien",
-    deckCount: 2,
-    imagePath: "/plants/ナガミヒナゲシ.png",
-    targeting: {
-      power: 1,
-      shape: "straight",
-      direction: "horizon",
-    },
-    cooldownTurns: 1,
-    canGrow: false,
+    deckCount: 3,
+    imagePath: "/plants/alien/nagami.png",
+    expansionPower: 1,
+    expansionRange: "horizon", // 左右
+    counterAbility: "none",
   },
   {
     id: "alien-2",
-    name: "ブラジルチドメクサ",
+    name: "ブラジルチドメグサ",
     description:
-      "特定外来生物。\nアクアリウムから逸出し、河川や水路で繁殖する。\n茎だけでも増殖し駆除が困難。\n\n[侵略]：上下1マス\n[クールタイム]：1ターン",
+      "【拡散】上下1マス\n【反撃】種子散布\n\n水辺を好む外来種。千切れた茎から再生するため、半端な駆除は拡散を招く。",
     cost: 1,
     cardType: "alien",
     deckCount: 2,
-    imagePath: "/plants/ブラジルチドメグサ.png",
-    targeting: {
-      power: 1,
-      shape: "straight",
-      direction: "vertical",
-    },
-    cooldownTurns: 1,
-    canGrow: false,
+    imagePath: "/plants/alien/chidomegusa.png",
+    expansionPower: 1,
+    expansionRange: "vertical", // 上下（川の流れなど）
+    counterAbility: "spread_seed", // 物理駆除時に周囲に種を撒く
   },
   {
     id: "alien-3",
     name: "オオキンケイギク",
     description:
-      "特定外来生物。\n観賞用に持ち込まれた。\n繁殖・拡散が速い。\n道路沿いなどに多く、在来種を駆逐する。\n\n[侵略]：十字1マス\n[クールタイム]：2ターン\n[成長]：2ターン後、侵略力2",
+      "【拡散】十字1マス\n【反撃】なし\n\n鮮やかな花を咲かせるが、在来種を駆逐する力が強い。物理駆除で確実に処理しよう。",
     cost: 2,
     cardType: "alien",
     deckCount: 2,
-    imagePath: "/plants/オオキンケイギク.png",
-    targeting: {
-      power: 1,
-      shape: "cross",
-    },
-    canGrow: true,
-    cooldownTurns: 2,
-    growthConditions: [{ type: "turns_since_last_action", value: 2 }],
-    growthEffects: [{ newInvasionPower: 2 }],
+    imagePath: "/plants/alien/kinkeigiku.png",
+    expansionPower: 1,
+    expansionRange: "cross", // 十字
+    counterAbility: "none",
+    cooldownTurns: 1,
   },
   {
     id: "alien-4",
-    name: "ミズバショウ",
+    name: "ミズバショウ（外来）",
     description:
-      "諏訪地域では外来植物。\n大きな葉で広範囲の面積を奪う。\n全国的には希少なため安易に駆除できない。\n\n[侵略]：周囲1マス\n[成長]：1ターン後、侵略力3\n[クールタイム]：1ターン",
+      "【拡散】周囲1マス\n【反撃】なし\n\n大きな葉で光を遮り、広範囲の在来種を衰退させる。拡散範囲が広い。",
     cost: 3,
     cardType: "alien",
     deckCount: 1,
-    imagePath: "/plants/ミズバショウ.png",
-    targeting: {
-      power: 2,
-      shape: "range",
-    },
+    imagePath: "/plants/alien/mizubashou.png",
+    expansionPower: 1,
+    expansionRange: "range", // 周囲8マス（正方形）
+    counterAbility: "none",
     cooldownTurns: 1,
-    canGrow: false,
-    growthConditions: [{ type: "turns_since_last_action", value: 1 }],
-    growthEffects: [{ newInvasionPower: 3 }],
   },
   {
     id: "alien-5",
     name: "オオハンゴンソウ",
     description:
-      "特定外来生物。\n低木と競合するほど強く、森や山を侵す。\n根だけでも増え駆除が困難。\n\n[侵略]：十字3マス\n[クールタイム]：2ターン\n[使用制限]：2回",
+      "【拡散】斜め十字\n【反撃】種子散布\n\n地下茎で増える強害雑草。物理駆除では根が残り、そこから再生・拡散する恐れがある。",
     cost: 4,
     cardType: "alien",
     deckCount: 1,
-    imagePath: "/plants/オオハンゴンソウ.png",
-    targeting: {
-      power: 3,
-      shape: "cross",
-    },
+    imagePath: "/plants/alien/hangonsou.png",
+    expansionPower: 2, // 遠くまで届く
+    expansionRange: "x_cross", // 斜め
+    counterAbility: "spread_seed", // 厄介な反撃持ち
     cooldownTurns: 1,
     usageLimit: 3,
-    canGrow: false,
   },
   {
     id: "alien-6",
     name: "アレチウリ",
     description:
-      "特定外来生物。\nつるを伸ばし、樹木や河川敷を覆い尽くす。\n密集して繁茂するため、物理的な駆除が難しい。\n\n[侵略]：周囲3マス\n[クールタイム]：1ターン\n[使用制限]：2回",
+      "【拡散】周囲2マス\n【反撃】種子散布\n\nすべてを覆い尽くす「緑の怪物」。極めて強い拡散力と再生能力を持つ。",
     cost: 5,
     cardType: "alien",
     deckCount: 1,
-    imagePath: "/plants/アレチウリ.png",
-    targeting: {
-      power: 3,
-      shape: "range",
-    },
-    cooldownTurns: 1,
-    canGrow: false,
+    imagePath: "/plants/alien/arechiuri.png",
+    expansionPower: 2,
+    expansionRange: "range", // 周囲広範囲
+    counterAbility: "spread_seed",
+    cooldownTurns: 2,
     usageLimit: 2,
   },
-  // --- 駆除カード定義 ---
-  // eradication: フィールド上の「コア」または「侵略マス」を除去するためのカード群です
-  // 生態系のバランスを取り戻すため、外来種の勢力を抑える役割を担います
+
+  // =================================================================
+  // 🧹 駆除カード (Eradication Cards)
+  // [共通仕様] 完全(Complete)=反撃無効, 物理(Physical)=反撃許容
+  // =================================================================
   {
     id: "erad-1",
-    name: "引っこ抜き",
+    name: "刈り払い",
     description:
-      "地道な手作業で、根本から確実に脅威を取り除く。\n\n[駆除]：侵略マス・上下1マス\n[駆除後状態]：空マス",
+      "【物理駆除】1マス\n草刈り機などで地上部を刈り取る。低コストだが、再生能力を持つ外来種には逆効果となる場合がある。",
     cost: 1,
     cardType: "eradication",
-    deckCount: 1,
-    imagePath: "https://placehold.co/100x60/bcaaa4/795548?text=Tejime",
-    targeting: {
-      power: 1,
-      shape: "straight",
-      direction: "vertical",
-      target: "alien_invasion_area",
-    },
-    postRemovalState: "empty_area",
+    deckCount: 3,
+    imagePath: "/actions/erad/kariharai.png",
+    eradicationPower: 1,
+    eradicationRange: "point", // 1マス
+    eradicationType: "physical", // ★物理（反撃受ける）
+    chainDestruction: false,
+    postState: "bare", // 駆除後は裸地
   },
   {
     id: "erad-2",
-    name: "早期発見・萌芽伐採",
+    name: "手取り除草",
     description:
-      "外来種が種子を付ける前に伐採し、拡散を防ぐ。\n\n[駆除]：外来種コマ・十字1マス\n[駆除後状態]:再生待機マス\n[クールタイム]：1ターン",
+      "【物理駆除】十字範囲\n手作業で抜き取る。範囲は広いが、根の断片を残すと再生を許してしまう。",
     cost: 2,
     cardType: "eradication",
-    deckCount: 1,
-    imagePath: "https://placehold.co/100x60/ce93d8/9c27b0?text=Pinpoint",
-    targeting: {
-      power: 1,
-      shape: "cross",
-      target: "alien_core",
-    },
-    postRemovalState: "recovery_pending_area",
-    cooldownTurns: 1,
+    deckCount: 2,
+    imagePath: "/actions/erad/tedori.png",
+    eradicationPower: 1,
+    eradicationRange: "cross", // 十字
+    eradicationType: "physical", // ★物理
+    chainDestruction: false,
+    postState: "bare",
   },
   {
     id: "erad-3",
-    name: "遮光シート",
+    name: "遮光シート被覆",
     description:
-      "遮光シートを被せ、外来種の発芽を抑制する。\n\n[駆除]：侵略マス・周囲2マス\n[駆除後状態]：再生待機マス\n[クールタイム]：1ターン",
+      "【完全駆除】1マス\n防草シートで覆い、光合成を阻害して枯死させる。「種子散布」等の反撃を無効化する。",
     cost: 3,
     cardType: "eradication",
-    deckCount: 1,
-    imagePath: "https://placehold.co/100x60/ef9a9a/f44336?text=Hiire",
-    targeting: {
-      power: 2,
-      shape: "range",
-      target: "alien_invasion_area",
-    },
-    postRemovalState: "recovery_pending_area",
-    cooldownTurns: 1,
+    deckCount: 2,
+    imagePath: "/actions/erad/shakou.png",
+    eradicationPower: 2,
+    eradicationRange: "point",
+    eradicationType: "complete", // 完全（反撃無効）
+    chainDestruction: false,
+    postState: "pioneer", // シートが土を守るため、先駆植生になりやすい
   },
   {
     id: "erad-4",
-    name: "表土掘削",
+    name: "表土掘削・搬出",
     description:
-      "\n重機を用いて表土を削り、根本から駆逐する。\n\n[駆除]：1種根絶やし\n[駆除後状態]：空マス\n[使用回数]：2回",
+      "【完全駆除】周囲\n種子を含んだ表土ごと重機で削り取り、搬出する。広範囲を安全に浄化する。",
     cost: 4,
     cardType: "eradication",
     deckCount: 1,
-    imagePath: "https://placehold.co/100x60/a5d6a7/4caf50?text=Tenteki",
-    targeting: {
-      target: "species",
-    },
-    postRemovalState: "empty_area",
+    imagePath: "/actions/erad/kussaku.png",
+    eradicationPower: 3,
+    eradicationRange: "range", // 周囲8マス
+    eradicationType: "complete", // 完全
+    chainDestruction: false,
+    postState: "bare",
     usageLimit: 2,
   },
   {
     id: "erad-5",
     name: "抜本的駆除計画",
     description:
-      "地域全体で協力し、大規模な駆除作戦を実行する最終手段。\n\n[駆除]：周囲2マス\n[駆除後状態]：空マス\n[使用回数]：1回",
+      "【連鎖駆除】\n指定した外来種(Core)と、その支配下にある全ての侵略マスを根こそぎ駆除する最終手段。",
     cost: 5,
     cardType: "eradication",
     deckCount: 1,
-    imagePath: "https://placehold.co/100x60/90caf9/2196f3?text=Keikaku",
-    targeting: {
-      power: 3,
-      shape: "range",
-      target: "alien_core",
-    },
-    postRemovalState: "empty_area",
+    imagePath: "/actions/erad/bappon.png",
+    eradicationPower: 3,
+    eradicationRange: "point", // 起点は1つだが連鎖する
+    eradicationType: "complete",
+    chainDestruction: true, // 連鎖的に破壊する
+    postState: "bare",
     usageLimit: 1,
   },
-  // --- 回復カード定義 ---
-  // recovery: ダメージを受けた土地（空マス、再生待機マス）を「在来種マス」に戻すためのカード群です
-  // 最終的なスコア（在来種マスの割合）を稼ぐために不可欠です
+
+  // =================================================================
+  // 🌿 回復カード (Recovery Cards)
+  // [共通仕様] Power 1: 裸地->先駆, Power 2: 裸地->在来
+  // =================================================================
   {
     id: "recov-1",
-    name: "在来種の種まき",
+    name: "客土（土入れ）",
     description:
-      "在来種の種を蒔き、生態系の再生を促す第一歩。\n\n[回復]：指定1マス\n[回復後状態]：再生待機マス",
+      "【回復】1マス (裸地→先駆)\n外来種の種を含まない清浄な土を入れる。裸地を塞ぎ、侵入を防ぐ壁を作る。",
     cost: 1,
     cardType: "recovery",
-    deckCount: 1,
-    imagePath: "https://placehold.co/100x60/c5e1a5/8bc34a?text=Tanemaki",
-    targeting: {
-      power: 1,
-      shape: "single",
-    },
-    postRecoveryState: "recovery_pending_area",
+    deckCount: 3,
+    imagePath: "/actions/recov/kyakudo.png",
+    recoveryPower: 1, // 裸地 -> 先駆
+    recoveryRange: "point",
+    protection: "none",
   },
   {
     id: "recov-2",
-    name: "土壌改良",
+    name: "在来種植栽",
     description:
-      "荒れた土地に栄養を与え、在来種が育ちやすい環境を整える。\n\n[回復]：指定1マス\n[回復後状態]：在来種マス",
+      "【回復】1マス (裸地→在来)\n在来種の苗を直接植え付ける。時間をかけずに緑を取り戻すことができる。",
     cost: 2,
     cardType: "recovery",
-    deckCount: 1,
-    imagePath: "https://placehold.co/100x60/ffe0b2/ff9800?text=Dojo",
-    targeting: {
-      power: 1,
-      shape: "single",
-    },
-    postRecoveryState: "native_area",
+    deckCount: 2,
+    imagePath: "/actions/recov/shokusai.png",
+    recoveryPower: 2, // 裸地 -> 在来種 (即時回復)
+    recoveryRange: "point",
+    protection: "none",
   },
   {
     id: "recov-3",
-    name: "植樹祭",
+    name: "モニタリング保全",
     description:
-      "ボランティアを募り、地域に緑を取り戻す活動。\n\n[回復]：十字1マス\n[回復後状態]：再生待機マス\n[クールタイム]：1ターン",
+      "【回復】十字範囲 (裸地→先駆) + 防御\n広範囲の植生を回復し、監視を行うことで次の侵入を防ぐ(1ラウンド防御)。",
     cost: 3,
     cardType: "recovery",
-    deckCount: 1,
-    imagePath: "https://placehold.co/100x60/b2dfdb/009688?text=Shokuju",
-    targeting: {
-      power: 1,
-      shape: "cross",
-    },
-    postRecoveryState: "recovery_pending_area",
-    cooldownTurns: 1,
+    deckCount: 2,
+    imagePath: "/actions/recov/monitoring.png",
+    recoveryPower: 1,
+    recoveryRange: "cross",
+    protection: "1_round", // 次のターンの侵入不可
   },
   {
     id: "recov-4",
-    name: "帰化促進",
+    name: "河川環境管理",
     description:
-      "外来種の支配地域を、在来種の力で取り戻す。\n\n[回復]：1種の支配マス全て\n[回復後状態]：再生待機マス\n[使用回数]：2回",
+      "【回復】縦一列 (裸地→在来)\n川の流れに沿って環境を整え、外来種の侵入しにくい自然な水辺を再生する。",
     cost: 4,
     cardType: "recovery",
     deckCount: 1,
-    imagePath: "https://placehold.co/100x60/bbdefb/2196f3?text=Kika",
-    targeting: {
-      target: "species",
-    },
-    postRecoveryState: "recovery_pending_area",
+    imagePath: "/actions/recov/kasen.png",
+    recoveryPower: 2, // 即時回復
+    recoveryRange: "vertical", // 縦列
+    protection: "none",
     usageLimit: 2,
   },
   {
     id: "recov-5",
     name: "大地の恵み",
     description:
-      "生態系が持つ本来の回復力が、奇跡的な再生を引き起こす。\n\n[回復]：周囲1マス範囲\n[回復後状態]：在来種マス\n[使用回数]：1回",
+      "【回復】周囲 (先駆→在来)\n生態系本来の回復力を呼び覚ます。広範囲の先駆植生が一斉に在来種へ遷移する。",
     cost: 5,
     cardType: "recovery",
     deckCount: 1,
-    imagePath: "https://placehold.co/100x60/dcedc8/8bc34a?text=Megumi",
-    targeting: {
-      power: 2,
-      shape: "range",
-    },
-    postRecoveryState: "native_area",
+    imagePath: "/actions/recov/megumi.png",
+    recoveryPower: 3, // 先駆 -> 在来種 (広範囲仕上げ用)
+    recoveryRange: "range",
+    protection: "none",
     usageLimit: 1,
   },
 ];
-
-export default cardMasterData;

@@ -1,140 +1,89 @@
 // vite/src/core/systems/RoundSystem.ts
-import { useGameStore } from "@/core/store/gameStore";
-import { gameEventBus } from "@/core/event-bus/GameEventBus";
-import { FieldSystem } from "@/core/systems/FieldSystem";
 
-export class RoundSystem {
+import { GameState, CellState } from "@/shared/types";
+import { processAlienGrowth } from "@/features/alien-growth/logic";
+import { processAlienExpansion } from "@/features/alien-expansion/logic";
+import { FieldSystem } from "./FieldSystem";
+
+export const RoundSystem = {
   /**
-   * ゲームを開始する（初期化直後）
+   * ラウンド開始時の処理
+   * 1. エンバイロメント(AP)の最大値増加と回復
+   * 2. 植生遷移: 「先駆植生」を「在来種」へ自動回復
    */
-  static startGame() {
-    this.startRound();
-  }
+  startRound(gameState: GameState): GameState {
+    const { currentRound, playerStates, gameField } = gameState;
 
-  /**
-   * 1. ラウンド開始フェーズ
-   */
-  static startRound() {
-    const store = useGameStore.getState();
+    // 1. AP回復処理
+    // 次のラウンドへ (最大ラウンドを超えないように制御は別途必要だが、ここでは加算)
+    const nextRound = currentRound + 1;
 
-    store.internal_mutate((draft) => {
-      draft.currentPhase = "round_start";
+    // 各プレイヤーのAPをリセット・増加
+    const newPlayerStates = { ...playerStates };
+    Object.keys(newPlayerStates).forEach((key) => {
+      const playerId = key as keyof typeof playerStates;
+      const player = newPlayerStates[playerId];
 
-      // 型定義修正済みのため as any は不要
-      gameEventBus.emit("ROUND_START", draft);
+      // 最大APはラウンド数に比例 (例: R1=1, R2=2...)
+      // 必要に応じて上限キャップ(maxRounds)を設ける
+      const newMaxAp = Math.min(nextRound, gameState.maximumRounds); // ゲームバランスにより調整
 
-      // 1. 先駆植生マス(Pioneer) -> 在来種マス(Native) への自動回復
-      const { width, height } = draft.gameField;
-      for (let y = 0; y < height; y++) {
-        for (let x = 0; x < width; x++) {
-          const cell = draft.gameField.cells[y][x];
-          if (cell.cellType === "pioneer_vegetation_area") {
-            draft.gameField.cells[y][x] = FieldSystem.createNativeCell(x, y);
-          }
+      newPlayerStates[playerId] = {
+        ...player,
+        maxEnvironment: newMaxAp,
+        currentEnvironment: newMaxAp,
+      };
+    });
+
+    // 2. 植生遷移 (Succession)
+    // 先駆植生マス(pioneer)を全て在来種マス(native)に変化させる
+    // 先駆植生は「1ラウンドだけ外来種を防ぐバリア」として機能する仕様
+    const newCells: CellState[] = [];
+
+    // フィールド全体をスキャン
+    for (let y = 0; y < gameField.height; y++) {
+      for (let x = 0; x < gameField.width; x++) {
+        const cell = gameField.cells[y][x];
+        if (cell.type === "pioneer") {
+          newCells.push({
+            ...cell,
+            type: "native",
+            // 先駆植生は中立だったが、在来種マスは在来種プレイヤーの支配下となる
+            ownerId: "native",
+          });
         }
       }
-
-      // 2. エンバイロメント回復
-      Object.values(draft.playerStates).forEach((player) => {
-        if (player.maxEnvironment < 10) {
-          player.maxEnvironment += 1;
-        }
-        player.currentEnvironment = player.maxEnvironment;
-      });
-    });
-
-    setTimeout(() => {
-      this.startAlienTurn();
-    }, 1000);
-  }
-
-  /**
-   * 2. 外来種ターン開始
-   */
-  static startAlienTurn() {
-    const store = useGameStore.getState();
-    store.internal_mutate((draft) => {
-      draft.currentPhase = "alien_turn";
-      draft.activePlayerId = "alien";
-    });
-    gameEventBus.emit("TURN_START", { playerId: "alien" });
-  }
-
-  /**
-   * 3. 在来種ターン開始
-   */
-  static startNativeTurn() {
-    const store = useGameStore.getState();
-    store.internal_mutate((draft) => {
-      draft.currentPhase = "native_turn";
-      draft.activePlayerId = "native";
-    });
-    gameEventBus.emit("TURN_START", { playerId: "native" });
-  }
-
-  /**
-   * 現在のターンを終了して次へ進む
-   */
-  static endCurrentTurn() {
-    const store = useGameStore.getState();
-    const currentPhase = store.currentPhase;
-
-    if (currentPhase === "alien_turn") {
-      this.startNativeTurn();
-    } else if (currentPhase === "native_turn") {
-      this.endRound();
     }
-  }
+
+    // セルの更新を適用
+    const newField = FieldSystem.updateCells(gameField, newCells);
+
+    return {
+      ...gameState,
+      currentRound: nextRound,
+      currentPhase: "start", // UI側でアニメーション後に alien_turn へ移行させる
+      playerStates: newPlayerStates,
+      gameField: newField,
+    };
+  },
 
   /**
-   * 4. ラウンド終了フェーズ
+   * ラウンド終了時の処理
+   * 1. 拡散 (Expansion) - ※別ステップ(Step 5)で実装、ここではプレースホルダー
+   * 2. 成長 (Growth) - 種から成体へ
    */
-  static endRound() {
-    const store = useGameStore.getState();
+  endRound(gameState: GameState): GameState {
+    let newState = { ...gameState };
 
-    gameEventBus.emit("BEFORE_ROUND_END", store);
+    // TODO: Step 5で拡散処理(processAlienExpansion)をここに組み込む
+    newState = processAlienExpansion(newState);
 
-    store.internal_mutate((draft) => {
-      draft.currentPhase = "round_end";
+    // 成長処理 (種 -> 成体)
+    newState = processAlienGrowth(newState);
 
-      // クールダウン消化
-      Object.values(draft.playerStates).forEach((player) => {
-        player.cooldownActiveCards = player.cooldownActiveCards
-          .map((c) => ({ ...c, roundsRemaining: c.roundsRemaining - 1 }))
-          .filter((c) => c.roundsRemaining > 0);
-      });
-
-      // スコア計算
-      let nativeCount = 0;
-      let alienCount = 0;
-      draft.gameField.cells.flat().forEach((cell) => {
-        if (cell.cellType === "native_area") nativeCount++;
-        if (cell.cellType === "alien_area") alienCount++;
-      });
-      draft.nativeScore = nativeCount;
-      draft.alienScore = alienCount;
-
-      // 勝利判定
-      if (nativeCount === 0) {
-        draft.isGameOver = true;
-        draft.winningPlayerId = "alien";
-      }
-      else if (draft.currentRound >= draft.maximumRounds) {
-        draft.isGameOver = true;
-        if (nativeCount > alienCount) draft.winningPlayerId = "native";
-        else if (alienCount > nativeCount) draft.winningPlayerId = "alien";
-        else draft.winningPlayerId = null;
-      }
-    });
-
-    const newState = useGameStore.getState();
-    if (newState.isGameOver) {
-      gameEventBus.emit("GAME_OVER", { winner: newState.winningPlayerId });
-    } else {
-      store.internal_mutate((draft) => {
-        draft.currentRound += 1;
-      });
-      this.startRound();
-    }
-  }
-}
+    return {
+      ...newState,
+      currentPhase: "end", // UI側で演出後に startRound を呼ぶフローへ
+    };
+  },
+};

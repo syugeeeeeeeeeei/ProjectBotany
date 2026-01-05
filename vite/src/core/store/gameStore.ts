@@ -1,97 +1,139 @@
 // vite/src/core/store/gameStore.ts
+
 import { create } from "zustand";
-import { immer } from "zustand/middleware/immer";
-import { GAME_SETTINGS } from "@/shared/constants/game-config";
-import { GameState, PlayerState, CellState } from "@/shared/types/game-schema";
-import { PlayerType } from "@/shared/types/primitives";
-import cardMasterData from "@/shared/data/cardMasterData";
+import { devtools } from "zustand/middleware";
+import { v4 as uuidv4 } from "uuid";
 
-// 簡易ID生成
-const generateId = () => Math.random().toString(36).substr(2, 9);
-
-/**
- * 初期デッキ生成ヘルパー
- */
-const createInitialLibrary = (playerType: PlayerType) => {
-  return cardMasterData
-    .filter(
-      (c) =>
-        c.cardType === (playerType === "alien" ? "alien" : "eradication") ||
-        c.cardType === "recovery",
-    )
-    .slice(0, 5) // 最初の5枚だけテスト用に配布
-    .map((card) => ({
-      instanceId: `${card.id}-instance-${generateId()}`,
-      cardDefinitionId: card.id,
-    }));
-};
-
-const createInitialPlayerState = (
-  id: PlayerType,
-  name: string,
-): PlayerState => ({
-  playerId: id,
-  playerName: name,
-  facingFactor: id === "native" ? -1 : 1,
-  initialEnvironment: 1,
-  currentEnvironment: 1,
-  maxEnvironment: 1,
-  cardLibrary: createInitialLibrary(id),
-  cooldownActiveCards: [],
-  limitedCardsUsedCount: {},
-});
+import {
+  GameState,
+  PlayerState,
+  CardInstance,
+} from "@/shared/types/game-schema";
+import { PlayerId } from "@/shared/types/primitives";
+import { cardMasterData } from "@/shared/data/cardMasterData";
+import { FieldSystem } from "../systems/FieldSystem";
 
 /**
- * 初期フィールド生成（空のフィールド）
- * ※ 実際の初期配置はGameInitなどでFieldSystemを使って行う想定ですが、
- * Store初期化時点でnullにならないよう型を満たす空配列を用意します。
+ * ゲームの初期設定定数
  */
-const createInitialFieldState = () => {
-  const { FIELD_WIDTH, FIELD_HEIGHT } = GAME_SETTINGS;
-  return {
-    width: FIELD_WIDTH,
-    height: FIELD_HEIGHT,
-    cells: [] as CellState[][], // FieldSystem.initField() で後ほど上書きされる
-  };
-};
+const INITIAL_MAX_ROUNDS = 8;
+const INITIAL_ENVIRONMENT = 1; // 1ラウンド目は1からスタート
+const FIELD_WIDTH = 7;
+const FIELD_HEIGHT = 10;
 
-const initialGameState: GameState = {
-  currentRound: 1,
-  maximumRounds: GAME_SETTINGS.MAXIMUM_ROUNDS,
-  activePlayerId: "alien", // 先攻は外来種
-  currentPhase: "round_start", // ラウンド開始フェーズからスタート
-  isGameOver: false,
-  winningPlayerId: null,
-  gameField: createInitialFieldState(),
-  playerStates: {
-    native: createInitialPlayerState("native", "在来種"),
-    alien: createInitialPlayerState("alien", "外来種"),
-  },
-  activeAlienInstances: {},
-  nativeScore: 0,
-  alienScore: 0,
-  history: [],
-};
+interface GameStoreActions {
+  /** ゲームを初期状態にリセット・開始する */
+  initializeGame: () => void;
 
-interface GameStore extends GameState {
-  /**
-   * 内部用State更新関数 (Core Systemsのみが使用する)
-   * ※外部Featureからは直接呼んではならない
-   */
-  internal_mutate: (recipe: (draft: GameState) => void) => void;
-
-  /**
-   * ゲームリセット
-   */
-  reset: () => void;
+  /** 状態を部分的に更新する (Action用) */
+  setState: (payload: Partial<GameState>) => void;
 }
 
-export const useGameStore = create(
-  immer<GameStore>((set) => ({
-    ...initialGameState,
+// Storeの型定義 (State + Actions)
+type GameStore = GameState & GameStoreActions;
 
-    internal_mutate: (recipe) => set(recipe),
+export const useGameStore = create<GameStore>()(
+  devtools((set) => ({
+    // --- 初期ステート ---
+    currentRound: 1,
+    maximumRounds: INITIAL_MAX_ROUNDS,
+    activePlayerId: "alien", // 外来種(先攻)
+    currentPhase: "start",
+    isGameOver: false,
+    winningPlayerId: null,
+    nativeScore: 0,
+    alienScore: 0,
+    history: [],
 
-    reset: () => set(initialGameState),
-  })),
+    // フィールド (初期化は initializeGame で実施)
+    gameField: {
+      width: FIELD_WIDTH,
+      height: FIELD_HEIGHT,
+      cells: [],
+    },
+
+    // 外来種インスタンス (空で初期化)
+    alienInstances: {},
+
+    // プレイヤー状態
+    playerStates: {
+      native: createInitialPlayerState("native", "在来種サイド"),
+      alien: createInitialPlayerState("alien", "外来種サイド"),
+    },
+
+    // --- アクション ---
+
+    initializeGame: () => {
+      // 1. フィールドの生成 (裸地10個ランダム)
+      const initialField = FieldSystem.initializeField(
+        FIELD_WIDTH,
+        FIELD_HEIGHT
+      );
+
+      // 2. プレイヤー状態のリセット (手札生成など)
+      const nativeState = createInitialPlayerState("native", "在来種サイド");
+      const alienState = createInitialPlayerState("alien", "外来種サイド");
+
+      set({
+        currentRound: 1,
+        activePlayerId: "alien",
+        currentPhase: "start",
+        isGameOver: false,
+        winningPlayerId: null,
+        nativeScore: 0,
+        alienScore: 0,
+        history: [],
+        gameField: initialField,
+        alienInstances: {},
+        playerStates: {
+          native: nativeState,
+          alien: alienState,
+        },
+      });
+    },
+
+    setState: (payload) => set((state) => ({ ...state, ...payload })),
+  }))
 );
+
+/**
+ * プレイヤーの初期状態を作成するヘルパー関数
+ */
+function createInitialPlayerState(
+  playerId: PlayerId,
+  name: string
+): PlayerState {
+  // デッキ構築: マスタデータから cardType が一致するものを抽出して手札へ
+  const library: CardInstance[] = [];
+
+  cardMasterData.forEach((cardDef) => {
+    // プレイヤータイプとカードタイプの対応
+    // native -> eradication, recovery
+    // alien -> alien
+    const isAlienCard = cardDef.cardType === "alien";
+    const isOwner =
+      playerId === "alien" ? isAlienCard : !isAlienCard;
+
+    if (isOwner) {
+      // deckCount枚数分インスタンスを作成
+      for (let i = 0; i < cardDef.deckCount; i++) {
+        library.push({
+          instanceId: uuidv4(),
+          cardDefinitionId: cardDef.id,
+        });
+      }
+    }
+  });
+
+  return {
+    playerId,
+    playerName: name,
+    facingFactor: playerId === "alien" ? 1 : -1,
+    initialEnvironment: INITIAL_ENVIRONMENT,
+    currentEnvironment: INITIAL_ENVIRONMENT,
+    maxEnvironment: INITIAL_ENVIRONMENT,
+    cardLibrary: library,
+    cooldownActiveCards: [],
+    limitedCardsUsedCount: {},
+  };
+}

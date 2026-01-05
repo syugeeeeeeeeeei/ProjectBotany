@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { immer } from "zustand/middleware/immer";
-import { CellState, PlayerType } from "@/shared/types/game-schema";
+import { CellState, PlayerType } from "@/shared/types";
 
 interface UIState {
   /** 選択中のセル */
