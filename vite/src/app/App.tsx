@@ -1,40 +1,41 @@
+// vite/src/app/GameRoot.tsx
 import React, { useEffect } from "react";
 import { GameLayout } from "@/core/ui/GameLayout";
 import { initializeGameComposition } from "./GameComposition";
-import { GameBoard3D } from "@/features/field-grid";
-import { TurnEndButton } from "@/features/turn-system"; // 使用されていることを確認
-import { Hand3D } from "@/features/card-hand";
-import { initPlayCardLogic } from "@/features/play-card";
-import { initAlienExpansionLogic } from "@/features/alien-expansion";
+import { FeaturesRegistry } from "./FeaturesRegistry";
 
-const App: React.FC = () => {
+export const GameRoot: React.FC = () => {
+  // 1. システム初期化 & Feature Logic 起動
   useEffect(() => {
-    // 1. Core 初期化
+    // Core初期化
     initializeGameComposition();
 
-    // 2. Logic 初期化とクリーンアップの登録
-    const cleanupPlayCard = initPlayCardLogic();
-    const cleanupAlienExpansion = initAlienExpansionLogic();
+    // 全FeatureのLogic初期化を実行
+    const cleanups: (() => void)[] = [];
+    FeaturesRegistry.forEach((feature) => {
+      if (feature.init) {
+        const cleanup = feature.init();
+        if (cleanup) cleanups.push(cleanup);
+      }
+    });
 
     return () => {
-      cleanupPlayCard();
-      cleanupAlienExpansion();
+      cleanups.forEach((cleanup) => cleanup());
     };
   }, []);
 
+  // 2. コンポーネントの振り分け
+  const overlayComponents = FeaturesRegistry.flatMap((f) => f.components ?? [])
+    .filter((c) => c.slot === "ui-overlay")
+    .map((c) => <c.Component key={c.id} {...c.props} />);
+
+  const main3dComponents = FeaturesRegistry.flatMap((f) => f.components ?? [])
+    .filter((c) => c.slot === "main-3d")
+    .map((c) => <c.Component key={c.id} {...c.props} />);
+
   return (
-    <GameLayout
-      uiOverlay={
-        <>
-          <TurnEndButton />
-        </>
-      }
-    >
-      <GameBoard3D />
-      <Hand3D player="alien" />
-      <Hand3D player="native" />
+    <GameLayout uiOverlay={<>{overlayComponents}</>}>
+      {main3dComponents}
     </GameLayout>
   );
 };
-
-export default App;

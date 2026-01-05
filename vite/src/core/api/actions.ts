@@ -1,4 +1,5 @@
-import { TurnSystem } from "@/core/systems/TurnSystem";
+// vite/src/core/api/actions.ts
+import { RoundSystem } from "@/core/systems/RoundSystem";
 import { FieldSystem } from "@/core/systems/FieldSystem";
 import { useGameStore } from "@/core/store/gameStore";
 import { useUIStore } from "@/core/store/uiStore";
@@ -12,22 +13,44 @@ const generateId = () => Math.random().toString(36).substr(2, 9);
  * Feature向け 公開操作API (Commands)
  */
 export const gameActions = {
-  /** ターン操作 */
-  turn: {
-    next: () => TurnSystem.advanceTurn(),
+  /** 進行操作 */
+  round: {
+    /** 現在のターンを終了し、次へ進める */
+    next: () => RoundSystem.endCurrentTurn(),
   },
 
   /** 盤面操作 */
   field: {
+    /** 指定座標のセルタイプを変更する (簡易版) */
     mutateCell: (x: number, y: number, type: CellType) => {
-      FieldSystem.setCellType(x, y, type);
+      useGameStore.getState().internal_mutate((draft) => {
+        // FieldSystemのFactoryを使用して適切な初期状態のセルを生成して代入
+        switch (type) {
+          case "native_area":
+            draft.gameField.cells[y][x] = FieldSystem.createNativeCell(x, y);
+            break;
+          case "bare_ground_area":
+            draft.gameField.cells[y][x] = FieldSystem.createBareGroundCell(x, y);
+            break;
+          // ※他のタイプが必要な場合は引数を拡張する必要あり
+          default:
+            console.warn("mutateCell: Unsupported simple type mutation", type);
+            break;
+        }
+      });
     },
+    /** 指定座標のセルを直接更新する */
     updateCell: (x: number, y: number, updater: (cell: CellState) => void) => {
-      FieldSystem.mutateCell(x, y, updater);
+      useGameStore.getState().internal_mutate((draft) => {
+        const cell = draft.gameField.cells[y]?.[x];
+        if (cell) {
+          updater(cell);
+        }
+      });
     },
   },
 
-  /** UI操作 (新規追加) */
+  /** UI操作 */
   ui: {
     selectCard: (cardId: string) => useUIStore.getState().selectCard(cardId),
     deselectCard: () => useUIStore.getState().deselectCard(),
@@ -46,7 +69,7 @@ export const gameActions = {
           type,
           payload,
           timestamp: Date.now(),
-          turn: draft.currentTurn,
+          round: draft.currentRound, // Fixed: Turn -> Round
         };
         draft.history.push(log);
         if (import.meta.env.DEV) {
@@ -59,8 +82,16 @@ export const gameActions = {
   /** システム操作 */
   system: {
     reset: () => {
+      // Storeのリセット
       useGameStore.getState().reset();
-      FieldSystem.initializeField();
+
+      // フィールドの再生成
+      useGameStore.getState().internal_mutate((draft) => {
+        draft.gameField = FieldSystem.initField();
+      });
+
+      // ゲーム開始
+      RoundSystem.startGame();
     },
   },
 };

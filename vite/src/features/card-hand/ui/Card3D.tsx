@@ -1,4 +1,4 @@
-// src/features/card-hand/ui/Card3D.tsx
+// vite/src/features/card-hand/ui/Card3D.tsx
 import React, { useMemo } from "react";
 import { animated } from "@react-spring/three";
 import { RoundedBox, Text, useTexture } from "@react-three/drei";
@@ -34,32 +34,17 @@ const Card3D: React.FC<Card3DProps> = ({ card, player, opacity }) => {
       onPointerEnter={handlers.onPointerEnter}
       onPointerLeave={handlers.onPointerLeave}
     >
-      {/* 改善ポイント: 
-        パーツごとのgroupを排除し、すべてのパーツをCard3D直下の座標系(カード中心)で配置します。
-        各パーツコンポーネントは座標(position)を受け取るか、内部でCardLayoutの絶対座標定義を使用します。
-      */}
-
-      {/* Layer 1: Border */}
       <CardBase state={state} opacity={opacity} />
-
-      {/* Layer 2: Inner Background */}
       <CardBaseInner baseShape={baseShape} opacity={opacity} />
-
-      {/* Layer 3: Contents (Header, Cost, Image, Desc) */}
       <CardContentHeader
         card={card}
         opacity={opacity}
         headerShape={headerShape}
         data={data}
       />
-
       <CardContentCost card={card} opacity={opacity} />
-
       <CardContentImage opacity={opacity} texture={texture} />
-
       <CardContentDescription opacity={opacity} card={card} />
-
-      {/* Layer 4: Overlay */}
       <CardOverlayCooldown state={state} data={data} opacity={opacity} />
     </animated.group>
   );
@@ -67,7 +52,7 @@ const Card3D: React.FC<Card3DProps> = ({ card, player, opacity }) => {
 
 export default Card3D;
 
-// --- Sub Components (Flat Layout) ---
+// --- Sub Components ---
 
 const CardBase = ({
   state,
@@ -262,7 +247,7 @@ const CardOverlayCooldown = ({
         anchorX={AREAS.TEXT.COOLDOWN.ANCHOR_X}
         anchorY={AREAS.TEXT.COOLDOWN.ANCHOR_Y}
       >
-        {data.cooldownTurns}
+        {data.cooldownRounds} {/* Fixed: cooldownTurns -> cooldownRounds */}
       </Text>
     </>
   );

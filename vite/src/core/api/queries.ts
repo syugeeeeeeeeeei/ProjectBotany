@@ -1,3 +1,4 @@
+// vite/src/core/api/queries.ts
 import { useGameStore } from "@/core/store/gameStore";
 import { useUIStore } from "@/core/store/uiStore";
 import { PlayerType } from "@/shared/types/game-schema";
@@ -8,15 +9,16 @@ import { PlayerType } from "@/shared/types/game-schema";
 export const useGameQuery = {
   /** Game State */
   useGameState: () => useGameStore((state) => state),
-  useCurrentTurn: () => useGameStore((state) => state.currentTurn),
+  useCurrentRound: () => useGameStore((state) => state.currentRound), // Fixed: Turn -> Round
   useActivePlayer: () => useGameStore((state) => state.activePlayerId),
   usePlayer: (playerId: PlayerType) =>
     useGameStore((state) => state.playerStates[playerId]),
   useField: () => useGameStore((state) => state.gameField),
   useCell: (x: number, y: number) =>
     useGameStore((state) => state.gameField.cells[y]?.[x]),
+  useActiveAliens: () => useGameStore((state) => state.activeAlienInstances), // Added
 
-  /** UI State (新規追加) */
+  /** UI State */
   ui: {
     useSelectedCardId: () => useUIStore((state) => state.selectedCardId),
     useSelectedCell: () => useUIStore((state) => state.selectedCell),
@@ -31,13 +33,14 @@ export const useGameQuery = {
  */
 export const gameQuery = {
   state: () => useGameStore.getState(),
-  currentTurn: () => useGameStore.getState().currentTurn,
+  currentRound: () => useGameStore.getState().currentRound, // Fixed: Turn -> Round
   activePlayer: () => useGameStore.getState().activePlayerId,
   player: (playerId: PlayerType) =>
     useGameStore.getState().playerStates[playerId],
   field: () => useGameStore.getState().gameField,
   cell: (x: number, y: number) =>
     useGameStore.getState().gameField.cells[y]?.[x],
+  activeAliens: () => useGameStore.getState().activeAlienInstances, // Added
 
   ui: {
     selectedCardId: () => useUIStore.getState().selectedCardId,

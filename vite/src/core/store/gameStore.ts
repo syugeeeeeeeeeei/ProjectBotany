@@ -1,25 +1,25 @@
+// vite/src/core/store/gameStore.ts
 import { create } from "zustand";
 import { immer } from "zustand/middleware/immer";
 import { GAME_SETTINGS } from "@/shared/constants/game-config";
 import { GameState, PlayerState, CellState } from "@/shared/types/game-schema";
 import { PlayerType } from "@/shared/types/primitives";
-import cardMasterData from "@/shared/data/cardMasterData"; // カードデータのインポート
+import cardMasterData from "@/shared/data/cardMasterData";
 
-// 簡易ID生成 (shared/utils/id.ts があればそれを使う)
+// 簡易ID生成
 const generateId = () => Math.random().toString(36).substr(2, 9);
 
 /**
  * 初期デッキ生成ヘルパー
  */
 const createInitialLibrary = (playerType: PlayerType) => {
-  // テスト用にカードを数枚配布
   return cardMasterData
     .filter(
       (c) =>
         c.cardType === (playerType === "alien" ? "alien" : "eradication") ||
         c.cardType === "recovery",
     )
-    .slice(0, 5) // 最初の5枚だけ
+    .slice(0, 5) // 最初の5枚だけテスト用に配布
     .map((card) => ({
       instanceId: `${card.id}-instance-${generateId()}`,
       cardDefinitionId: card.id,
@@ -36,30 +36,30 @@ const createInitialPlayerState = (
   initialEnvironment: 1,
   currentEnvironment: 1,
   maxEnvironment: 1,
-  cardLibrary: createInitialLibrary(id), // ここでカードを持たせる
+  cardLibrary: createInitialLibrary(id),
   cooldownActiveCards: [],
   limitedCardsUsedCount: {},
 });
 
 /**
- * 空の盤面データを生成（詳細はFieldSystemが担うが、初期値として型を満たす最小限を用意）
+ * 初期フィールド生成（空のフィールド）
+ * ※ 実際の初期配置はGameInitなどでFieldSystemを使って行う想定ですが、
+ * Store初期化時点でnullにならないよう型を満たす空配列を用意します。
  */
 const createInitialFieldState = () => {
   const { FIELD_WIDTH, FIELD_HEIGHT } = GAME_SETTINGS;
-  // 仮の空配列（実際の初期化はFieldSystemで行うか、ここで行う）
-  // ここでは型整合のため空のセル配列を作成
   return {
     width: FIELD_WIDTH,
     height: FIELD_HEIGHT,
-    cells: [] as CellState[][], // 後でFieldSystemが埋める
+    cells: [] as CellState[][], // FieldSystem.initField() で後ほど上書きされる
   };
 };
 
 const initialGameState: GameState = {
-  currentTurn: 1,
-  maximumTurns: GAME_SETTINGS.MAXIMUM_TURNS,
-  activePlayerId: "alien",
-  currentPhase: "summon_phase",
+  currentRound: 1,
+  maximumRounds: GAME_SETTINGS.MAXIMUM_ROUNDS,
+  activePlayerId: "alien", // 先攻は外来種
+  currentPhase: "round_start", // ラウンド開始フェーズからスタート
   isGameOver: false,
   winningPlayerId: null,
   gameField: createInitialFieldState(),
@@ -73,10 +73,6 @@ const initialGameState: GameState = {
   history: [],
 };
 
-/**
- * Core Store Definition
- * 純粋なデータ保持のみを行う
- */
 interface GameStore extends GameState {
   /**
    * 内部用State更新関数 (Core Systemsのみが使用する)

@@ -1,12 +1,14 @@
+import { GameFeature, defineFeatureComponent } from "@/core/types/architecture";
 import GameBoard3D from "./ui/GameBoard3D";
 
-/**
- * Field Grid Feature Manifest
- */
-export const fieldGridFeature = {
+export const fieldGridFeature: GameFeature = {
   key: "field-grid",
-  // 将来的にイベントリスナーなどをここに記述
+  components: [
+    defineFeatureComponent({
+      id: "game-board-3d",
+      slot: "main-3d",
+      Component: GameBoard3D,
+      // propsがない場合は省略可能
+    }),
+  ],
 };
-
-// コンポーネントをエクスポート
-export { GameBoard3D };

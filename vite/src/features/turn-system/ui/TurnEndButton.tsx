@@ -1,22 +1,19 @@
+// vite/src/features/turn-system/ui/TurnEndButton.tsx
 import React from "react";
 import { gameActions, useGameQuery } from "@/core/api";
-import { BaseActionButton } from "@/shared/components/BaseActionButton"; // ※なければHTMLボタンで代用
+import { BaseActionButton } from "@/shared/components/BaseActionButton";
 
 /**
  * ターン終了ボタン
- * 現在のプレイヤーが自分のターンの時だけ押せる
+ * NOTE: RoundSystemへの移行に伴い、内部的には「ターン終了→（必要なら）ラウンド終了」の処理を行います
  */
 const TurnEndButton: React.FC = () => {
   const activePlayer = useGameQuery.useActivePlayer();
-  const currentTurn = useGameQuery.useCurrentTurn();
-
-  // 開発中はどちらのプレイヤーでも押せるようにしておくと楽ですが、
-  // ここでは一旦「誰でも押せる」状態にします。
-  // 本番ルールなら: const isMyTurn = activePlayer === props.player;
+  const currentRound = useGameQuery.useCurrentRound(); // Fixed: useCurrentTurn -> useCurrentRound
 
   const handleClick = () => {
     console.log("🔄 Turn End Requested");
-    gameActions.turn.next();
+    gameActions.round.next(); // Fixed: gameActions.turn.next -> gameActions.round.next
   };
 
   return (
@@ -34,7 +31,7 @@ const TurnEndButton: React.FC = () => {
           padding: "10px 20px",
           fontSize: "16px",
           fontWeight: "bold",
-          backgroundColor: activePlayer === "native" ? "#2E7D32" : "#C62828", // Native=緑, Alien=赤
+          backgroundColor: activePlayer === "native" ? "#2E7D32" : "#C62828",
           color: "white",
           border: "2px solid white",
           borderRadius: "8px",
@@ -42,7 +39,7 @@ const TurnEndButton: React.FC = () => {
           boxShadow: "0 4px 6px rgba(0,0,0,0.3)",
         }}
       >
-        Turn End ({currentTurn})
+        Turn End (Round {currentRound})
       </BaseActionButton>
       <div
         style={{

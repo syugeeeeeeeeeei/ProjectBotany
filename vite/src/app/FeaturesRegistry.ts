@@ -1,14 +1,17 @@
-// src/app/features.ts
+// vite/src/app/FeaturesRegistry.ts
 import { GameFeature } from "@/core/types/architecture";
 import { fieldGridFeature } from "@/features/field-grid";
 import { turnSystemFeature } from "@/features/turn-system";
+import { cardHandFeature } from "@/features/card-hand";
+import { playCardFeature } from "@/features/play-card";
 import { alienExpansionFeature } from "@/features/alien-expansion";
-// 新機能はここに追加するだけ
-// import { weatherFeature } from "@/features/weather";
+import { alienGrowthFeature } from "@/features/alien-growth";
 
 export const FeaturesRegistry: GameFeature[] = [
   fieldGridFeature,
   turnSystemFeature,
+  cardHandFeature,
+  playCardFeature,
+  alienGrowthFeature,
   alienExpansionFeature,
-  // weatherFeature,
 ];

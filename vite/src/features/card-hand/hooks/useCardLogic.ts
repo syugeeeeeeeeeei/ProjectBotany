@@ -1,4 +1,4 @@
-// src/features/card-hand/hooks/useCardLogic.ts
+// vite/src/features/card-hand/hooks/useCardLogic.ts
 import { useMemo, useState, useEffect } from "react";
 import type { ThreeEvent } from "@react-three/fiber";
 import { useGameQuery } from "@/core/api/queries";
@@ -22,7 +22,7 @@ export type UseCardLogicResult = {
 		textureUrl: string;
 		headerColor: string;
 		borderStateColor: string;
-		cooldownTurns?: number;
+		cooldownRounds?: number; // Fixed name
 	};
 	handlers: {
 		onClick: (e: ThreeEvent<MouseEvent>) => void;
@@ -68,7 +68,7 @@ export const useCardLogic = ({
 		}
 		if (isCooldown) {
 			gameActions.ui.notify(
-				`このカードはあと${cooldownInfo?.turnsRemaining}ターン使用できません。`,
+				`このカードはあと${cooldownInfo?.roundsRemaining}ラウンド使用できません。`, // Fixed: turnsRemaining -> roundsRemaining
 				player,
 			);
 			return;
@@ -116,7 +116,7 @@ export const useCardLogic = ({
 			textureUrl,
 			headerColor,
 			borderStateColor,
-			cooldownTurns: cooldownInfo?.turnsRemaining,
+			cooldownRounds: cooldownInfo?.roundsRemaining, // Fixed
 		},
 		handlers: {
 			onClick: handleClick,

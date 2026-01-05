@@ -1,3 +1,5 @@
+// vite/src/shared/types/primitives.ts
+
 /**
  * プリミティブ型定義
  * アプリケーション全体で共通して使われる最小単位の型
@@ -19,11 +21,12 @@ export interface Vector3 {
 /** プレイヤー種別 */
 export type PlayerType = "native" | "alien";
 
-/** ゲームの進行フェーズ */
+/** ゲームの進行フェーズ (要件定義準拠) */
 export type GamePhase =
-  | "environment_phase"
-  | "summon_phase"
-  | "activation_phase";
+  | "round_start" // ラウンド開始（エンバイロメント回復・自動回復）
+  | "alien_turn" // 外来種の手番
+  | "native_turn" // 在来種の手番
+  | "round_end"; // ラウンド終了（成長・拡散・勝敗判定）
 
 /** カードの効果範囲形状 */
 export type ShapeType = "single" | "cross" | "straight" | "range";
@@ -39,7 +42,7 @@ export type DirectionType =
 
 /** 成長条件定義 */
 export interface GrowthCondition {
-  type: "turns_since_last_action";
+  type: "rounds_since_spawn";
   value: number;
 }
 

@@ -1,4 +1,4 @@
-import { FieldSystem } from "@/core/systems/FieldSystem";
+// vite/src/app/GameComposition.ts
 import { gameActions } from "@/core/api/actions";
 
 /**
@@ -8,15 +8,8 @@ import { gameActions } from "@/core/api/actions";
 export const initializeGameComposition = () => {
   console.log("🚀 Initializing Core-Feature Architecture...");
 
-  // 1. Core Systems の初期化
-  // 盤面のメモリ確保など
-  FieldSystem.initializeField();
-
-  // 2. Feature の登録 (Phase 4で実装)
-  // 例: registerFeature(alienExpansionFeature);
-
-  // 3. ゲーム開始
-  // 必要なら初期ステートのリセットなど
+  // 1. システムリセット & ゲーム開始
+  // 内部でStoreのリセット、FieldSystem.initField、RoundSystem.startGameが呼ばれる
   gameActions.system.reset();
 
   console.log("✅ Initialization Complete.");

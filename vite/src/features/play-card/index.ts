@@ -1,6 +1,8 @@
+// vite/src/features/play-card/index.ts
+import { GameFeature } from "@/core/types/architecture";
 import { initPlayCardLogic } from "./logic";
-export const playCardFeature = {
+
+export const playCardFeature: GameFeature = {
   key: "play-card",
-  init: initPlayCardLogic, // App.tsxなどで呼ぶ用
+  init: initPlayCardLogic,
 };
-export { initPlayCardLogic };

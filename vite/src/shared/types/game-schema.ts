@@ -1,3 +1,5 @@
+// vite/src/shared/types/game-schema.ts
+
 /**
  * ゲーム全体のデータ構造定義 (game-schema)
  */
@@ -12,13 +14,12 @@ import {
 } from "./primitives";
 import { ActionLog } from "./actions";
 
-// --- マス定義 ---
+// --- マス定義 (要件定義準拠) ---
 export type CellType =
-  | "native_area"
-  | "alien_core"
-  | "alien_invasion_area"
-  | "empty_area"
-  | "recovery_pending_area";
+  | "native_area" // 在来種マス
+  | "alien_area" // 外来種マス (CoreとInvasionを統合)
+  | "bare_ground_area" // 裸地マス (旧 empty_area)
+  | "pioneer_vegetation_area"; // 先駆植生マス (旧 recovery_pending_area)
 
 // --- カード定義 ---
 interface CardDefinitionBase {
@@ -29,19 +30,19 @@ interface CardDefinitionBase {
   deckCount: number;
   imagePath: string;
   usageLimit?: number | null;
-  cooldownTurns?: number | null;
+  cooldownRounds?: number | null; // Turn -> Round
 }
 
 type TargetingDefinition =
   | {
-      shape: ShapeType;
-      power: number;
-      direction?: DirectionType;
-      target?: "alien_invasion_area" | "alien_core";
-    }
+    shape: ShapeType;
+    power: number;
+    direction?: DirectionType;
+    target?: "alien_area"; // 統合されたCellTypeに対応
+  }
   | {
-      target: "species";
-    };
+    target: "species";
+  };
 
 export interface AlienCard extends CardDefinitionBase {
   cardType: "alien";
@@ -58,13 +59,13 @@ export interface AlienCard extends CardDefinitionBase {
 export interface EradicationCard extends CardDefinitionBase {
   cardType: "eradication";
   targeting: TargetingDefinition;
-  postRemovalState: "empty_area" | "recovery_pending_area";
+  postRemovalState: "bare_ground_area" | "pioneer_vegetation_area";
 }
 
 export interface RecoveryCard extends CardDefinitionBase {
   cardType: "recovery";
   targeting: TargetingDefinition;
-  postRecoveryState: "native_area" | "recovery_pending_area";
+  postRecoveryState: "native_area" | "pioneer_vegetation_area";
 }
 
 export type CardDefinition = AlienCard | EradicationCard | RecoveryCard;
@@ -83,17 +84,24 @@ export interface PlayerState {
   currentEnvironment: number;
   maxEnvironment: number;
   cardLibrary: CardInstance[];
-  cooldownActiveCards: { cardId: string; turnsRemaining: number }[];
+  cooldownActiveCards: { cardId: string; roundsRemaining: number }[]; // Turn -> Round
   limitedCardsUsedCount: { [cardId: string]: number };
 }
 
 export interface ActiveAlienInstance {
   instanceId: string;
-  spawnedTurn: number;
+  spawnedRound: number; // Turn -> Round
   cardDefinitionId: string;
-  // 以下、legacyの仕様に基づき復元
+
+  // 座標 (トークンの位置)
   currentX: number;
   currentY: number;
+
+  // 成長パラメータ (要件定義追加分)
+  currentInvasionPower: number;
+  currentInvasionShape: ShapeType;
+  currentGrowthStage: number;
+  roundsSinceSpawn: number;
 }
 
 // --- フィールド ---
@@ -106,32 +114,29 @@ export interface NativeAreaCell extends CellStateBase {
   cellType: "native_area";
   ownerId: "native";
 }
-export interface EmptyAreaCell extends CellStateBase {
-  cellType: "empty_area";
+
+export interface BareGroundAreaCell extends CellStateBase {
+  cellType: "bare_ground_area"; // 旧 empty_area
   ownerId: null;
 }
-export interface RecoveryPendingAreaCell extends CellStateBase {
-  cellType: "recovery_pending_area";
+
+export interface PioneerVegetationAreaCell extends CellStateBase {
+  cellType: "pioneer_vegetation_area"; // 旧 recovery_pending_area
   ownerId: null;
-  recoveryPendingTurn: number;
+  createdRound: number; // recoveryPendingTurn -> createdRound
 }
-export interface AlienCoreCell extends CellStateBase {
-  cellType: "alien_core";
+
+export interface AlienAreaCell extends CellStateBase {
+  cellType: "alien_area"; // 旧 alien_core & alien_invasion_area
   ownerId: "alien";
-  alienInstanceId: string;
-}
-export interface AlienInvasionAreaCell extends CellStateBase {
-  cellType: "alien_invasion_area";
-  ownerId: "alien";
-  dominantAlienInstanceId: string;
+  dominantAlienInstanceId: string; // このマスを支配している外来種ID
 }
 
 export type CellState =
   | NativeAreaCell
-  | EmptyAreaCell
-  | RecoveryPendingAreaCell
-  | AlienCoreCell
-  | AlienInvasionAreaCell;
+  | BareGroundAreaCell
+  | PioneerVegetationAreaCell
+  | AlienAreaCell;
 
 export interface FieldState {
   width: number;
@@ -140,8 +145,8 @@ export interface FieldState {
 }
 
 export interface GameState {
-  currentTurn: number;
-  maximumTurns: number;
+  currentRound: number; // Turn -> Round
+  maximumRounds: number;
   activePlayerId: PlayerType;
   gameField: FieldState;
   playerStates: { [key in PlayerType]: PlayerState };
