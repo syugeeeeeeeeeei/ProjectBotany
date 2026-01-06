@@ -23,15 +23,7 @@ export const useHandLogic = (player: PlayerType) => {
 
 	const { selectedCardId, isAnySelected, actions: selectionActions } = useCardSelected();
 
-	// ターン終了時に解除
-	useEffect(() => {
-		if (!isMyTurn && isAnySelected) {
-			selectionActions.deselect();
-		}
-	}, [isMyTurn, isAnySelected, selectionActions]);
-
-	const { state: toggleState, animation: toggleAnim, actions: toggleActions } = useToggleHand(isMyTurn, isAnySelected);
-
+	/** ✨ カードリストのメモ化 */
 	const cards = useMemo(() => {
 		const definitions = playerState?.cardLibrary ?? [];
 		return definitions
@@ -42,6 +34,24 @@ export const useHandLogic = (player: PlayerType) => {
 			})
 			.filter(Boolean) as CardWithInstanceId[];
 	}, [playerState?.cardLibrary]);
+
+	/** ✨ 「自分の手札のカード」が選択されているかを判定 */
+	const isMyCardSelected = useMemo(() =>
+		cards.some((c) => c.instanceId === selectedCardId),
+		[cards, selectedCardId]
+	);
+
+	/** ✨ ターン終了時の自動解除（バグ修正） */
+	useEffect(() => {
+		// 自分のターンではなくなり、かつ「自分のカード」が選択されたままなら解除する
+		// これにより、相手側のインスタンスが自分の選択を消してしまうのを防ぐ
+		if (!isMyTurn && isMyCardSelected) {
+			console.log(`[UI] 🔄 Turn Ended for ${player}: Deselecting my card.`);
+			selectionActions.deselect();
+		}
+	}, [isMyTurn, isMyCardSelected, selectionActions, player]);
+
+	const { state: toggleState, animation: toggleAnim, actions: toggleActions } = useToggleHand(isMyTurn, isAnySelected);
 
 	const maxPage = Math.max(0, Math.ceil(cards.length / HandLayout.CARDS_PER_PAGE) - 1);
 	const pageWidth = HandLayout.PAGE_WIDTH;
@@ -56,15 +66,14 @@ export const useHandLogic = (player: PlayerType) => {
 		onSwipeDown: useCallback(() => toggleActions.hide(), [toggleActions]),
 		onSwipeLeft: useCallback(() => setCurrentPage((p) => Math.min(maxPage, p + 1)), [maxPage]),
 		onSwipeRight: useCallback(() => setCurrentPage((p) => Math.max(0, p - 1)), []),
-		onAreaClick: useCallback(() => isAnySelected && selectionActions.deselect(), [isAnySelected, selectionActions]),
 
-		// バリデーション付きの選択処理
+		onAreaClick: useCallback(() => {
+			if (isAnySelected) selectionActions.deselect();
+		}, [isAnySelected, selectionActions]),
+
 		onCardSelect: useCallback((card: CardWithInstanceId) => {
-			if (isInteractionLocked) return;
-			if (!isMyTurn) {
-				gameActions.ui.notify({ message: "相手のターンです", player });
-				return;
-			}
+			if (isInteractionLocked || !isMyTurn) return;
+
 			const isCooldown = playerState?.cooldownActiveCards.some(c => c.cardId === card.instanceId);
 			if (isCooldown) {
 				gameActions.ui.notify({ message: "クールダウン中です", player });
@@ -77,7 +86,15 @@ export const useHandLogic = (player: PlayerType) => {
 	};
 
 	return {
-		state: { cards, isVisible: toggleState.isVisible, effectiveIsVisible: toggleState.effectiveIsVisible, isAnySelected, selectedCardId, isInteractionLocked, isMyTurn },
+		state: {
+			cards,
+			isVisible: toggleState.isVisible,
+			effectiveIsVisible: toggleState.effectiveIsVisible,
+			isAnySelected,
+			selectedCardId,
+			isInteractionLocked,
+			isMyTurn
+		},
 		layout: { facingFactor, zPos: toggleAnim.zPos, xPos, pageWidth },
 		handlers,
 	};

@@ -10,10 +10,12 @@ export const useCardSelected = () => {
 	const selectedCardId = useGameQuery.ui.useSelectedCardId();
 
 	const select = useCallback((instanceId: string) => {
+		console.log(`[CardSelect] card: ${instanceId}`);
 		gameActions.ui.selectCard(instanceId);
 	}, []);
 
 	const deselect = useCallback(() => {
+		console.log(`[CardDeselect] card: ${selectedCardId}`);
 		gameActions.ui.deselectCard();
 	}, []);
 

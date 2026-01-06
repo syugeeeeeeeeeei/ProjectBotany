@@ -58,6 +58,9 @@ const CardWrapper: React.FC<CardWrapperProps> = ({
       rotation={spring.rotation as unknown as [number, number, number]}
       onClick={(e) => {
         e.stopPropagation();
+        console.log(
+          `[CardClick] isSelected: ${isSelected}, isAnySelected: ${isAnySelected}`,
+        );
         if (isSelected) {
           onDeselect();
           return;
