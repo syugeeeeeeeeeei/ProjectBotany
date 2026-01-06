@@ -16,7 +16,7 @@ const Container = styled.div<{ $side: "top" | "bottom" }>`
   z-index: 100;
   pointer-events: auto;
   border-bottom: 1px solid #333;
-
+  border-top: 2px solid;
   ${({ $side }) =>
     $side === "top" ? "top: 0; transform: rotate(180deg);" : "bottom: 0;"}
 `;

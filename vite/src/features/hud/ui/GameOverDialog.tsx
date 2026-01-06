@@ -96,7 +96,19 @@ export const GameOverDialog: React.FC<GameOverDialogProps> = ({
         </ScoreRow>
       </ScoreBoard>
 
-      <BaseActionButton onClick={onRestart}>PLAY AGAIN</BaseActionButton>
+      <div>
+        <BaseActionButton
+          onClick={onRestart}
+          style={{
+            padding: "15px 35px", // サイズ縮小
+            fontSize: "1.5rem", // フォントサイズ縮小
+            backgroundColor: "#2E7D32", // 緑色に変更 (Material Green 800)
+            border: "1px solid #4CAF50",
+          }}
+        >
+          タイトルに戻る
+        </BaseActionButton>
+      </div>
     </Container>
   );
 };

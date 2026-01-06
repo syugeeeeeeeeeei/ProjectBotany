@@ -1,5 +1,5 @@
 // src/core/systems/RoundSystem.ts
-import { GameState, CellState } from "@/shared/types";
+import { GameState, CellState, PlayerId } from "@/shared/types";
 import { FieldSystem } from "./FieldSystem";
 import { gameEventBus } from "../event-bus/GameEventBus";
 import { useGameStore } from "../store/gameStore";
@@ -26,7 +26,7 @@ export const RoundSystem = {
       };
     });
 
-    // 植生遷移
+    // 植生遷移: 先駆植生（薄緑）が在来種（緑）へ自動回復する
     const newCells: CellState[] = [];
     for (let y = 0; y < gameField.height; y++) {
       for (let x = 0; x < gameField.width; x++) {
@@ -39,7 +39,7 @@ export const RoundSystem = {
 
     const newField = FieldSystem.updateCells(gameField, newCells);
 
-    // ✨ 追加: 最新のフィールドからスコアを再計算
+    // 最新のフィールドからスコアを再計算
     const nativeScore = FieldSystem.countCellsByType(newField, "native");
     const alienScore = FieldSystem.countCellsByType(newField, "alien");
 
@@ -53,8 +53,8 @@ export const RoundSystem = {
       activePlayerId: "alien",
       playerStates: newPlayerStates,
       gameField: newField,
-      nativeScore, // 更新されたスコアを反映
-      alienScore,  // 更新されたスコアを反映
+      nativeScore,
+      alienScore,
     };
   },
 
@@ -65,17 +65,41 @@ export const RoundSystem = {
     console.log(`🏁 Ending Round ${gameState.currentRound}...`);
 
     // 1. ラウンド終了イベント発行
-    // この中で Feature (Growth/Expansion) が Store を更新する
+    // この中で Feature (Growth/Expansion) が自動処理を実行し、Store を更新する
     gameEventBus.emit("ROUND_END", { round: gameState.currentRound });
 
     // 2. 重要：Featureによって更新された「最新のステート」を取得し直す
     const latestState = useGameStore.getState();
 
-    // 3. 最新のステートを元に次のラウンドを計算
-    // ✨ 安全のため this ではなく RoundSystem.startRound を参照
-    const nextRoundState = RoundSystem.startRound(latestState);
+    // 3. 終了判定: 現在のラウンドが最大ラウンドに達しているか
+    if (latestState.currentRound >= latestState.maximumRounds) {
+      console.log("🏆 Game Over: Maximum rounds reached.");
 
-    // 4. ストアを更新
+      // 最終的なスコアの集計（支配マス数比較）
+      const finalNativeScore = FieldSystem.countCellsByType(latestState.gameField, "native");
+      const finalAlienScore = FieldSystem.countCellsByType(latestState.gameField, "alien");
+
+      // 勝者の決定
+      let winner: PlayerId | null = null;
+      if (finalNativeScore > finalAlienScore) {
+        winner = "native";
+      } else if (finalAlienScore > finalNativeScore) {
+        winner = "alien";
+      }
+
+      // ゲーム終了状態へ遷移
+      useGameStore.getState().setState({
+        isGameOver: true,
+        winningPlayerId: winner,
+        nativeScore: finalNativeScore,
+        alienScore: finalAlienScore,
+        currentPhase: "end"
+      });
+      return;
+    }
+
+    // 4. 最大ラウンドに達していなければ、次のラウンドを開始
+    const nextRoundState = RoundSystem.startRound(latestState);
     useGameStore.getState().setState(nextRoundState);
     console.log(`⏭️ Transitioned to Round ${nextRoundState.currentRound}`);
   },

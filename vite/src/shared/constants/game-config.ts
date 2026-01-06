@@ -10,7 +10,7 @@ export const GAME_SETTINGS = {
   /** フィールドの高さ（マス数） */
   FIELD_HEIGHT: 10,
   /** ゲームの最大ラウンド数 */
-  MAXIMUM_ROUNDS: 2,
+  MAXIMUM_ROUNDS: 6,
   /** 初期AP */
   INITIAL_ENVIRONMENT: 1,
 
