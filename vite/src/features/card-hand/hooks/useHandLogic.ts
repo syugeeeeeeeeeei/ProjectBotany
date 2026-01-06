@@ -1,12 +1,12 @@
-// src/features/card-hand/hooks/useHandLogic.ts
+// vite/src/features/card-hand/hooks/useHandLogic.ts
 import { useState, useMemo } from "react";
 import { useSpring } from "@react-spring/three";
 import { useGesture } from "@use-gesture/react";
 import { useGameQuery } from "@/core/api/queries";
 import { gameActions } from "@/core/api/actions";
-import type { PlayerType, CardDefinition } from "@/shared/types";
-import cardMasterData from "@/shared/data/cardMasterData";
-import { HandLayout } from "../domain/HandLayout"; // 修正: 分離したファイルからインポート
+import type { PlayerType, CardDefinition } from "@/shared/types"; // 修正
+import { cardMasterData } from "@/shared/data/cardMasterData"; // 修正: Named Import
+import { HandLayout } from "../domain/HandLayout";
 
 type CardWithInstanceId = CardDefinition & { instanceId: string };
 
@@ -28,16 +28,16 @@ export const useHandLogic = (player: PlayerType) => {
 	const cards = useMemo(() => {
 		if (!playerState) return [];
 		return playerState.cardLibrary
-			.map((inst) => {
+			.map((inst: { cardDefinitionId: string; instanceId: string }) => {
 				const def = cardMasterData.find((c) => c.id === inst.cardDefinitionId);
 				return def ? { ...def, instanceId: inst.instanceId } : null;
 			})
-			.filter((c): c is CardWithInstanceId => c !== null);
+			.filter((c: CardWithInstanceId | null): c is CardWithInstanceId => c !== null);
 	}, [playerState]);
 
 	const isMyCardSelected = useMemo(() => {
 		if (!selectedCardId) return false;
-		return cards.some((c) => c.instanceId === selectedCardId);
+		return cards.some((c: CardWithInstanceId) => c.instanceId === selectedCardId);
 	}, [cards, selectedCardId]);
 
 	const maxPage = Math.max(

@@ -1,9 +1,4 @@
-/**
- * src/shared/types/primitives.ts
- * ゲーム全体で使用される基本的な型定義（プリミティブな列挙型など）
- */
-
-// --- 基本データ構造 (復活) ---
+// vite/src/shared/types/primitives.ts
 
 /** 2D座標 */
 export interface Point {
@@ -11,7 +6,7 @@ export interface Point {
   y: number;
 }
 
-/** 3Dベクトル (Three.js互換用・既存コンポーネントで使用) */
+/** 3Dベクトル */
 export interface Vector3 {
   x: number;
   y: number;
@@ -23,61 +18,53 @@ export interface Vector3 {
 /** プレイヤーID */
 export type PlayerId = "native" | "alien";
 
-/** * 既存コンポーネント互換用エイリアス 
- * (修正されていないファイルが PlayerType を参照している場合のため)
- */
+/** 互換用エイリアス */
 export type PlayerType = PlayerId;
 
 /** ゲームの進行フェーズ */
 export type GamePhase =
-  | "start"       // ラウンド開始（AP回復、植生遷移）
-  | "alien_turn"  // 外来種アクション
-  | "native_turn" // 在来種アクション
-  | "end";        // ラウンド終了（拡散、成長）
+  | "start"
+  | "alien_turn"
+  | "native_turn"
+  | "end";
 
 /** マスの種類 */
 export type CellType =
-  | "native"   // 在来種（緑）
-  | "alien"    // 外来種（赤）
-  | "bare"     // 裸地（灰）
-  | "pioneer"; // 先駆植生（薄緑）
+  | "native"
+  | "alien"
+  | "bare"
+  | "pioneer";
 
 /** 成長段階 */
-export type GrowthStatus =
-  | "seed"   // 種（無害、休眠期間）
-  | "plant"; // 成体（拡散・反撃あり）
+export type GrowthStatus = "seed" | "plant";
 
-/** グリッド形状（効果範囲・拡散形状など） */
+/** グリッド形状 */
 export type GridShape =
-  | "point"    // 1マス
-  | "vertical" // 縦一列
-  | "horizon"  // 横一列
-  | "cross"    // 十字
-  | "x_cross"  // 斜め十字
-  | "range";   // 周囲（正方形）
+  | "point"
+  | "vertical"
+  | "horizon"
+  | "cross"
+  | "x_cross"
+  | "range"
+  | "straight"; // 追加: EffectSystemで使用
+
+/** EffectSystem互換用エイリアス */
+export type ShapeType = GridShape;
+
+/** 方向定義 (EffectSystem用) */
+export type DirectionType = "up" | "down" | "left" | "right" | "vertical" | "horizon";
 
 /** 外来種の反撃能力 */
-export type CounterAbility =
-  | "none"         // なし
-  | "spread_seed"; // 種子散布（物理駆除時に周囲へ種生成）
+export type CounterAbility = "none" | "spread_seed";
 
 /** 駆除タイプ */
-export type EradicationType =
-  | "physical" // 物理駆除（コスト安、反撃リスクあり）
-  | "complete"; // 完全駆除（コスト高、反撃無効）
+export type EradicationType = "physical" | "complete";
 
 /** 駆除後の土地状態 */
-export type PostRemovalState =
-  | "bare"    // 裸地に戻る
-  | "pioneer" // 先駆植生になる（被覆効果）
-  | "empty";  // 完全消滅（連鎖駆除などで使用）
+export type PostRemovalState = "bare" | "pioneer" | "empty";
 
 /** 回復後の土地状態 */
-export type PostRecoveryState =
-  | "pioneer" // 先駆植生
-  | "native"; // 在来種
+export type PostRecoveryState = "pioneer" | "native";
 
-/** 防御効果（回復時など） */
-export type ProtectionType =
-  | "none"
-  | "1_round"; // 次のラウンド終了時まで侵入・拡散無効
+/** 防御効果 */
+export type ProtectionType = "none" | "1_round";

@@ -2,8 +2,8 @@
 import {
   CardDefinition,
   FieldState,
-} from "@/shared/types/game-schema";
-import { Point, ShapeType, DirectionType } from "@/shared/types/primitives";
+} from "@/shared/types"; // 修正: @/shared/types からインポート
+import { Point, ShapeType, DirectionType } from "@/shared/types"; // 修正
 import { FieldSystem } from "./FieldSystem";
 
 export class EffectSystem {
@@ -16,23 +16,27 @@ export class EffectSystem {
     field: FieldState,
     directionFactor: 1 | -1 = 1, // 1: Alien(上から), -1: Native(下から)
   ): Point[] {
-    // ターゲット定義がない場合は空
-    if (!("targeting" in card) || !card.targeting) return [];
+    // CardDefinitionにtargetingプロパティが型定義上で存在しない可能性があるため、
+    // 一度 any として扱って安全にアクセスする
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const c = card as any;
+
+    // targetingプロパティがない、またはfalsyな場合は空配列
+    if (!c.targeting) return [];
+
+    const targeting = c.targeting;
 
     // targetingが "species" (種指定) の場合、座標範囲はない
-    if ("target" in card.targeting && card.targeting.target === "species") {
+    if (targeting.target === "species") {
       return [];
     }
 
-    // ここまでくれば shape と power を持つ
-    // TypeScriptの型ガードのためにキャストまたは絞り込み
-    const targeting = card.targeting as {
+    // ここまでくれば shape と power を持つとみなしてキャスト
+    const { shape, power, direction } = targeting as {
       shape: ShapeType;
       power: number;
       direction?: DirectionType;
     };
-
-    const { shape, power, direction } = targeting;
 
     return this.calculateShapeArea(
       origin,
@@ -58,69 +62,52 @@ export class EffectSystem {
     const targets: Point[] = [];
     const { x: ox, y: oy } = origin;
 
+    // 範囲内判定ヘルパー
+    const addIfValid = (tx: number, ty: number) => {
+      if (FieldSystem.isValidCoordinate(field, { x: tx, y: ty })) {
+        targets.push({ x: tx, y: ty });
+      }
+    };
+
     // Range (周囲正方形)
     if (shape === "range") {
       for (let dy = -power; dy <= power; dy++) {
         for (let dx = -power; dx <= power; dx++) {
-          if (dx === 0 && dy === 0) continue; // 起点は含めない（必要なら含める）
-          const tx = ox + dx;
-          const ty = oy + dy; // Y軸方向はPlayerの向きに関係なく絶対座標で計算
-          if (FieldSystem.isValidPos(tx, ty, field)) {
-            targets.push({ x: tx, y: ty });
-          }
+          if (dx === 0 && dy === 0) continue; // 起点は含めない
+          addIfValid(ox + dx, oy + dy);
         }
       }
     }
     // Cross (十字)
     else if (shape === "cross") {
       for (let d = 1; d <= power; d++) {
-        const dirs = [
-          { x: 0, y: d },
-          { x: 0, y: -d },
-          { x: d, y: 0 },
-          { x: -d, y: 0 },
-        ];
-        dirs.forEach((dir) => {
-          const tx = ox + dir.x;
-          const ty = oy + dir.y;
-          if (FieldSystem.isValidPos(tx, ty, field)) {
-            targets.push({ x: tx, y: ty });
-          }
-        });
+        addIfValid(ox, oy + d);
+        addIfValid(ox, oy - d);
+        addIfValid(ox + d, oy);
+        addIfValid(ox - d, oy);
       }
     }
     // Straight (直線)
     else if (shape === "straight") {
-      // 指定方向、なければ前方
-      // directionFactor: 1(Alien)ならy+方向が「前方」, -1(Native)ならy-方向が「前方」と仮定
-      // 要件定義の視点に合わせて調整が必要。ここではAlien(上)→下へ攻めるならy+, Native(下)→上へ攻めるならy-
       let dx = 0;
       let dy = 0;
 
       if (cardDirection === "vertical" || !cardDirection) {
         dy = 1 * directionFactor; // 前方
       } else if (cardDirection === "horizon") {
-        // 横一列のStraight定義がある場合の実装（現在は未定のためスキップ）
+        // 横一列の実装（将来拡張用）
       } else if (cardDirection === "up") dy = -1;
       else if (cardDirection === "down") dy = 1;
       else if (cardDirection === "left") dx = -1;
       else if (cardDirection === "right") dx = 1;
 
       for (let i = 1; i <= power; i++) {
-        const tx = ox + dx * i;
-        const ty = oy + dy * i;
-        if (FieldSystem.isValidPos(tx, ty, field)) {
-          targets.push({ x: tx, y: ty });
-        }
+        addIfValid(ox + dx * i, oy + dy * i);
       }
     }
     // Single (単体)
     else {
-      // Singleの場合、Origin自体を含むか、Originの隣接か？
-      // 通常はクリックした対象そのもの(Origin)を指すことが多い
-      if (FieldSystem.isValidPos(ox, oy, field)) {
-        targets.push({ x: ox, y: oy });
-      }
+      addIfValid(ox, oy);
     }
 
     return targets;

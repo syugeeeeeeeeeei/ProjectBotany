@@ -3,17 +3,14 @@ import React from "react";
 import { gameActions, useGameQuery } from "@/core/api";
 import { BaseActionButton } from "@/shared/components/BaseActionButton";
 
-/**
- * ターン終了ボタン
- * NOTE: RoundSystemへの移行に伴い、内部的には「ターン終了→（必要なら）ラウンド終了」の処理を行います
- */
 const TurnEndButton: React.FC = () => {
   const activePlayer = useGameQuery.useActivePlayer();
-  const currentRound = useGameQuery.useCurrentRound(); // Fixed: useCurrentTurn -> useCurrentRound
+  const currentRound = useGameQuery.useCurrentRound();
 
   const handleClick = () => {
     console.log("🔄 Turn End Requested");
-    gameActions.round.next(); // Fixed: gameActions.turn.next -> gameActions.round.next
+    // 修正: next() -> end()
+    gameActions.round.end();
   };
 
   return (

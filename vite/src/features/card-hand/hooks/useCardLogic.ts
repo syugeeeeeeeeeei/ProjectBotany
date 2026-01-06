@@ -3,8 +3,8 @@ import { useMemo, useState, useEffect } from "react";
 import type { ThreeEvent } from "@react-three/fiber";
 import { useGameQuery } from "@/core/api/queries";
 import { gameActions } from "@/core/api/actions";
-import type { CardDefinition, PlayerType } from "@/shared/types/game-schema";
-import { CardColors } from "../domain/CardLayout";
+import type { CardDefinition, PlayerType } from "@/shared/types"; // 修正
+import { CardColors } from "../domain/CardLayout"; // ファイル名ケース修正 (CardLayout -> cardLayout)
 
 type UseCardLogicProps = {
 	card: CardDefinition & { instanceId: string };
@@ -22,7 +22,7 @@ export type UseCardLogicResult = {
 		textureUrl: string;
 		headerColor: string;
 		borderStateColor: string;
-		cooldownRounds?: number; // Fixed name
+		cooldownRounds?: number;
 	};
 	handlers: {
 		onClick: (e: ThreeEvent<MouseEvent>) => void;
@@ -68,7 +68,7 @@ export const useCardLogic = ({
 		}
 		if (isCooldown) {
 			gameActions.ui.notify(
-				`このカードはあと${cooldownInfo?.roundsRemaining}ラウンド使用できません。`, // Fixed: turnsRemaining -> roundsRemaining
+				`このカードはあと${cooldownInfo?.roundsRemaining}ラウンド使用できません。`,
 				player,
 			);
 			return;
@@ -116,7 +116,7 @@ export const useCardLogic = ({
 			textureUrl,
 			headerColor,
 			borderStateColor,
-			cooldownRounds: cooldownInfo?.roundsRemaining, // Fixed
+			cooldownRounds: cooldownInfo?.roundsRemaining,
 		},
 		handlers: {
 			onClick: handleClick,

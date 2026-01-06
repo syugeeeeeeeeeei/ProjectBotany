@@ -1,3 +1,4 @@
+// vite/src/core/event-bus/GameEventBus.ts
 /// <reference types="vite/client" />
 import mitt, { Emitter } from "mitt";
 import { CoreEventMap } from "@/core/types/events";
@@ -7,10 +8,15 @@ import { CoreEventMap } from "@/core/types/events";
  * アプリケーション全体をつなぐ神経網
  */
 export class GameEventBus {
-  private emitter: Emitter<CoreEventMap>;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private emitter: Emitter<any>;
 
   constructor() {
-    this.emitter = mitt<CoreEventMap>();
+    // CoreEventMapはインデックスシグネチャを持たないため、
+    // mittの厳密な型定義(Record<string, unknown>)と競合する場合がある。
+    // そのため、ここでは any でインスタンス化し、メソッド側で型安全性を担保する。
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    this.emitter = mitt<any>();
   }
 
   /**

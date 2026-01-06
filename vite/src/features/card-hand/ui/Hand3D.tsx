@@ -1,11 +1,11 @@
-// src/features/card-hand/ui/Hand3D.tsx
+// vite/src/features/card-hand/ui/Hand3D.tsx
 import React from "react";
 import { animated, to, useSpring } from "@react-spring/three";
 import { Plane } from "@react-three/drei";
-import type { PlayerType, CardDefinition } from "@/shared/types/game-schema";
+import type { PlayerType, CardDefinition } from "@/shared/types"; // 修正
 
 import { useHandLogic } from "../hooks/useHandLogic";
-import { HandLayout } from "../domain/HandLayout"; // 分離したLayoutファイル
+import { HandLayout } from "../domain/HandLayout";
 import Card3D from "./Card3D";
 
 type CardWithInstanceId = CardDefinition & { instanceId: string };
@@ -44,8 +44,6 @@ const CardWrapper: React.FC<CardWrapperProps> = ({
     facingFactor,
   });
 
-  // 改善ポイント:
-  // 位置、回転、透明度を1つのSpringでまとめて制御し、groupのネストを削減
   const spring = useSpring({
     position: [xLocal, 0, targetZ] as [number, number, number],
     rotation: [
@@ -113,7 +111,7 @@ const Hand3D: React.FC<{ player: PlayerType }> = ({ player }) => {
         />
       </Plane>
 
-      {/* Cards List - Scale groupを削除 */}
+      {/* Cards List */}
       <animated.group position-x={layout.xPos}>
         {pages.map((pageCards, pageIndex) => (
           <group

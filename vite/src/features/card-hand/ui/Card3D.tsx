@@ -3,7 +3,7 @@ import React, { useMemo } from "react";
 import { animated } from "@react-spring/three";
 import { RoundedBox, Text, useTexture } from "@react-three/drei";
 import * as THREE from "three";
-import type { CardDefinition, PlayerType } from "@/shared/types/game-schema";
+import type { CardDefinition, PlayerType } from "@/shared/types"; // 修正
 
 import { useCardLogic, UseCardLogicResult } from "../hooks/useCardLogic";
 import { CardLayout } from "../domain/CardLayout";
@@ -247,7 +247,7 @@ const CardOverlayCooldown = ({
         anchorX={AREAS.TEXT.COOLDOWN.ANCHOR_X}
         anchorY={AREAS.TEXT.COOLDOWN.ANCHOR_Y}
       >
-        {data.cooldownRounds} {/* Fixed: cooldownTurns -> cooldownRounds */}
+        {data.cooldownRounds}
       </Text>
     </>
   );
