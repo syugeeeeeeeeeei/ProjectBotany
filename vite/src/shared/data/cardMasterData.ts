@@ -17,8 +17,8 @@ export const cardMasterData: CardDefinition[] = [
       "【拡散】左右1マス\n【反撃】なし\n\n近年急増している外来種。拡散力は低いが、コストが軽く、隙間に入り込んでくる。",
     cost: 1,
     cardType: "alien",
-    deckCount: 3,
-    imagePath: "/plants/alien/nagami.png",
+    deckCount: 2,
+    imagePath: "/plants/ナガミヒナゲシ.png",
     expansionPower: 1,
     expansionRange: "horizon", // 左右
     counterAbility: "none",
@@ -31,7 +31,7 @@ export const cardMasterData: CardDefinition[] = [
     cost: 1,
     cardType: "alien",
     deckCount: 2,
-    imagePath: "/plants/alien/chidomegusa.png",
+    imagePath: "/plants/ブラジルチドメグサ.png",
     expansionPower: 1,
     expansionRange: "vertical", // 上下（川の流れなど）
     counterAbility: "spread_seed", // 物理駆除時に周囲に種を撒く
@@ -44,7 +44,7 @@ export const cardMasterData: CardDefinition[] = [
     cost: 2,
     cardType: "alien",
     deckCount: 2,
-    imagePath: "/plants/alien/kinkeigiku.png",
+    imagePath: "/plants/オオキンケイギク.png",
     expansionPower: 1,
     expansionRange: "cross", // 十字
     counterAbility: "none",
@@ -58,7 +58,7 @@ export const cardMasterData: CardDefinition[] = [
     cost: 3,
     cardType: "alien",
     deckCount: 1,
-    imagePath: "/plants/alien/mizubashou.png",
+    imagePath: "/plants/ミズバショウ.png",
     expansionPower: 1,
     expansionRange: "range", // 周囲8マス（正方形）
     counterAbility: "none",
@@ -72,7 +72,7 @@ export const cardMasterData: CardDefinition[] = [
     cost: 4,
     cardType: "alien",
     deckCount: 1,
-    imagePath: "/plants/alien/hangonsou.png",
+    imagePath: "/plants/オオハンゴンソウ.png",
     expansionPower: 2, // 遠くまで届く
     expansionRange: "x_cross", // 斜め
     counterAbility: "spread_seed", // 厄介な反撃持ち
@@ -87,7 +87,7 @@ export const cardMasterData: CardDefinition[] = [
     cost: 5,
     cardType: "alien",
     deckCount: 1,
-    imagePath: "/plants/alien/arechiuri.png",
+    imagePath: "/plants/アレチウリ.png",
     expansionPower: 2,
     expansionRange: "range", // 周囲広範囲
     counterAbility: "spread_seed",
