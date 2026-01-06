@@ -1,24 +1,33 @@
 // vite/src/app/FeaturesRegistry.ts
-
 import { GameFeature } from "@/core/types/architecture";
 import { fieldGridFeature } from "@/features/field-grid";
-import { turnSystemFeature } from "@/features/turn-system";
 import { cardHandFeature } from "@/features/card-hand";
+import { turnSystemFeature } from "@/features/turn-system";
 import { playCardFeature } from "@/features/play-card";
-import { alienExpansionFeature } from "@/features/alien-expansion";
-import { alienGrowthFeature } from "@/features/alien-growth";
 import { hudFeature } from "@/features/hud";
+import { alienGrowthFeature } from "@/features/alien-growth";
+import { alienExpansionFeature } from "@/features/alien-expansion";
+// 新規追加
+import { debugConsoleFeature } from "@/features/debug-console";
 
+/**
+ * アプリケーションで有効化するFeatureのリスト
+ * ここに登録された順序で初期化・レンダリングが行われる
+ */
 export const FeaturesRegistry: GameFeature[] = [
+  // システム・基盤系
   fieldGridFeature,
-  hudFeature,
   turnSystemFeature,
-  cardHandFeature,
+
+  // ゲームプレイルール系
+  alienGrowthFeature,
+  alienExpansionFeature,
   playCardFeature,
 
-  // ▼ 実行順序が重要: Expansion(拡散) -> Growth(成長)
-  // Expansion: 成体が周囲を塗る
-  // Growth: 種が成体になる (このターン生まれた種はまだ拡散しないため、Expansionより後に実行)
-  alienExpansionFeature,
-  alienGrowthFeature,
+  // UI・操作系
+  cardHandFeature,
+  hudFeature,
+
+  // デバッグ機能 (必要に応じてコメントアウト可能)
+  debugConsoleFeature,
 ];
