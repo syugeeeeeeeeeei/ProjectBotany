@@ -3,10 +3,13 @@ import { GameFeature } from "@/core/types/architecture";
 import { fieldGridFeature } from "@/features/field-grid";
 import { cardHandFeature } from "@/features/Card/Hand";
 import { playCardFeature } from "@/features/Card/PlayCard";
-import { hudFeature } from "@/features/hud";
 import { alienGrowthFeature } from "@/features/Alien/Growth";
 import { alienExpansionFeature } from "@/features/Alien/Expansion";
 import { debugConsoleFeature } from "@/features/Debug/Console";
+import { hudFeature } from "@/features/Information/Hud";
+import { alertFeature } from "@/features/Information/Alert";
+import { bannerFeature } from "@/features/Information/Banner";
+import { sceneFeature } from "@/features/Information/Scene";
 
 /**
  * アプリケーションで有効化するFeatureのリスト
@@ -23,7 +26,12 @@ export const FeaturesRegistry: GameFeature[] = [
 
   // UI・操作系
   cardHandFeature,
+  // Information Features
   hudFeature,
+  bannerFeature,
+  sceneFeature,
+  alertFeature, // アラートは最前面
+
 
   // デバッグ機能
   debugConsoleFeature,

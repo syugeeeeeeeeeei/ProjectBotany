@@ -1,8 +1,7 @@
-import React, { useEffect } from "react";
+import React from "react";
 import styled, { keyframes } from "styled-components";
 import { useUIStore, NotificationItem } from "@/core/store/uiStore";
-
-// --- Styles & Animations ---
+import { AlertSystem } from "@/core/systems/AlertSystem";
 
 const slideIn = keyframes`
   from { transform: translateX(-50%) translateY(-20px); opacity: 0; }
@@ -14,11 +13,11 @@ const AlertContainer = styled.div`
   top: 10%;
   left: 50%;
   transform: translateX(-50%);
-  z-index: 1000;
+  z-index: 2000; /* 最前面 */
   display: flex;
   flex-direction: column;
   gap: 10px;
-  pointer-events: none; /* 下の要素をクリックできるように */
+  pointer-events: none;
   width: 80%;
   max-width: 400px;
 `;
@@ -51,28 +50,15 @@ const Toast = styled.div<{ $type: NotificationItem["type"] }>`
   backdrop-filter: blur(4px);
   cursor: pointer;
   animation: ${slideIn} 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-  transition: opacity 0.3s ease;
 
   &:hover {
     opacity: 0.8;
   }
 `;
 
-// --- Components ---
-
 const AlertItem: React.FC<{ item: NotificationItem }> = ({ item }) => {
-  const removeNotification = useUIStore((s) => s.removeNotification);
-
-  useEffect(() => {
-    // 3秒後に自動消去
-    const timer = setTimeout(() => {
-      removeNotification(item.id);
-    }, 3000);
-    return () => clearTimeout(timer);
-  }, [item.id, removeNotification]);
-
   return (
-    <Toast $type={item.type} onClick={() => removeNotification(item.id)}>
+    <Toast $type={item.type} onClick={() => AlertSystem.remove(item.id)}>
       {item.player && (
         <span
           style={{
@@ -90,7 +76,7 @@ const AlertItem: React.FC<{ item: NotificationItem }> = ({ item }) => {
   );
 };
 
-export const AlertSystem: React.FC = () => {
+export const AlertUI: React.FC = () => {
   const notifications = useUIStore((s) => s.notifications);
 
   return (

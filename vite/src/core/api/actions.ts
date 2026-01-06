@@ -5,6 +5,7 @@ import { TurnSystem } from "@/core/systems/TurnSystem";
 import { useGameStore } from "@/core/store/gameStore";
 import { useUIStore } from "@/core/store/uiStore";
 import { CellState, PlayerType, GameState } from "@/shared/types";
+import { AlertSystem } from "../systems/AlertSystem";
 
 // --- Validation Schemas ---
 const MutateCellSchema = z.object({
@@ -87,7 +88,7 @@ export const gameActions = {
     /** ✨ 新しい通知システムへの対応 */
     notify: (input: unknown) => {
       const { message, type, player } = NotifySchema.parse(input);
-      useUIStore.getState().pushNotification(
+      AlertSystem.notify(
         message,
         type as "info" | "error" | "success" | "system",
         player as PlayerType
