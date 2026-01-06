@@ -1,80 +1,102 @@
 import React from "react";
-import { useGameQuery, gameActions } from "@/core/api";
+import styled, { keyframes } from "styled-components";
+import { useGameQuery } from "@/core/api";
 import { BaseActionButton } from "@/shared/components/BaseActionButton";
+import { PlayerType } from "@/shared/types";
 
-export const GameOverDialog: React.FC = () => {
-  const { isGameOver, winningPlayerId, alienScore, nativeScore } =
+const fadeIn = keyframes`
+  from { opacity: 0; }
+  to { opacity: 1; }
+`;
+
+const Container = styled.div<{ $side: "top" | "bottom"; $resultColor: string }>`
+  position: absolute;
+  left: 0;
+  width: 100%;
+  height: 50%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  background-color: rgba(0, 0, 0, 0.9);
+  color: white;
+  z-index: 200;
+  pointer-events: auto;
+  border-top: 4px solid ${({ $resultColor }) => $resultColor};
+  animation: ${fadeIn} 0.5s ease-out forwards;
+
+  ${({ $side }) =>
+    $side === "top" ? "top: 0; transform: rotate(180deg);" : "bottom: 0;"}
+`;
+
+const ResultTitle = styled.h1<{ $color: string }>`
+  font-size: 3rem;
+  color: ${({ $color }) => $color};
+  margin-bottom: 10px;
+  text-shadow: 0 0 15px ${({ $color }) => $color}80;
+`;
+
+const ScoreBoard = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: rgba(255, 255, 255, 0.1);
+  padding: 15px 30px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  min-width: 200px;
+`;
+
+const ScoreRow = styled.div`
+  display: flex;
+  justify-content: space-between;
+  font-size: 1.2rem;
+
+  &.total {
+    border-top: 1px solid rgba(255, 255, 255, 0.3);
+    margin-top: 5px;
+    padding-top: 5px;
+    font-weight: bold;
+  }
+`;
+
+interface GameOverDialogProps {
+  side: "top" | "bottom";
+  playerId: PlayerType;
+  onRestart: () => void;
+}
+
+export const GameOverDialog: React.FC<GameOverDialogProps> = ({
+  side,
+  playerId,
+  onRestart,
+}) => {
+  const { winningPlayerId, alienScore, nativeScore } =
     useGameQuery.useGameState();
 
-  if (!isGameOver) return null;
+  // プレイヤー視点での勝敗判定
+  const isWin = winningPlayerId === playerId;
+  const isDraw = winningPlayerId === null;
 
-  const handleReset = () => {
-    gameActions.system.reset();
-  };
-
-  const winMessage =
-    winningPlayerId === "alien"
-      ? "ALIEN WINS!"
-      : winningPlayerId === "native"
-        ? "NATIVE WINS!"
-        : "DRAW GAME";
-
-  const resultColor = winningPlayerId === "alien" ? "#C62828" : "#2E7D32";
+  const titleText = isWin ? "YOU WIN!" : isDraw ? "DRAW" : "YOU LOSE...";
+  const resultColor = isWin ? "#4CAF50" : isDraw ? "#FFC107" : "#F44336";
 
   return (
-    <div
-      style={{
-        position: "fixed",
-        top: 0,
-        left: 0,
-        width: "100vw",
-        height: "100vh",
-        backgroundColor: "rgba(0, 0, 0, 0.85)",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        zIndex: 9999,
-        color: "white",
-        fontFamily: "sans-serif",
-      }}
-    >
-      <h1
-        style={{
-          fontSize: "4rem",
-          color: resultColor,
-          marginBottom: "20px",
-          textShadow: "0 0 10px white",
-        }}
-      >
-        {winMessage}
-      </h1>
+    <Container $side={side} $resultColor={resultColor}>
+      <ResultTitle $color={resultColor}>{titleText}</ResultTitle>
 
-      <div
-        style={{
-          fontSize: "1.5rem",
-          marginBottom: "40px",
-          textAlign: "center",
-        }}
-      >
-        <p>Alien Score: {alienScore}</p>
-        <p>Native Score: {nativeScore}</p>
-      </div>
+      <ScoreBoard>
+        <ScoreRow>
+          <span style={{ color: "#E91E63" }}>Alien</span>
+          <span>{alienScore}</span>
+        </ScoreRow>
+        <ScoreRow>
+          <span style={{ color: "#4CAF50" }}>Native</span>
+          <span>{nativeScore}</span>
+        </ScoreRow>
+      </ScoreBoard>
 
-      <BaseActionButton
-        onClick={handleReset}
-        style={{
-          padding: "15px 40px",
-          fontSize: "1.5rem",
-          backgroundColor: "white",
-          color: "black",
-          border: "none",
-          borderRadius: "8px",
-          cursor: "pointer",
-        }}
-      >
-        PLAY AGAIN
-      </BaseActionButton>
-    </div>
+      <BaseActionButton onClick={onRestart}>PLAY AGAIN</BaseActionButton>
+    </Container>
   );
 };

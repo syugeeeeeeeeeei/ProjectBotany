@@ -31,8 +31,8 @@ export const HandLayout = {
 	},
 
 	GESTURE: {
-		PLANE_PADDING_X: 6, // 4 * 1.5
-		PLANE_HEIGHT: 6,    // 4 * 1.5
+		PLANE_PADDING_X: 1, // 4 * 1.5
+		PLANE_HEIGHT: 5,    // 4 * 1.5
 		ROTATION: { X: -Math.PI / 2, Y: 0, Z: 0 },
 		POSITION: { X: 0, Y: -0.3, Z: -0.225 }, // -0.2 * 1.5, -0.15 * 1.5
 		MATERIAL: { OPACITY: 0, DEPTH_WRITE: false },

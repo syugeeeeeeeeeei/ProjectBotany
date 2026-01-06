@@ -2,11 +2,12 @@
 import React from "react";
 import { animated, to, useSpring } from "@react-spring/three";
 import { Plane } from "@react-three/drei";
-import type { PlayerType, CardDefinition } from "@/shared/types"; // 修正
+import type { PlayerType, CardDefinition } from "@/shared/types";
 
 import { useHandLogic } from "../hooks/useHandLogic";
 import { HandLayout } from "../domain/HandLayout";
 import Card3D from "./Card3D";
+import { useGameQuery } from "@/core/api";
 
 type CardWithInstanceId = CardDefinition & { instanceId: string };
 
@@ -71,6 +72,8 @@ const CardWrapper: React.FC<CardWrapperProps> = ({
 
 const Hand3D: React.FC<{ player: PlayerType }> = ({ player }) => {
   const { state, layout, bindGesture } = useHandLogic(player);
+  /** ✨ デバッグ設定を購読 */
+  const { showGestureArea } = useGameQuery.ui.useDebugSettings();
 
   if (state.cards.length === 0) return null;
 
@@ -100,13 +103,19 @@ const Hand3D: React.FC<{ player: PlayerType }> = ({ player }) => {
         position={[
           HandLayout.GESTURE.POSITION.X,
           HandLayout.GESTURE.POSITION.Y,
-          HandLayout.GESTURE.POSITION.Z,
+          HandLayout.GESTURE.POSITION.Z, // 既に親 group が移動するため、ここは一定のオフセット
         ]}
+        /** * ✨ デバッグモードがONなら、判定エリアが非表示でもプレーン自体は visible にする
+         * ただしクリックを阻害しないよう、非アクティブ時は pointerEvents は bindGesture 側で制御
+         */
+        visible={state.effectiveIsVisible || showGestureArea}
         {...bindGesture()}
       >
         <meshStandardMaterial
           transparent
-          opacity={HandLayout.GESTURE.MATERIAL.OPACITY}
+          /** ✨ デバッグ表示：ONなら見えるようにし、色はピンクなどで強調 */
+          opacity={showGestureArea ? 0.3 : HandLayout.GESTURE.MATERIAL.OPACITY}
+          color={showGestureArea ? "#ff00ff" : "white"}
           depthWrite={HandLayout.GESTURE.MATERIAL.DEPTH_WRITE}
         />
       </Plane>

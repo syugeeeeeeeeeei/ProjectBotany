@@ -7,12 +7,11 @@ import { playCardFeature } from "@/features/Card/PlayCard";
 import { hudFeature } from "@/features/hud";
 import { alienGrowthFeature } from "@/features/Alien/Growth";
 import { alienExpansionFeature } from "@/features/Alien/Expansion";
-// 新規追加
 import { debugConsoleFeature } from "@/features/Debug/Console";
 
 /**
  * アプリケーションで有効化するFeatureのリスト
- * ここに登録された順序で初期化・レンダリングが行われる
+ * * 【修正】要件に基づき「成長したターンにエリアが広まる」よう、Growth -> Expansion の順に設定。
  */
 export const FeaturesRegistry: GameFeature[] = [
   // システム・基盤系
@@ -20,14 +19,14 @@ export const FeaturesRegistry: GameFeature[] = [
   turnSystemFeature,
 
   // ゲームプレイルール系
-  alienGrowthFeature,
-  alienExpansionFeature,
+  alienGrowthFeature,     // 1. まず種が成体に成長
+  alienExpansionFeature,  // 2. 成体（およびその支配下のマス）が拡散
   playCardFeature,
 
   // UI・操作系
   cardHandFeature,
   hudFeature,
 
-  // デバッグ機能 (必要に応じてコメントアウト可能)
+  // デバッグ機能
   debugConsoleFeature,
 ];

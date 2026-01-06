@@ -79,6 +79,9 @@ export const gameActions = {
     },
     deselectCard: () => useUIStore.getState().deselectCard(),
     hoverCell: (cell: CellState | null) => useUIStore.getState().hoverCell(cell),
+    /** ✨ デバッグ設定更新用 */
+    updateDebugSettings: (settings: Parameters<ReturnType<typeof useUIStore.getState>["updateDebugSettings"]>[0]) =>
+      useUIStore.getState().updateDebugSettings(settings),
     notify: (input: unknown) => {
       const { message, player } = NotifySchema.parse(input);
       useUIStore.getState().setNotification(message, player as PlayerType);

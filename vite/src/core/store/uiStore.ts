@@ -15,6 +15,11 @@ interface UIState {
   isCardPreview: boolean;
   /** インタラクションロック */
   isInteractionLocked: boolean;
+
+  /** ✨ デバッグ設定 */
+  debugSettings: {
+    showGestureArea: boolean;
+  };
 }
 
 interface UIActions {
@@ -27,6 +32,9 @@ interface UIActions {
   setInteractionLock: (isLocked: boolean) => void;
   /** 選択解除のショートカット */
   deselectCard: () => void;
+
+  /** ✨ デバッグ設定の更新 */
+  updateDebugSettings: (settings: Partial<UIState["debugSettings"]>) => void;
 }
 
 export const useUIStore = create(
@@ -38,6 +46,11 @@ export const useUIStore = create(
     notification: null,
     isCardPreview: false,
     isInteractionLocked: false,
+
+    // ✨ デバッグ初期設定
+    debugSettings: {
+      showGestureArea: false,
+    },
 
     // Actions
     selectCell: (cell) =>
@@ -51,7 +64,6 @@ export const useUIStore = create(
     selectCard: (cardId) =>
       set((state) => {
         state.selectedCardId = cardId;
-        // カード選択時はセル選択を解除するなどの排他制御もここで可能
         state.selectedCell = null;
       }),
     setNotification: (message, player) =>
@@ -75,6 +87,12 @@ export const useUIStore = create(
         state.selectedCardId = null;
         state.selectedCell = null;
         state.isCardPreview = false;
+      }),
+
+    // ✨ 設定更新
+    updateDebugSettings: (settings) =>
+      set((state) => {
+        state.debugSettings = { ...state.debugSettings, ...settings };
       }),
   })),
 );

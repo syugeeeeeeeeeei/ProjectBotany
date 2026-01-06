@@ -1,7 +1,7 @@
 // vite/src/core/api/queries.ts
 import { useGameStore } from "@/core/store/gameStore";
 import { useUIStore } from "@/core/store/uiStore";
-import { PlayerType, PlayerId } from "@/shared/types"; // 修正: indexからインポート
+import { PlayerType, PlayerId } from "@/shared/types";
 
 /**
  * Feature向け 公開参照API (Queries) - React Hooks版
@@ -17,11 +17,9 @@ export const useGameQuery = {
   useCell: (x: number, y: number) =>
     useGameStore((state) => state.gameField.cells[y]?.[x]),
 
-  // ✨ 追加: スコア取得用フック
   useScore: (playerId: PlayerType) =>
     useGameStore((state) => (playerId === "native" ? state.nativeScore : state.alienScore)),
 
-  // 修正: activeAlienInstances -> alienInstances (そのまま返す)
   useActiveAliens: () => useGameStore((state) => state.alienInstances),
 
   /** UI State */
@@ -30,6 +28,8 @@ export const useGameQuery = {
     useSelectedCell: () => useUIStore((state) => state.selectedCell),
     useIsInteractionLocked: () => useUIStore((state) => state.isInteractionLocked),
     useNotification: () => useUIStore((state) => state.notification),
+    /** ✨ 追加: デバッグ設定の取得 */
+    useDebugSettings: () => useUIStore((state) => state.debugSettings),
   },
 };
 
@@ -43,13 +43,11 @@ export const gameQuery = {
   cell: (x: number, y: number) =>
     useGameStore.getState().gameField.cells[y]?.[x],
 
-  // ✨ 追加: スコア取得用メソッド
   score: (playerId: PlayerType) => {
     const state = useGameStore.getState();
     return playerId === "native" ? state.nativeScore : state.alienScore;
   },
 
-  // 修正
   activeAliens: () => useGameStore.getState().alienInstances,
 
   ui: {

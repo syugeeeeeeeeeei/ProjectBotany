@@ -5,13 +5,9 @@ import styled from "styled-components";
 
 // --- Types ---
 
-/** 監視対象のログレベル */
 type LogLevel = "log" | "error" | "warn" | "info" | "debug";
-
-/** コンソールメソッドの関数シグネチャ */
 type ConsoleMethod = (...args: unknown[]) => void;
 
-/** ログデータの構造 */
 interface LogData {
   id: string;
   type: LogLevel;
@@ -21,23 +17,22 @@ interface LogData {
 
 // --- Styles ---
 
-const ConsoleContainer = styled.div`
-  position: fixed;
-  bottom: 10px;
-  left: 10px;
-  width: calc(100% - 20px);
-  max-width: 600px;
-  height: 300px;
-  background-color: rgba(20, 20, 20, 0.92);
-  backdrop-filter: blur(4px);
+const ConsoleContainer = styled.div<{ $isEmbedded?: boolean }>`
+  position: ${(props) => (props.$isEmbedded ? "relative" : "fixed")};
+  bottom: ${(props) => (props.$isEmbedded ? "0" : "10px")};
+  left: ${(props) => (props.$isEmbedded ? "0" : "10px")};
+  width: ${(props) => (props.$isEmbedded ? "100%" : "calc(100% - 20px)")};
+  max-width: ${(props) => (props.$isEmbedded ? "none" : "600px")};
+  height: ${(props) => (props.$isEmbedded ? "100%" : "300px")};
+  background-color: ${(props) =>
+    props.$isEmbedded ? "transparent" : "rgba(20, 20, 20, 0.92)"};
   color: #0f0;
   font-family: "Menlo", "Monaco", "Courier New", monospace;
-  border: 1px solid #444;
-  border-radius: 6px;
-  z-index: 99999;
+  border: ${(props) => (props.$isEmbedded ? "none" : "1px solid #444")};
+  border-radius: ${(props) => (props.$isEmbedded ? "0" : "6px")};
+  z-index: ${(props) => (props.$isEmbedded ? "auto" : "99999")};
   display: flex;
   flex-direction: column;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6);
   pointer-events: auto;
 `;
 
@@ -46,11 +41,11 @@ const Header = styled.div`
   justify-content: space-between;
   align-items: center;
   padding: 6px 10px;
-  background-color: #333;
-  border-bottom: 1px solid #555;
+  background-color: #222;
+  border-bottom: 1px solid #333;
   font-size: 11px;
   font-weight: bold;
-  color: #ddd;
+  color: #888;
 `;
 
 const LogArea = styled.div`
@@ -65,7 +60,7 @@ const LogArea = styled.div`
     width: 6px;
   }
   &::-webkit-scrollbar-thumb {
-    background: #555;
+    background: #333;
     border-radius: 3px;
   }
 `;
@@ -99,72 +94,49 @@ const LogEntry = styled.div<{ $type: LogLevel }>`
   }
 `;
 
-const ToggleButton = styled.button`
-  position: fixed;
-  bottom: 10px;
-  left: 10px;
-  z-index: 99999;
-  background: rgba(0, 0, 0, 0.6);
-  color: #0f0;
-  border: 1px solid #0f0;
-  padding: 4px 10px;
-  font-size: 10px;
-  cursor: pointer;
-  pointer-events: auto;
-  font-family: monospace;
-
-  &:hover {
-    background: rgba(0, 50, 0, 0.8);
-  }
-`;
-
 const ActionBtn = styled.button`
-  background: #555;
+  background: #333;
   border: none;
-  color: white;
+  color: #aaa;
   padding: 2px 8px;
   border-radius: 3px;
   font-size: 10px;
   cursor: pointer;
   margin-left: 5px;
   &:hover {
-    background: #666;
+    background: #444;
+    color: #fff;
   }
 `;
 
-// --- Logic Helpers ---
+// --- Helpers ---
 
-/**
- * 任意の引数リストを安全に文字列化する
- * unknown[] を受け取ることで no-explicit-any を回避
- */
 const safeStringify = (args: unknown[]): string => {
   return args
     .map((arg) => {
-      // Errorオブジェクトの場合
-      if (arg instanceof Error) {
+      if (arg instanceof Error)
         return `${arg.name}: ${arg.message}\n${arg.stack}`;
-      }
-      // オブジェクトかつnullでない場合のみJSON化を試みる
       if (typeof arg === "object" && arg !== null) {
         try {
           return JSON.stringify(arg, null, 2);
         } catch {
-          return "[Circular/Obj]";
+          return "[Circular]";
         }
       }
-      // プリミティブ値などはString()で変換（unknown型も安全に文字列化可能）
       return String(arg);
     })
     .join(" ");
 };
 
-export const OnScreenConsole: React.FC = () => {
+// --- Component ---
+
+export const OnScreenConsole: React.FC<{ isEmbedded?: boolean }> = ({
+  isEmbedded,
+}) => {
   const [logs, setLogs] = useState<LogData[]>([]);
   const [isOpen, setIsOpen] = useState(false);
 
   useEffect(() => {
-    // 1. オリジナルのメソッドを型安全に退避
     const originalMethods: Record<LogLevel, ConsoleMethod> = {
       log: console.log.bind(console),
       error: console.error.bind(console),
@@ -173,9 +145,6 @@ export const OnScreenConsole: React.FC = () => {
       debug: console.debug.bind(console),
     };
 
-    /**
-     * ログを追加するヘルパー
-     */
     const addLog = (type: LogLevel, ...args: unknown[]) => {
       setLogs((prev) => {
         const entry: LogData = {
@@ -184,69 +153,60 @@ export const OnScreenConsole: React.FC = () => {
           message: safeStringify(args),
           time: new Date().toLocaleTimeString().split(" ")[0] ?? "",
         };
-        // 最大100件保持
         return [entry, ...prev].slice(0, 100);
       });
     };
 
-    /**
-     * フック関数を作成するファクトリ
-     */
-    const createHook = (type: LogLevel) => {
-      return (...args: unknown[]) => {
-        // 元のコンソールメソッドを実行
-        originalMethods[type](...args);
-        // React Stateを更新
-        addLog(type, ...args);
-      };
+    console.log = (...args) => {
+      originalMethods.log(...args);
+      addLog("log", ...args);
+    };
+    console.error = (...args) => {
+      originalMethods.error(...args);
+      addLog("error", ...args);
+    };
+    console.warn = (...args) => {
+      originalMethods.warn(...args);
+      addLog("warn", ...args);
+    };
+    console.info = (...args) => {
+      originalMethods.info(...args);
+      addLog("info", ...args);
+    };
+    console.debug = (...args) => {
+      originalMethods.debug(...args);
+      addLog("debug", ...args);
     };
 
-    // 2. コンソールメソッドを上書き
-    console.log = createHook("log");
-    console.error = createHook("error");
-    console.warn = createHook("warn");
-    console.info = createHook("info");
-    console.debug = createHook("debug");
-
-    // 3. グローバルエラーハンドリングの追加 (Uncaught Errorの捕捉)
-    const handleGlobalError = (event: ErrorEvent) => {
-      addLog("error", `[Uncaught] ${event.message}`, event.error);
-    };
-
-    const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
-      addLog("error", `[Unhandled Rejection] ${event.reason}`);
-    };
-
-    window.addEventListener("error", handleGlobalError);
-    window.addEventListener("unhandledrejection", handleUnhandledRejection);
-
-    // 4. クリーンアップ
     return () => {
       console.log = originalMethods.log;
       console.error = originalMethods.error;
       console.warn = originalMethods.warn;
       console.info = originalMethods.info;
       console.debug = originalMethods.debug;
-
-      window.removeEventListener("error", handleGlobalError);
-      window.removeEventListener(
-        "unhandledrejection",
-        handleUnhandledRejection,
-      );
     };
   }, []);
 
-  if (!isOpen) {
-    return <ToggleButton onClick={() => setIsOpen(true)}>DEBUG</ToggleButton>;
+  if (!isEmbedded && !isOpen) {
+    return (
+      <ActionBtn
+        style={{ position: "fixed", bottom: 10, left: 10, zIndex: 99999 }}
+        onClick={() => setIsOpen(true)}
+      >
+        CONSOLE
+      </ActionBtn>
+    );
   }
 
   return (
-    <ConsoleContainer>
+    <ConsoleContainer $isEmbedded={isEmbedded}>
       <Header>
-        <span>SYSTEM LOG</span>
+        <span>OUTPUT LOG</span>
         <div>
-          <ActionBtn onClick={() => setLogs([])}>CLR</ActionBtn>
-          <ActionBtn onClick={() => setIsOpen(false)}>HIDE</ActionBtn>
+          <ActionBtn onClick={() => setLogs([])}>CLEAR</ActionBtn>
+          {!isEmbedded && (
+            <ActionBtn onClick={() => setIsOpen(false)}>HIDE</ActionBtn>
+          )}
         </div>
       </Header>
       <LogArea>
