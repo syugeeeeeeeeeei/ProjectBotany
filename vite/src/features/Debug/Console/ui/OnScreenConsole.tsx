@@ -141,6 +141,10 @@ const ActionBtn = styled.button`
 const safeStringify = (args: unknown[]): string => {
   return args
     .map((arg) => {
+      // Errorオブジェクトの場合
+      if (arg instanceof Error) {
+        return `${arg.name}: ${arg.message}\n${arg.stack}`;
+      }
       // オブジェクトかつnullでない場合のみJSON化を試みる
       if (typeof arg === "object" && arg !== null) {
         try {
@@ -161,7 +165,6 @@ export const OnScreenConsole: React.FC = () => {
 
   useEffect(() => {
     // 1. オリジナルのメソッドを型安全に退避
-    // consoleオブジェクトは環境によってメソッドの実装が異なるため、bindしてコピーを作成
     const originalMethods: Record<LogLevel, ConsoleMethod> = {
       log: console.log.bind(console),
       error: console.error.bind(console),
@@ -171,43 +174,65 @@ export const OnScreenConsole: React.FC = () => {
     };
 
     /**
+     * ログを追加するヘルパー
+     */
+    const addLog = (type: LogLevel, ...args: unknown[]) => {
+      setLogs((prev) => {
+        const entry: LogData = {
+          id: generateId("log"),
+          type,
+          message: safeStringify(args),
+          time: new Date().toLocaleTimeString().split(" ")[0] ?? "",
+        };
+        // 最大100件保持
+        return [entry, ...prev].slice(0, 100);
+      });
+    };
+
+    /**
      * フック関数を作成するファクトリ
-     * args: unknown[] にすることで any を排除
      */
     const createHook = (type: LogLevel) => {
       return (...args: unknown[]) => {
         // 元のコンソールメソッドを実行
         originalMethods[type](...args);
-
         // React Stateを更新
-        setLogs((prev) => {
-          const entry: LogData = {
-            id: generateId("log"),
-            type,
-            message: safeStringify(args),
-            time: new Date().toLocaleTimeString().split(" ")[0] ?? "",
-          };
-          // 最大100件保持
-          return [entry, ...prev].slice(0, 100);
-        });
+        addLog(type, ...args);
       };
     };
 
     // 2. コンソールメソッドを上書き
-    // 代入時に型の不一致が起きないよう、互換性のあるシグネチャで実装済み
     console.log = createHook("log");
     console.error = createHook("error");
     console.warn = createHook("warn");
     console.info = createHook("info");
     console.debug = createHook("debug");
 
-    // 3. クリーンアップ
+    // 3. グローバルエラーハンドリングの追加 (Uncaught Errorの捕捉)
+    const handleGlobalError = (event: ErrorEvent) => {
+      addLog("error", `[Uncaught] ${event.message}`, event.error);
+    };
+
+    const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
+      addLog("error", `[Unhandled Rejection] ${event.reason}`);
+    };
+
+    window.addEventListener("error", handleGlobalError);
+    window.addEventListener("unhandledrejection", handleUnhandledRejection);
+
+    // 4. クリーンアップ
     return () => {
       console.log = originalMethods.log;
       console.error = originalMethods.error;
       console.warn = originalMethods.warn;
       console.info = originalMethods.info;
       console.debug = originalMethods.debug;
+
+      window.removeEventListener("error", handleGlobalError);
+      window.removeEventListener(
+        "unhandledrejection",
+        handleUnhandledRejection,
+      );
     };
   }, []);
 

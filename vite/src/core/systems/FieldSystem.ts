@@ -81,7 +81,9 @@ export const FieldSystem = {
    * 座標からセルを取得 (範囲外ならnull)
    */
   getCell(field: FieldState, p: Point): CellState | null {
-    if (!this.isValidCoordinate(field, p)) return null;
+    // 修正: this.isValidCoordinate ではなく FieldSystem.isValidCoordinate を使用
+    // 関数参照として渡された場合の this 落ち対策
+    if (!FieldSystem.isValidCoordinate(field, p)) return null;
     return field.cells[p.y][p.x];
   },
 
@@ -90,7 +92,8 @@ export const FieldSystem = {
    */
   updateCell(field: FieldState, newCell: CellState): FieldState {
     const { x, y } = newCell;
-    if (!this.isValidCoordinate(field, { x, y })) return field;
+    // 修正: this -> FieldSystem
+    if (!FieldSystem.isValidCoordinate(field, { x, y })) return field;
 
     // 2次元配列のコピーを作成 (浅いコピーで行まで、該当行は新しく作成)
     const newCells = [...field.cells];

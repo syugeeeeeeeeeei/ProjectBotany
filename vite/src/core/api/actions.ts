@@ -1,6 +1,7 @@
-// vite/src/core/api/actions.ts
+// src/core/api/actions.ts
 import { z } from "zod";
 import { RoundSystem } from "@/core/systems/RoundSystem";
+import { TurnSystem } from "@/core/systems/TurnSystem";
 import { useGameStore } from "@/core/store/gameStore";
 import { useUIStore } from "@/core/store/uiStore";
 import { CellState, PlayerType, GameState } from "@/shared/types";
@@ -21,7 +22,6 @@ const SelectCardSchema = z.string().uuid();
 
 /**
  * Feature向け 公開操作API (Commands)
- * Zodによるランタイムバリデーションを適用
  */
 export const gameActions = {
   /** システム操作 */
@@ -30,7 +30,6 @@ export const gameActions = {
       useGameStore.getState().initializeGame();
     },
     updateState: (payload: Partial<GameState>) => {
-      // 厳密なチェックが必要な場合はここにZodスキーマを追加
       useGameStore.getState().setState(payload);
     },
   },
@@ -46,20 +45,29 @@ export const gameActions = {
       const currentState = useGameStore.getState();
       RoundSystem.endRoundProcess(currentState);
     },
-    next: () => {
-      console.warn("Deprecated: gameActions.round.next() called. Use .end()");
+  },
+
+  /** ターン操作 */
+  turn: {
+    end: () => {
       const currentState = useGameStore.getState();
-      RoundSystem.endRoundProcess(currentState);
-    }
+
+      // 1. ターンの切り替え
+      const afterTurnState = TurnSystem.nextTurn(currentState);
+      useGameStore.getState().setState(afterTurnState);
+
+      // 2. 在来種が終了し、フェーズが "end" (ラウンド終了フェーズ) になったら自動実行
+      if (afterTurnState.currentPhase === "end") {
+        RoundSystem.endRoundProcess(afterTurnState);
+      }
+    },
   },
 
   /** 盤面操作 */
   field: {
     mutateCell: (input: unknown) => {
-      // ランタイムバリデーション
       const { x, y, type } = MutateCellSchema.parse(input);
       console.log("Safe Mutate:", x, y, type);
-      // 実装ロジックがあればここに記述
     },
   },
 

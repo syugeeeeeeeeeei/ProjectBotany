@@ -1,4 +1,4 @@
-// vite/src/features/alien-growth/index.tsx
+// vite/src/features/alien-growth/index.ts
 import { GameFeature } from "@/core/types/architecture";
 import { gameEventBus } from "@/core/event-bus/GameEventBus";
 import { useGameStore } from "@/core/store/gameStore";
@@ -9,20 +9,19 @@ export const alienGrowthFeature: GameFeature = {
 	key: "alien-growth",
 
 	init: () => {
-		const handleRoundEnd = () => {
-			console.log("🌱 [Feature: Alien Growth] Processing growth...");
+		// ROUND_START (新しいラウンドが始まった直後) に成長を実行
+		const handleRoundStart = () => {
 			const currentState = useGameStore.getState();
+			// 内部ロジックで spawnedRound < currentRound のものを成長させる
 			const nextState = processAlienGrowth(currentState);
+
 			if (nextState !== currentState) {
 				gameActions.system.updateState(nextState);
 			}
 		};
 
-		gameEventBus.on("ROUND_END", handleRoundEnd);
-
-		return () => {
-			gameEventBus.off("ROUND_END", handleRoundEnd);
-		};
+		gameEventBus.on("ROUND_START", handleRoundStart);
+		return () => gameEventBus.off("ROUND_START", handleRoundStart);
 	},
 
 	renderUI: () => null,

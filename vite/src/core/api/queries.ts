@@ -17,6 +17,10 @@ export const useGameQuery = {
   useCell: (x: number, y: number) =>
     useGameStore((state) => state.gameField.cells[y]?.[x]),
 
+  // ✨ 追加: スコア取得用フック
+  useScore: (playerId: PlayerType) =>
+    useGameStore((state) => (playerId === "native" ? state.nativeScore : state.alienScore)),
+
   // 修正: activeAlienInstances -> alienInstances (そのまま返す)
   useActiveAliens: () => useGameStore((state) => state.alienInstances),
 
@@ -38,6 +42,12 @@ export const gameQuery = {
   field: () => useGameStore.getState().gameField,
   cell: (x: number, y: number) =>
     useGameStore.getState().gameField.cells[y]?.[x],
+
+  // ✨ 追加: スコア取得用メソッド
+  score: (playerId: PlayerType) => {
+    const state = useGameStore.getState();
+    return playerId === "native" ? state.nativeScore : state.alienScore;
+  },
 
   // 修正
   activeAliens: () => useGameStore.getState().alienInstances,

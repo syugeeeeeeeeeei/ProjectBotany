@@ -9,8 +9,8 @@ const TurnEndButton: React.FC = () => {
 
   const handleClick = () => {
     console.log("🔄 Turn End Requested");
-    // 修正: next() -> end()
-    gameActions.round.end();
+    // 修正: round.end ではなく turn.end を呼ぶ
+    gameActions.turn.end();
   };
 
   return (

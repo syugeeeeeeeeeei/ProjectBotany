@@ -6,7 +6,7 @@ import { useGameQuery } from "@/core/api/queries";
 import { gameEventBus } from "@/core/event-bus/GameEventBus";
 import { useUIStore } from "@/core/store/uiStore";
 import { DESIGN } from "@/shared/constants/design-tokens";
-import { CellState } from "@/shared/types/game-schema";
+import { CellState, AlienInstance } from "@/shared/types/game-schema";
 
 const Cell: React.FC<{ cell: CellState }> = ({ cell }) => {
   const isSelected = useUIStore(
@@ -17,7 +17,6 @@ const Cell: React.FC<{ cell: CellState }> = ({ cell }) => {
   );
 
   const getCellColor = () => {
-    // 修正: cell.type を参照し、定義済みの値と比較
     switch (cell.type) {
       case "native":
         return DESIGN.COLORS.NATIVE_AREA;
@@ -40,7 +39,6 @@ const Cell: React.FC<{ cell: CellState }> = ({ cell }) => {
 
   const handleClick = (e: ThreeEvent<MouseEvent>) => {
     e.stopPropagation();
-    // 修正: CELL_CLICKイベント定義済みのためエラー解消
     gameEventBus.emit("CELL_CLICK", { cell });
   };
 
@@ -74,10 +72,29 @@ const Cell: React.FC<{ cell: CellState }> = ({ cell }) => {
   );
 };
 
-const AlienToken: React.FC<{ x: number; y: number }> = ({ x, y }) => {
+// 修正: status プロパティを受け取るように変更
+const AlienToken: React.FC<{
+  x: number;
+  y: number;
+  status: AlienInstance["status"];
+}> = ({ x, y, status }) => {
   const posX = (x - (7 - 1) / 2) * DESIGN.BOARD.CELL_GAP;
   const posZ = (y - (10 - 1) / 2) * DESIGN.BOARD.CELL_GAP;
 
+  // 種 (Seed) の場合
+  if (status === "seed") {
+    return (
+      <group position={[posX, 0.2, posZ]}>
+        <mesh>
+          {/* 小さめの球体 */}
+          <sphereGeometry args={[0.15, 16, 16]} />
+          <meshStandardMaterial color="#8BC34A" emissive="#33691E" />
+        </mesh>
+      </group>
+    );
+  }
+
+  // 成体 (Plant) の場合
   return (
     <group position={[posX, 0.5, posZ]}>
       <mesh>
@@ -109,6 +126,7 @@ const GameBoard3D: React.FC = () => {
             key={`alien-${alien.instanceId}`}
             x={alien.currentX}
             y={alien.currentY}
+            status={alien.status} // statusを渡す
           />
         ))}
       </group>

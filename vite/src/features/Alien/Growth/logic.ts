@@ -1,14 +1,14 @@
 // vite/src/features/alien-growth/logic.ts
-
 import { GameState } from "@/shared/types/game-schema";
 
 /**
- * 外来種の成長処理 (Establishment)
- *
- * 【仕様】
- * - ラウンド終了時に実行される
- * - 盤面に存在する「種 (Seed)」のうち、「休眠期間」を終えたものを「成体 (Plant)」に変化させる
- * - 休眠期間: 配置されたラウンド中は成長しない (spawnedRound < currentRound の場合に成長)
+ * 外来種の成長処理
+ * * 【修正後のロジック】
+ * - currentRound 未満の spawnedRound を持つ種のみを成長させる。
+ * - 外来種ターン(R1)に置かれた種：
+ * 在来種ターン終了時の ROUND_END 発火時点ではまだ currentRound は 1 のまま。
+ * したがって、この判定では「次のラウンドの開始時」に成長させる必要がある。
+ * * 猶予を「1手番分」にするため、RoundSystem側でラウンドを進める直前に判定を行います。
  */
 export const processAlienGrowth = (gameState: GameState): GameState => {
 	const { alienInstances, currentRound } = gameState;
@@ -19,32 +19,27 @@ export const processAlienGrowth = (gameState: GameState): GameState => {
 	console.group("[Feature: Alien Growth] Processing...");
 
 	Object.values(newAlienInstances).forEach((instance) => {
-		// 判定対象: 「種」の状態であり、かつ配置ラウンドが現在のラウンドより前（休眠明け）
-		if (instance.status === "seed") {
-			if (instance.spawnedRound < currentRound) {
-				// 成体へ変化
-				newAlienInstances[instance.instanceId] = {
-					...instance,
-					status: "plant",
-				};
-				hasChanges = true;
-				grownCount++;
+		// 判定: 「種」であり、かつ「現在のラウンドより前に配置された」もの
+		// 在来種ターンの反撃で置かれた種(R1)は、R2の終了時まで成長しません。
+		if (instance.status === "seed" && instance.spawnedRound < currentRound) {
+			newAlienInstances[instance.instanceId] = {
+				...instance,
+				status: "plant",
+			};
+			hasChanges = true;
+			grownCount++;
 
-				console.log(`[Growth] 🌱 Seed at [${instance.currentX}, ${instance.currentY}] matured into Plant!`);
-			} else {
-				// まだ休眠中
-				console.debug(`[Growth] 💤 Seed at [${instance.currentX}, ${instance.currentY}] is dormant (Spawned: R${instance.spawnedRound}).`);
-			}
+			console.log(`[Growth] 🌱 Seed (Spawned R${instance.spawnedRound}) matured at End of R${currentRound - 1}`);
 		}
 	});
 
 	if (!hasChanges) {
-		console.log("[Growth] No seeds matured this round.");
+		console.log("[Growth] No seeds matured in this timing.");
 		console.groupEnd();
 		return gameState;
 	}
 
-	console.info(`[Growth] 🌳 Total ${grownCount} seeds matured into plants.`);
+	console.info(`[Growth] 🌳 Total ${grownCount} seeds matured.`);
 	console.groupEnd();
 
 	return {
