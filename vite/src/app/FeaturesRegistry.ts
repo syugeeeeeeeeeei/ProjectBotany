@@ -1,6 +1,6 @@
 // vite/src/app/FeaturesRegistry.ts
 import { GameFeature } from "@/core/types/architecture";
-import { fieldGridFeature } from "@/features/field-grid";
+import { fieldGridFeature } from "@/features/Field";
 import { cardHandFeature } from "@/features/Card/Hand";
 import { playCardFeature } from "@/features/Card/PlayCard";
 import { alienGrowthFeature } from "@/features/Alien/Growth";

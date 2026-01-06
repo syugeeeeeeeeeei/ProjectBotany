@@ -1,4 +1,3 @@
-import React from "react";
 import { GameFeature } from "@/core/types/architecture";
 import { AlertUI } from "./ui/AlertUI";
 
