@@ -108,6 +108,7 @@ const executeEradicationCard = (
   const { eradicationRange, eradicationType, postState, chainDestruction } = card;
   let currentGameState = { ...gameState };
   let removedCount = 0;
+  let affectedCount = 0;
 
   const targetPoints = getCellsByShape(
     currentGameState.gameField.width,
@@ -122,33 +123,41 @@ const executeEradicationCard = (
     const cell = FieldUtils.getCell(currentGameState.gameField, p);
     if (!cell) return;
 
+    // 1. 外来種ユニットの処理
     if (cell.type === "alien") {
       const unitId = cell.alienUnitId;
 
       if (unitId) {
         const instance = currentGameState.alienInstances[unitId];
-        if (!instance) return;
+        if (instance) {
+          const masterData = getCardDefinition(instance.cardDefinitionId);
+          const hasCounter = masterData?.counterAbility === "spread_seed";
 
-        const masterData = getCardDefinition(instance.cardDefinitionId);
-        const hasCounter = masterData?.counterAbility === "spread_seed";
+          // 反撃判定 (物理駆除 かつ 反撃能力持ち)
+          if (eradicationType === "physical" && hasCounter) {
+            console.warn(`[PlayCard] ⚠️ Counter Ability Triggered at [${p.x}, ${p.y}]!`);
+            // 駆除される外来種のIDを渡して反撃を発動
+            currentGameState = triggerCounterEffect(currentGameState, p, instance.cardDefinitionId);
+          }
 
-        // 反撃判定
-        if (eradicationType === "physical" && hasCounter) {
-          console.warn(`[PlayCard] ⚠️ Counter Ability Triggered at [${p.x}, ${p.y}]!`);
-          currentGameState = triggerCounterEffect(currentGameState, p);
-        }
+          const newAlienInstances = { ...currentGameState.alienInstances };
+          delete newAlienInstances[unitId];
+          currentGameState.alienInstances = newAlienInstances;
+          removedCount++;
 
-        const newAlienInstances = { ...currentGameState.alienInstances };
-        delete newAlienInstances[unitId];
-        currentGameState.alienInstances = newAlienInstances;
-        removedCount++;
-
-        if (chainDestruction && instance.status === "plant") {
-          // TODO: Chain destruction logic log
-          console.log("[PlayCard] (TODO) Chain destruction logic triggered");
+          if (chainDestruction && instance.status === "plant") {
+            // TODO: Chain destruction logic log
+            console.log("[PlayCard] (TODO) Chain destruction logic triggered");
+          }
         }
       }
+    }
 
+    // 2. 地形の変更処理
+    // 外来種だけでなく、在来種(native)や先駆植生(pioneer)も範囲内なら巻き込まれて postState になる
+    const isTerrainChangeNeeded = cell.type !== postState;
+
+    if (isTerrainChangeNeeded || cell.type === "alien") {
       const newCell: CellState = {
         ...cell,
         type: postState === "pioneer" ? "pioneer" : "bare",
@@ -159,10 +168,11 @@ const executeEradicationCard = (
         currentGameState.gameField,
         newCell
       );
+      affectedCount++;
     }
   });
 
-  console.info(`[PlayCard] ✅ Success: Removed ${removedCount} alien units.`);
+  console.info(`[PlayCard] ✅ Success: Removed ${removedCount} alien units, Affected ${affectedCount} cells.`);
 
   return currentGameState;
 };
@@ -231,8 +241,9 @@ const executeRecoveryCard = (
 
 /**
  * 反撃効果 (Counter Effect)
+ * 駆除された外来種が種を撒き散らす
  */
-const triggerCounterEffect = (gameState: GameState, center: Point): GameState => {
+const triggerCounterEffect = (gameState: GameState, center: Point, originCardId: string): GameState => {
   const newState = { ...gameState };
   const { gameField } = newState;
 
@@ -243,19 +254,20 @@ const triggerCounterEffect = (gameState: GameState, center: Point): GameState =>
     return c?.type === "bare";
   });
 
+  // 裸地があれば最大2つまで種を配置
   const seedCount = Math.min(bareNeighbors.length, 2);
+  if (seedCount === 0) return newState;
+
   const shuffled = bareNeighbors.sort(() => 0.5 - Math.random());
   const targets = shuffled.slice(0, seedCount);
 
-  console.log(`[Counter] Spawning ${seedCount} seeds around [${center.x}, ${center.y}]`);
+  console.log(`[Counter] Spawning ${seedCount} seeds around [${center.x}, ${center.y}] from ${originCardId}`);
 
   targets.forEach(p => {
-    const counterCardId = "alien-1"; // 仮
-
     const newId = uuidv4();
     const newInstance: AlienInstance = {
       instanceId: newId,
-      cardDefinitionId: counterCardId,
+      cardDefinitionId: originCardId, // 元の外来種IDを引き継ぐ
       spawnedRound: newState.currentRound,
       status: "seed",
       currentX: p.x,
@@ -282,8 +294,9 @@ const triggerCounterEffect = (gameState: GameState, center: Point): GameState =>
 
 /**
  * ヘルパー: 範囲取得
+ * UI(ガイド)からも使用するため export する
  */
-const getCellsByShape = (
+export const getCellsByShape = (
   width: number,
   height: number,
   center: Point,

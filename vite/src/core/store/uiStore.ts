@@ -20,6 +20,9 @@ interface UIState {
   /** 選択中のカードID (インスタンスID) */
   selectedCardId: string | null;
 
+  /** ✨ 配置可能状態かどうか (1秒ホバー制限用) */
+  isHoverValid: boolean;
+
   /** ✨ 通知スタック (最大3件) */
   notifications: NotificationItem[];
 
@@ -39,6 +42,9 @@ interface UIActions {
   hoverCell: (cell: CellState | null) => void;
   selectCard: (cardId: string | null) => void;
 
+  /** ✨ 配置可能フラグを設定 */
+  setHoverValid: (isValid: boolean) => void;
+
   /** ✨ 通知を追加 */
   pushNotification: (message: string, type?: NotificationItem["type"], player?: PlayerType) => void;
   /** ✨ 通知を削除 */
@@ -56,6 +62,7 @@ export const useUIStore = create(
     selectedCell: null,
     hoveredCell: null,
     selectedCardId: null,
+    isHoverValid: false, // 初期値はfalse
     notifications: [],
     isCardPreview: false,
     isInteractionLocked: false,
@@ -72,11 +79,21 @@ export const useUIStore = create(
     hoverCell: (cell) =>
       set((state) => {
         state.hoveredCell = cell;
+        // セルが変わったら配置可能状態はリセット
+        if (cell === null) {
+          state.isHoverValid = false;
+        }
       }),
     selectCard: (cardId) =>
       set((state) => {
         state.selectedCardId = cardId;
         state.selectedCell = null;
+        state.isHoverValid = false;
+      }),
+
+    setHoverValid: (isValid) =>
+      set((state) => {
+        state.isHoverValid = isValid;
       }),
 
     // ✨ 通知ロジック
@@ -111,6 +128,7 @@ export const useUIStore = create(
         state.selectedCardId = null;
         state.selectedCell = null;
         state.isCardPreview = false;
+        state.isHoverValid = false;
       }),
 
     updateDebugSettings: (settings) =>

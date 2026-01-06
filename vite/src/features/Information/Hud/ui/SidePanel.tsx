@@ -4,7 +4,7 @@ import styled, { css } from "styled-components";
 // レイアウト定数
 const LAYOUT = {
   WIDTH_OPEN: "260px",
-  WIDTH_CLOSED: "60px",
+  WIDTH_CLOSED: "80px",
   OFFSET: "0px",
 };
 

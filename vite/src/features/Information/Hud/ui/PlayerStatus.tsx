@@ -71,7 +71,7 @@ const APDisplay = styled.div`
 
 const DetailGrid = styled.div`
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr; /* 1列に変更 */
   gap: 8px;
   font-size: 0.75rem;
   color: #888;
@@ -121,11 +121,6 @@ export const PlayerStatus: React.FC<PlayerStatusProps> = ({
   const isMyTurn = activePlayer === playerId;
   const themeColor = playerId === "alien" ? "#E57373" : "#66BB6A"; // Red / Green
 
-  // デッキ残り枚数計算（Libraryにあるカード数）
-  const deckCount = useMemo(
-    () => playerState?.cardLibrary.length ?? 0,
-    [playerState],
-  );
   // クールダウン中のカード枚数
   const cooldownCount = useMemo(
     () => playerState?.cooldownActiveCards.length ?? 0,
@@ -149,6 +144,29 @@ export const PlayerStatus: React.FC<PlayerStatusProps> = ({
     gameActions.turn.end();
   };
 
+  // --- Common AP Bar ---
+  const ApBar = (
+    <APDisplay>
+      <StatRow>
+        <span style={{ fontSize: isOpen ? "0.85rem" : "0.7rem" }}>
+          {isOpen ? "Environment (AP)" : "AP"}
+        </span>
+        <span
+          style={{
+            fontWeight: "bold",
+            color: "white",
+            fontSize: isOpen ? "0.85rem" : "0.75rem",
+          }}
+        >
+          {playerState.currentEnvironment} / {playerState.maxEnvironment}
+        </span>
+      </StatRow>
+      <ProgressBarBg>
+        <ProgressBarFill $percent={apPercent} $color={themeColor} />
+      </ProgressBarBg>
+    </APDisplay>
+  );
+
   // --- Compact View (Closed) ---
   if (!isOpen) {
     return (
@@ -159,20 +177,32 @@ export const PlayerStatus: React.FC<PlayerStatusProps> = ({
               fontSize: "0.7rem",
               color: themeColor,
               fontWeight: "bold",
+              marginBottom: "4px",
             }}
           >
             {playerId.toUpperCase()}
           </div>
-          <div style={{ fontSize: "1.2rem", fontWeight: "bold" }}>{score}</div>
+          <div
+            style={{
+              fontSize: "1.2rem",
+              fontWeight: "bold",
+              marginBottom: "8px",
+            }}
+          >
+            {score}
+          </div>
         </div>
 
-        {/* コンパクトでもターンエンドボタンは押せるようにする（緊急用） */}
+        {/* コンパクトでもAPを表示 */}
+        {ApBar}
+
+        {/* コンパクトでもターンエンドボタンは押せるようにする */}
         {isMyTurn && (
           <TurnEndButtonStyled
             $isActive={true}
             $themeColor={themeColor}
             onClick={handleTurnEnd}
-            style={{ padding: "4px", fontSize: "0.7rem" }}
+            style={{ padding: "6px", fontSize: "0.7rem", marginTop: "8px" }}
           >
             END
           </TurnEndButtonStyled>
@@ -190,28 +220,14 @@ export const PlayerStatus: React.FC<PlayerStatusProps> = ({
       </Header>
 
       {/* AP Bar */}
-      <APDisplay>
-        <StatRow>
-          <span>Environment (AP)</span>
-          <span style={{ fontWeight: "bold", color: "white" }}>
-            {playerState.currentEnvironment} / {playerState.maxEnvironment}
-          </span>
-        </StatRow>
-        <ProgressBarBg>
-          <ProgressBarFill $percent={apPercent} $color={themeColor} />
-        </ProgressBarBg>
-      </APDisplay>
+      {ApBar}
 
-      {/* Details */}
+      {/* Details (Deck Count Removed) */}
       <DetailGrid>
-        <div>
-          <div>DECK</div>
-          <div style={{ color: "white", fontSize: "1rem" }}>{deckCount}</div>
-        </div>
         <div>
           <div>COOLDOWN</div>
           <div style={{ color: "white", fontSize: "1rem" }}>
-            {cooldownCount}
+            {cooldownCount} cards
           </div>
         </div>
       </DetailGrid>
