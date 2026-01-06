@@ -29,12 +29,8 @@ export const UIOverlay: React.FC = () => {
     subMessage: "",
   });
 
-  /**
-   * プレイヤーIDを日本語ラベルに変換するヘルパー
-   */
   const getPlayerLabel = (id: string) => (id === "alien" ? "外来種" : "在来種");
 
-  // バナー表示トリガー関数
   const triggerBanner = (message: string, subMessage: string) => {
     setBannerContent({ message, subMessage });
     setShowBanner(true);
@@ -48,10 +44,8 @@ export const UIOverlay: React.FC = () => {
     }, BANNER_DURATION);
   };
 
-  // ゲーム開始処理
   const handleStart = () => {
     setHasStarted(true);
-    // ゲーム開始時：ラウンド数と最初の手番を表示
     const roundText =
       currentRound === MAX_ROUNDS ? "FINAL ROUND" : `ROUND ${currentRound}`;
     triggerBanner(roundText, `${getPlayerLabel(activePlayer)}のターン`);
@@ -63,24 +57,24 @@ export const UIOverlay: React.FC = () => {
     setShowBanner(false);
   };
 
-  // イベント駆動によるバナー表示制御
   useEffect(() => {
     if (!hasStarted || isGameOver) return;
 
-    // ラウンド開始イベント
     const onRoundStart = (payload: CoreEventMap["ROUND_START"]) => {
       const isFinal = payload.round === MAX_ROUNDS;
       const roundText = isFinal ? "FINAL ROUND" : `ROUND ${payload.round}`;
-
-      // ラウンド開始時も、その時点の activePlayer の手番を表示
       triggerBanner(roundText, `${getPlayerLabel(activePlayer)}のターン`);
+
+      // ✨ 通知の例: ラウンド開始
+      gameActions.ui.notify({
+        message: `ラウンド ${payload.round} 開始`,
+        type: "system",
+      });
     };
 
-    // プレイヤーアクション開始（ターン切替）イベント
     const onPlayerActionStart = (
       payload: CoreEventMap["PLAYER_ACTION_START"],
     ) => {
-      // ターン切替時は、メインメッセージに手番を表示
       triggerBanner(
         `${getPlayerLabel(payload.playerId)}のターン`,
         "Turn Action",
@@ -94,7 +88,7 @@ export const UIOverlay: React.FC = () => {
       gameEventBus.off("ROUND_START", onRoundStart);
       gameEventBus.off("PLAYER_ACTION_START", onPlayerActionStart);
     };
-  }, [hasStarted, isGameOver, activePlayer]); // activePlayer を依存配分に追加して最新を参照
+  }, [hasStarted, isGameOver, activePlayer]);
 
   return (
     <div
@@ -116,11 +110,12 @@ export const UIOverlay: React.FC = () => {
       {/* Phase 2: In Game HUD */}
       {hasStarted && !isGameOver && (
         <>
+          {/* ✨ SidePanel with Render Props */}
           <SidePanel position="left">
-            <PlayerStatus playerId="native" />
+            {(isOpen) => <PlayerStatus playerId="native" isOpen={isOpen} />}
           </SidePanel>
           <SidePanel position="right">
-            <PlayerStatus playerId="alien" />
+            {(isOpen) => <PlayerStatus playerId="alien" isOpen={isOpen} />}
           </SidePanel>
 
           {showBanner && (

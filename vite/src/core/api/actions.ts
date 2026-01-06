@@ -15,6 +15,7 @@ const MutateCellSchema = z.object({
 
 const NotifySchema = z.object({
   message: z.string(),
+  type: z.enum(["info", "error", "success", "system"]).optional(),
   player: z.enum(["native", "alien"]).optional(),
 });
 
@@ -79,12 +80,18 @@ export const gameActions = {
     },
     deselectCard: () => useUIStore.getState().deselectCard(),
     hoverCell: (cell: CellState | null) => useUIStore.getState().hoverCell(cell),
-    /** ✨ デバッグ設定更新用 */
+
     updateDebugSettings: (settings: Parameters<ReturnType<typeof useUIStore.getState>["updateDebugSettings"]>[0]) =>
       useUIStore.getState().updateDebugSettings(settings),
+
+    /** ✨ 新しい通知システムへの対応 */
     notify: (input: unknown) => {
-      const { message, player } = NotifySchema.parse(input);
-      useUIStore.getState().setNotification(message, player as PlayerType);
+      const { message, type, player } = NotifySchema.parse(input);
+      useUIStore.getState().pushNotification(
+        message,
+        type as "info" | "error" | "success" | "system",
+        player as PlayerType
+      );
     },
   },
 };

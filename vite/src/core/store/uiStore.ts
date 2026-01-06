@@ -1,6 +1,16 @@
 import { create } from "zustand";
 import { immer } from "zustand/middleware/immer";
+import { v4 as uuidv4 } from "uuid";
 import { CellState, PlayerType } from "@/shared/types";
+
+// 通知の型定義
+export interface NotificationItem {
+  id: string;
+  message: string;
+  type: "info" | "error" | "success" | "system";
+  player?: PlayerType; // どちらのプレイヤーに対する通知か（省略時はシステム全体）
+  timestamp: number;
+}
 
 interface UIState {
   /** 選択中のセル */
@@ -9,14 +19,16 @@ interface UIState {
   hoveredCell: CellState | null;
   /** 選択中のカードID (インスタンスID) */
   selectedCardId: string | null;
-  /** 画面通知メッセージ */
-  notification: { message: string; player?: PlayerType } | null;
+
+  /** ✨ 通知スタック (最大3件) */
+  notifications: NotificationItem[];
+
   /** カードプレビューモードかどうか */
   isCardPreview: boolean;
   /** インタラクションロック */
   isInteractionLocked: boolean;
 
-  /** ✨ デバッグ設定 */
+  /** デバッグ設定 */
   debugSettings: {
     showGestureArea: boolean;
   };
@@ -26,14 +38,15 @@ interface UIActions {
   selectCell: (cell: CellState | null) => void;
   hoverCell: (cell: CellState | null) => void;
   selectCard: (cardId: string | null) => void;
-  setNotification: (message: string, player?: PlayerType) => void;
-  clearNotification: () => void;
+
+  /** ✨ 通知を追加 */
+  pushNotification: (message: string, type?: NotificationItem["type"], player?: PlayerType) => void;
+  /** ✨ 通知を削除 */
+  removeNotification: (id: string) => void;
+
   setCardPreview: (isPreview: boolean) => void;
   setInteractionLock: (isLocked: boolean) => void;
-  /** 選択解除のショートカット */
   deselectCard: () => void;
-
-  /** ✨ デバッグ設定の更新 */
   updateDebugSettings: (settings: Partial<UIState["debugSettings"]>) => void;
 }
 
@@ -43,11 +56,10 @@ export const useUIStore = create(
     selectedCell: null,
     hoveredCell: null,
     selectedCardId: null,
-    notification: null,
+    notifications: [],
     isCardPreview: false,
     isInteractionLocked: false,
 
-    // ✨ デバッグ初期設定
     debugSettings: {
       showGestureArea: false,
     },
@@ -66,14 +78,26 @@ export const useUIStore = create(
         state.selectedCardId = cardId;
         state.selectedCell = null;
       }),
-    setNotification: (message, player) =>
+
+    // ✨ 通知ロジック
+    pushNotification: (message, type = "info", player) =>
       set((state) => {
-        state.notification = { message, player };
+        const newItem: NotificationItem = {
+          id: uuidv4(),
+          message,
+          type,
+          player,
+          timestamp: Date.now(),
+        };
+        // 新しいものを先頭に追加し、最大3件に制限
+        state.notifications = [newItem, ...state.notifications].slice(0, 3);
       }),
-    clearNotification: () =>
+
+    removeNotification: (id) =>
       set((state) => {
-        state.notification = null;
+        state.notifications = state.notifications.filter((n) => n.id !== id);
       }),
+
     setCardPreview: (isPreview) =>
       set((state) => {
         state.isCardPreview = isPreview;
@@ -89,7 +113,6 @@ export const useUIStore = create(
         state.isCardPreview = false;
       }),
 
-    // ✨ 設定更新
     updateDebugSettings: (settings) =>
       set((state) => {
         state.debugSettings = { ...state.debugSettings, ...settings };

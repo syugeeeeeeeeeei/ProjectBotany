@@ -1,66 +1,114 @@
-import React from "react";
+import React, { useState } from "react";
 import styled, { css } from "styled-components";
 
 // レイアウト定数
 const LAYOUT = {
-  WIDTH: "140px",
-  GAP: "20px",
-  OFFSET: "10px", // 画面端からの距離
+  WIDTH_OPEN: "260px",
+  WIDTH_CLOSED: "60px",
+  OFFSET: "0px",
 };
 
 type PanelPosition = "left" | "right";
 
-const PanelContainer = styled.div<{ $position: PanelPosition }>`
+const PanelContainer = styled.div<{
+  $position: PanelPosition;
+  $isOpen: boolean;
+}>`
   position: absolute;
   top: 50%;
   transform: translateY(-50%);
-  width: ${LAYOUT.WIDTH};
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: ${LAYOUT.GAP};
-  z-index: 10;
-  pointer-events: none; /* コンテナ自体はクリックを阻害しない */
-
-  /* 子要素（コンテンツ）は操作可能にする */
-  & > * {
-    pointer-events: auto;
-  }
+  width: ${({ $isOpen }) =>
+    $isOpen ? LAYOUT.WIDTH_OPEN : LAYOUT.WIDTH_CLOSED};
+  height: auto;
+  min-height: 200px;
+  z-index: 100;
+  pointer-events: none; /* コンテナ自体は透過 */
+  transition: width 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
 
   ${({ $position }) =>
     $position === "left"
       ? css`
           left: ${LAYOUT.OFFSET};
           /* 左側（Native/後攻）は対面用に180度回転 */
-          & > .content-wrapper {
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-            width: 100%;
+          .content-rotator {
             transform: rotate(180deg);
           }
         `
       : css`
           right: ${LAYOUT.OFFSET};
-          /* 右側（Alien/先攻）は通常表示 */
-          & > .content-wrapper {
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-            width: 100%;
-          }
         `}
+`;
+
+const PanelContent = styled.div<{ $position: PanelPosition; $isOpen: boolean }>`
+  pointer-events: auto;
+  background: rgba(20, 20, 20, 0.85);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: ${({ $position }) =>
+    $position === "left" ? "0 12px 12px 0" : "12px 0 0 12px"};
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+  overflow: hidden;
+  transition: all 0.3s ease;
+
+  /* 閉じたときの中身の制御 */
+  ${({ $isOpen }) =>
+    !$isOpen &&
+    css`
+      align-items: center;
+      padding: 15px 5px;
+    `}
+`;
+
+const ToggleButton = styled.button`
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #aaa;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  width: 100%;
+  margin-bottom: 8px;
+  font-size: 10px;
+  text-transform: uppercase;
+  transition: all 0.2s;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+  }
 `;
 
 interface SidePanelProps {
   position: PanelPosition;
-  children: React.ReactNode;
+  children: (isOpen: boolean) => React.ReactNode; // Render prop pattern
 }
 
 export const SidePanel: React.FC<SidePanelProps> = ({ position, children }) => {
+  const [isOpen, setIsOpen] = useState(false);
+
   return (
-    <PanelContainer $position={position}>
-      <div className="content-wrapper">{children}</div>
+    <PanelContainer $position={position} $isOpen={isOpen}>
+      <div
+        className="content-rotator"
+        style={{ width: "100%", height: "100%" }}
+      >
+        <PanelContent $position={position} $isOpen={isOpen}>
+          <ToggleButton onClick={() => setIsOpen(!isOpen)}>
+            {isOpen
+              ? position === "left"
+                ? "< CLOSE"
+                : "CLOSE >"
+              : position === "left"
+                ? "MENU >"
+                : "< MENU"}
+          </ToggleButton>
+          {children(isOpen)}
+        </PanelContent>
+      </div>
     </PanelContainer>
   );
 };

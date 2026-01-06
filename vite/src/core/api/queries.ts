@@ -27,7 +27,7 @@ export const useGameQuery = {
     useSelectedCardId: () => useUIStore((state) => state.selectedCardId),
     useSelectedCell: () => useUIStore((state) => state.selectedCell),
     useIsInteractionLocked: () => useUIStore((state) => state.isInteractionLocked),
-    useNotification: () => useUIStore((state) => state.notification),
+    useNotification: () => useUIStore((state) => state.notifications),
     /** ✨ 追加: デバッグ設定の取得 */
     useDebugSettings: () => useUIStore((state) => state.debugSettings),
   },

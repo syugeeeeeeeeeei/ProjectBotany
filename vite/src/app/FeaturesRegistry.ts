@@ -2,7 +2,6 @@
 import { GameFeature } from "@/core/types/architecture";
 import { fieldGridFeature } from "@/features/field-grid";
 import { cardHandFeature } from "@/features/Card/Hand";
-import { turnSystemFeature } from "@/features/turn-system";
 import { playCardFeature } from "@/features/Card/PlayCard";
 import { hudFeature } from "@/features/hud";
 import { alienGrowthFeature } from "@/features/Alien/Growth";
@@ -16,7 +15,6 @@ import { debugConsoleFeature } from "@/features/Debug/Console";
 export const FeaturesRegistry: GameFeature[] = [
   // システム・基盤系
   fieldGridFeature,
-  turnSystemFeature,
 
   // ゲームプレイルール系
   alienGrowthFeature,     // 1. まず種が成体に成長

@@ -1,86 +1,230 @@
-import React from "react";
-import styled from "styled-components";
-import { useGameQuery } from "@/core/api/queries";
+import React, { useMemo } from "react";
+import styled, { css } from "styled-components";
+import { useGameQuery, gameActions } from "@/core/api";
 import { PlayerType } from "@/shared/types";
+import { BaseActionButton } from "@/shared/components/BaseActionButton";
 
-const STYLES = {
-  BACKGROUND_COLOR: "rgba(0, 0, 0, 0.7)",
-  TEXT_COLOR: "white",
-  SUB_TEXT_COLOR: "#aaa",
-  PADDING: "10px 5px",
-  BORDER_RADIUS: "8px",
-  GAP: "10px",
-  FONT_SIZE: "1.2rem",
-  SUB_FONT_SIZE: "0.8rem",
-};
+// --- Styles ---
 
-const InfoContainer = styled.div`
-  background-color: ${STYLES.BACKGROUND_COLOR};
-  color: ${STYLES.TEXT_COLOR};
-  padding: ${STYLES.PADDING};
-  border-radius: ${STYLES.BORDER_RADIUS};
+const StatusWrapper = styled.div`
+  width: 100%;
   display: flex;
   flex-direction: column;
-  gap: ${STYLES.GAP};
-  align-items: center;
-  width: 100%;
-  pointer-events: auto; /* ボタンなどを配置した場合に備えて */
-  backdrop-filter: blur(4px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  gap: 12px;
+  color: white;
+  font-family: "Inter", sans-serif;
 `;
 
-const InfoItem = styled.div`
-  text-align: center;
-  font-size: ${STYLES.FONT_SIZE};
-  width: 100%;
+const Header = styled.div<{ $color: string; $compact: boolean }>`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  padding-bottom: 8px;
 
-  & > div:first-child {
-    font-size: ${STYLES.SUB_FONT_SIZE};
-    color: ${STYLES.SUB_TEXT_COLOR};
-    text-transform: uppercase;
-    margin-bottom: 2px;
+  .name {
+    font-weight: 800;
+    font-size: ${({ $compact }) => ($compact ? "0.9rem" : "1.1rem")};
+    color: ${({ $color }) => $color};
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
-  & > div:last-child {
+  .score {
+    font-family: "Fira Code", monospace;
+    font-size: 1.2rem;
     font-weight: bold;
   }
 `;
 
-const ScoreBadge = styled.div<{ $isLeading: boolean }>`
-  color: ${({ $isLeading }) => ($isLeading ? "#4CAF50" : "inherit")};
+const StatRow = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.85rem;
+  color: #ccc;
 `;
+
+const ProgressBarBg = styled.div`
+  width: 100%;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+  margin-top: 4px;
+  overflow: hidden;
+`;
+
+const ProgressBarFill = styled.div<{ $percent: number; $color: string }>`
+  height: 100%;
+  width: ${({ $percent }) => $percent}%;
+  background: ${({ $color }) => $color};
+  transition: width 0.5s ease-out;
+`;
+
+const APDisplay = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+`;
+
+const DetailGrid = styled.div`
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  font-size: 0.75rem;
+  color: #888;
+  background: rgba(0, 0, 0, 0.3);
+  padding: 8px;
+  border-radius: 6px;
+`;
+
+const TurnEndButtonStyled = styled(BaseActionButton)<{
+  $isActive: boolean;
+  $themeColor: string;
+}>`
+  font-size: 0.9rem;
+  padding: 10px;
+  margin-top: 5px;
+  background: ${({ $isActive, $themeColor }) =>
+    $isActive ? $themeColor : "#333"};
+  border: ${({ $isActive, $themeColor }) =>
+    $isActive ? `1px solid ${$themeColor}` : "1px solid #555"};
+
+  ${({ $isActive }) =>
+    !$isActive &&
+    css`
+      opacity: 0.5;
+      cursor: not-allowed;
+      box-shadow: none;
+      transform: none;
+    `}
+`;
+
+// --- Component ---
 
 interface PlayerStatusProps {
   playerId: PlayerType;
+  isOpen: boolean; // SidePanelから渡される状態
 }
 
-export const PlayerStatus: React.FC<PlayerStatusProps> = ({ playerId }) => {
-  // Query経由でデータを取得 (Storeに直接依存しない)
+export const PlayerStatus: React.FC<PlayerStatusProps> = ({
+  playerId,
+  isOpen,
+}) => {
   const playerState = useGameQuery.usePlayer(playerId);
   const score = useGameQuery.useScore(playerId);
-  const opponentId = playerId === "alien" ? "native" : "alien";
-  const opponentScore = useGameQuery.useScore(opponentId);
+  const activePlayer = useGameQuery.useActivePlayer();
+  const currentRound = useGameQuery.useCurrentRound();
+
+  const isMyTurn = activePlayer === playerId;
+  const themeColor = playerId === "alien" ? "#E57373" : "#66BB6A"; // Red / Green
+
+  // デッキ残り枚数計算（Libraryにあるカード数）
+  const deckCount = useMemo(
+    () => playerState?.cardLibrary.length ?? 0,
+    [playerState],
+  );
+  // クールダウン中のカード枚数
+  const cooldownCount = useMemo(
+    () => playerState?.cooldownActiveCards.length ?? 0,
+    [playerState],
+  );
 
   if (!playerState) return null;
 
-  const isLeading = score > opponentScore;
+  const apPercent =
+    (playerState.currentEnvironment / playerState.maxEnvironment) * 100;
 
+  const handleTurnEnd = () => {
+    if (!isMyTurn) {
+      gameActions.ui.notify({
+        message: "相手のターンです",
+        type: "error",
+        player: playerId,
+      });
+      return;
+    }
+    gameActions.turn.end();
+  };
+
+  // --- Compact View (Closed) ---
+  if (!isOpen) {
+    return (
+      <StatusWrapper>
+        <div style={{ textAlign: "center" }}>
+          <div
+            style={{
+              fontSize: "0.7rem",
+              color: themeColor,
+              fontWeight: "bold",
+            }}
+          >
+            {playerId.toUpperCase()}
+          </div>
+          <div style={{ fontSize: "1.2rem", fontWeight: "bold" }}>{score}</div>
+        </div>
+
+        {/* コンパクトでもターンエンドボタンは押せるようにする（緊急用） */}
+        {isMyTurn && (
+          <TurnEndButtonStyled
+            $isActive={true}
+            $themeColor={themeColor}
+            onClick={handleTurnEnd}
+            style={{ padding: "4px", fontSize: "0.7rem" }}
+          >
+            END
+          </TurnEndButtonStyled>
+        )}
+      </StatusWrapper>
+    );
+  }
+
+  // --- Full View (Open) ---
   return (
-    <InfoContainer>
-      <InfoItem>
-        <div>Player</div>
-        <div>{playerState.playerName}</div>
-      </InfoItem>
+    <StatusWrapper>
+      <Header $color={themeColor} $compact={false}>
+        <div className="name">{playerState.playerName}</div>
+        <div className="score">{score} pts</div>
+      </Header>
 
-      <InfoItem>
-        <div>Environment (AP)</div>
-        <div>{`${playerState.currentEnvironment} / ${playerState.maxEnvironment}`}</div>
-      </InfoItem>
+      {/* AP Bar */}
+      <APDisplay>
+        <StatRow>
+          <span>Environment (AP)</span>
+          <span style={{ fontWeight: "bold", color: "white" }}>
+            {playerState.currentEnvironment} / {playerState.maxEnvironment}
+          </span>
+        </StatRow>
+        <ProgressBarBg>
+          <ProgressBarFill $percent={apPercent} $color={themeColor} />
+        </ProgressBarBg>
+      </APDisplay>
 
-      <InfoItem>
-        <div>Score</div>
-        <ScoreBadge $isLeading={isLeading}>{score}</ScoreBadge>
-      </InfoItem>
-    </InfoContainer>
+      {/* Details */}
+      <DetailGrid>
+        <div>
+          <div>DECK</div>
+          <div style={{ color: "white", fontSize: "1rem" }}>{deckCount}</div>
+        </div>
+        <div>
+          <div>COOLDOWN</div>
+          <div style={{ color: "white", fontSize: "1rem" }}>
+            {cooldownCount}
+          </div>
+        </div>
+      </DetailGrid>
+
+      {/* Turn End Button Integration */}
+      <TurnEndButtonStyled
+        $isActive={isMyTurn}
+        $themeColor={themeColor}
+        onClick={handleTurnEnd}
+        disabled={!isMyTurn}
+      >
+        {isMyTurn ? `ターン終了 (R${currentRound})` : "相手のターン中..."}
+      </TurnEndButtonStyled>
+    </StatusWrapper>
   );
 };
