@@ -15,6 +15,9 @@ export const processAlienExpansion = (gameState: GameState): GameState => {
   const { alienInstances, gameField } = gameState;
   const nextCells = gameField.cells.map(row => [...row]);
   let isFieldUpdated = false;
+  let totalInvadedCount = 0;
+
+  console.group("[Feature: Alien Expansion] Processing...");
 
   Object.values(alienInstances).forEach((instance) => {
     if (instance.status !== "plant") {
@@ -38,8 +41,10 @@ export const processAlienExpansion = (gameState: GameState): GameState => {
       const currentCell = nextCells[p.y][p.x];
       if (p.x === center.x && p.y === center.y) return;
 
-      // 修正: 引数を削除
       if (canInvade(currentCell)) {
+        // 侵食ログ
+        console.log(`[Expansion] 🍄 Alien at [${center.x}, ${center.y}] invaded [${p.x}, ${p.y}] (Type: ${currentCell.type} -> alien)`);
+
         const newCell: CellState = {
           ...currentCell,
           type: "alien",
@@ -49,13 +54,19 @@ export const processAlienExpansion = (gameState: GameState): GameState => {
 
         nextCells[p.y][p.x] = newCell;
         isFieldUpdated = true;
+        totalInvadedCount++;
       }
     });
   });
 
   if (!isFieldUpdated) {
+    console.log("[Expansion] No new invasions occurred.");
+    console.groupEnd();
     return gameState;
   }
+
+  console.info(`[Expansion] 🌊 Total ${totalInvadedCount} cells invaded.`);
+  console.groupEnd();
 
   return {
     ...gameState,

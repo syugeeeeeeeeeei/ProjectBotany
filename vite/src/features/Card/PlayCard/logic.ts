@@ -11,9 +11,7 @@ import {
   AlienInstance,
 } from "@/shared/types";
 import { Point, GridShape, PlayerId } from "@/shared/types/primitives";
-// 修正: FieldSystemへの直接依存を廃止し、公開API経由に変更
 import { FieldUtils } from "@/core/api/utils";
-// ※ cardMasterDataはSharedなのでImport OK
 import { cardMasterData } from "@/shared/data/cardMasterData";
 
 /**
@@ -24,16 +22,27 @@ export const executeCardEffect = (
   card: CardDefinition,
   targetPoint: Point,
 ): GameState => {
+  console.group(`[PlayCard] 🃏 Action: ${card.name} (ID: ${card.id})`);
+  console.log(`Target: [x:${targetPoint.x}, y:${targetPoint.y}]`);
+
+  let nextState = gameState;
   switch (card.cardType) {
     case "alien":
-      return executeAlienCard(gameState, card, targetPoint);
+      nextState = executeAlienCard(gameState, card, targetPoint);
+      break;
     case "eradication":
-      return executeEradicationCard(gameState, card, targetPoint);
+      nextState = executeEradicationCard(gameState, card, targetPoint);
+      break;
     case "recovery":
-      return executeRecoveryCard(gameState, card, targetPoint);
+      nextState = executeRecoveryCard(gameState, card, targetPoint);
+      break;
     default:
-      return gameState;
+      console.warn("[PlayCard] ⚠️ Unknown card type");
+      break;
   }
+
+  console.groupEnd();
+  return nextState;
 };
 
 /**
@@ -47,11 +56,18 @@ const executeAlienCard = (
   const { gameField, alienInstances, currentRound } = gameState;
   const targetCell = FieldUtils.getCell(gameField, targetPoint);
 
-  if (!targetCell || targetCell.type !== "bare") {
-    console.warn("Invalid target: Alien seeds can only be placed on Bare Ground.");
+  // バリデーションログ
+  if (!targetCell) {
+    console.warn(`[PlayCard] ❌ Failed: Target [${targetPoint.x}, ${targetPoint.y}] is out of bounds.`);
     return gameState;
   }
 
+  if (targetCell.type !== "bare") {
+    console.warn(`[PlayCard] ❌ Failed: Invalid target type '${targetCell.type}'. Alien seeds require 'bare'.`);
+    return gameState;
+  }
+
+  // 実行
   const newInstanceId = uuidv4();
   const newInstance: AlienInstance = {
     instanceId: newInstanceId,
@@ -68,6 +84,8 @@ const executeAlienCard = (
     ownerId: "alien",
     alienUnitId: newInstanceId,
   };
+
+  console.info(`[PlayCard] ✅ Success: Placed Seed at [${targetPoint.x}, ${targetPoint.y}]`);
 
   return {
     ...gameState,
@@ -89,6 +107,7 @@ const executeEradicationCard = (
 ): GameState => {
   const { eradicationRange, eradicationType, postState, chainDestruction } = card;
   let currentGameState = { ...gameState };
+  let removedCount = 0;
 
   const targetPoints = getCellsByShape(
     currentGameState.gameField.width,
@@ -96,6 +115,8 @@ const executeEradicationCard = (
     targetPoint,
     eradicationRange
   );
+
+  console.log(`[PlayCard] Eradication Area: ${targetPoints.length} cells (Shape: ${eradicationRange})`);
 
   targetPoints.forEach((p) => {
     const cell = FieldUtils.getCell(currentGameState.gameField, p);
@@ -111,16 +132,20 @@ const executeEradicationCard = (
         const masterData = getCardDefinition(instance.cardDefinitionId);
         const hasCounter = masterData?.counterAbility === "spread_seed";
 
+        // 反撃判定
         if (eradicationType === "physical" && hasCounter) {
+          console.warn(`[PlayCard] ⚠️ Counter Ability Triggered at [${p.x}, ${p.y}]!`);
           currentGameState = triggerCounterEffect(currentGameState, p);
         }
 
         const newAlienInstances = { ...currentGameState.alienInstances };
         delete newAlienInstances[unitId];
         currentGameState.alienInstances = newAlienInstances;
+        removedCount++;
 
         if (chainDestruction && instance.status === "plant") {
-          // TODO: Chain destruction logic
+          // TODO: Chain destruction logic log
+          console.log("[PlayCard] (TODO) Chain destruction logic triggered");
         }
       }
 
@@ -137,6 +162,8 @@ const executeEradicationCard = (
     }
   });
 
+  console.info(`[PlayCard] ✅ Success: Removed ${removedCount} alien units.`);
+
   return currentGameState;
 };
 
@@ -150,6 +177,7 @@ const executeRecoveryCard = (
 ): GameState => {
   const { recoveryRange, recoveryPower } = card;
   const currentGameState = { ...gameState };
+  let recoveredCount = 0;
 
   const targetPoints = getCellsByShape(
     currentGameState.gameField.width,
@@ -191,9 +219,12 @@ const executeRecoveryCard = (
           currentGameState.gameField,
           newCell
         );
+        recoveredCount++;
       }
     }
   });
+
+  console.info(`[PlayCard] ✅ Success: Recovered ${recoveredCount} cells.`);
 
   return currentGameState;
 };
@@ -215,6 +246,8 @@ const triggerCounterEffect = (gameState: GameState, center: Point): GameState =>
   const seedCount = Math.min(bareNeighbors.length, 2);
   const shuffled = bareNeighbors.sort(() => 0.5 - Math.random());
   const targets = shuffled.slice(0, seedCount);
+
+  console.log(`[Counter] Spawning ${seedCount} seeds around [${center.x}, ${center.y}]`);
 
   targets.forEach(p => {
     const counterCardId = "alien-1"; // 仮

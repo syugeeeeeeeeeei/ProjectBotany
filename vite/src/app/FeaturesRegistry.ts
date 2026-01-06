@@ -1,14 +1,14 @@
 // vite/src/app/FeaturesRegistry.ts
 import { GameFeature } from "@/core/types/architecture";
 import { fieldGridFeature } from "@/features/field-grid";
-import { cardHandFeature } from "@/features/card-hand";
+import { cardHandFeature } from "@/features/Card/Hand";
 import { turnSystemFeature } from "@/features/turn-system";
-import { playCardFeature } from "@/features/play-card";
+import { playCardFeature } from "@/features/Card/PlayCard";
 import { hudFeature } from "@/features/hud";
-import { alienGrowthFeature } from "@/features/alien-growth";
-import { alienExpansionFeature } from "@/features/alien-expansion";
+import { alienGrowthFeature } from "@/features/Alien/Growth";
+import { alienExpansionFeature } from "@/features/Alien/Expansion";
 // 新規追加
-import { debugConsoleFeature } from "@/features/debug-console";
+import { debugConsoleFeature } from "@/features/Debug/Console";
 
 /**
  * アプリケーションで有効化するFeatureのリスト

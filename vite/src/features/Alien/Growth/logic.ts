@@ -14,24 +14,38 @@ export const processAlienGrowth = (gameState: GameState): GameState => {
 	const { alienInstances, currentRound } = gameState;
 	const newAlienInstances = { ...alienInstances };
 	let hasChanges = false;
+	let grownCount = 0;
+
+	console.group("[Feature: Alien Growth] Processing...");
 
 	Object.values(newAlienInstances).forEach((instance) => {
 		// 判定対象: 「種」の状態であり、かつ配置ラウンドが現在のラウンドより前（休眠明け）
-		if (instance.status === "seed" && instance.spawnedRound < currentRound) {
-			// 成体へ変化
-			newAlienInstances[instance.instanceId] = {
-				...instance,
-				status: "plant",
-			};
-			hasChanges = true;
+		if (instance.status === "seed") {
+			if (instance.spawnedRound < currentRound) {
+				// 成体へ変化
+				newAlienInstances[instance.instanceId] = {
+					...instance,
+					status: "plant",
+				};
+				hasChanges = true;
+				grownCount++;
 
-			// 必要に応じてログ追加などの処理をここに挟む
+				console.log(`[Growth] 🌱 Seed at [${instance.currentX}, ${instance.currentY}] matured into Plant!`);
+			} else {
+				// まだ休眠中
+				console.debug(`[Growth] 💤 Seed at [${instance.currentX}, ${instance.currentY}] is dormant (Spawned: R${instance.spawnedRound}).`);
+			}
 		}
 	});
 
 	if (!hasChanges) {
+		console.log("[Growth] No seeds matured this round.");
+		console.groupEnd();
 		return gameState;
 	}
+
+	console.info(`[Growth] 🌳 Total ${grownCount} seeds matured into plants.`);
+	console.groupEnd();
 
 	return {
 		...gameState,

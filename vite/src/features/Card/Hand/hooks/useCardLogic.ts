@@ -62,13 +62,15 @@ export const useCardLogic = ({
 	const handleClick = (e: ThreeEvent<MouseEvent>) => {
 		e.stopPropagation();
 
+		console.log(`[UI] 👆 Card Clicked: ${card.name} (ID: ${card.instanceId})`);
+
 		if (!isMyTurn) {
-			// 修正: オブジェクト形式で渡す
+			console.warn("[UI] 🚫 Action Denied: Not your turn.");
 			gameActions.ui.notify({ message: "相手のターンです", player });
 			return;
 		}
 		if (isCooldown) {
-			// 修正: オブジェクト形式で渡す
+			console.warn(`[UI] ⏳ Action Denied: Cooldown active (${cooldownInfo?.roundsRemaining} turns left).`);
 			gameActions.ui.notify({
 				message: `このカードはあと${cooldownInfo?.roundsRemaining}ラウンド使用できません。`,
 				player,
@@ -77,8 +79,10 @@ export const useCardLogic = ({
 		}
 
 		if (isSelected) {
+			console.log("[UI] Card Deselected");
 			gameActions.ui.deselectCard();
 		} else {
+			console.log("[UI] Card Selected");
 			gameActions.ui.selectCard(card.instanceId);
 		}
 	};
