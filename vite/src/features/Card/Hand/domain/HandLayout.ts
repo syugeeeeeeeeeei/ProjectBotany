@@ -44,7 +44,6 @@ export const HandLayout = {
 		Z_SELECTED: 2.5,
 		Z_DEFAULT: 0,
 		SPRING_CONFIG: { tension: 300, friction: 25 },
-		OPACITY_DIM: 0.5,
 	},
 
 	get PAGE_WIDTH() {
@@ -63,16 +62,25 @@ export const HandLayout = {
 		return x;
 	},
 
-	calcTargetOpacity(params: {
+	/**
+	 * カードをDim（暗転）させるかどうかを判定
+	 * 以前の calcTargetOpacity の代わり
+	 */
+	calcDimState(params: {
 		isVisible: boolean;
 		isAnySelected: boolean;
 		isSelected: boolean;
-	}) {
+	}): boolean {
 		const { isVisible, isAnySelected, isSelected } = params;
 
-		if (!isVisible) return 0.6;
-		if (!isAnySelected) return 1;
-		return isSelected ? 1 : this.ANIMATION.OPACITY_DIM;
+		// 手札が非表示(奥にある)なら暗くする
+		if (!isVisible) return true;
+
+		// 誰も選択していないなら明るいまま
+		if (!isAnySelected) return false;
+
+		// 誰かが選択している時、自分が選択されていれば明るく、そうでなければ暗く
+		return !isSelected;
 	},
 
 	// facingFactor を受け取らない（親groupの180°回転で反転させる）

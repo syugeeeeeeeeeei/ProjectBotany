@@ -13,15 +13,18 @@ export type UseCardLogicResult = {
 	state: {
 		isHovered: boolean;
 		isSelected: boolean;
-		isPlayable: boolean;
+		isPlayable: boolean; // ターン中、クールダウンなし、使用回数制限なし
 		isCooldown: boolean;
 		isMyTurn: boolean;
+		isUsable: boolean; // 使用回数が残っているか
 	};
 	data: {
 		textureUrl: string;
 		headerColor: string;
 		borderStateColor: string;
 		cooldownRounds?: number;
+		remainingUses?: number;
+		hasUsageLimit: boolean;
 	};
 	handlers: {
 		setIsHovered: (isHovered: boolean) => void;
@@ -41,7 +44,15 @@ export const useCardLogic = ({ card, player }: UseCardLogicProps): UseCardLogicR
 	const isCooldown = !!cooldownInfo;
 	const isSelected = selectedCardId === card.instanceId;
 	const isMyTurn = activePlayerId === player;
-	const isPlayable = isMyTurn && !isCooldown;
+
+	// ✨ 使用回数情報の取得
+	const hasUsageLimit = card.usageLimit !== undefined;
+	const usedCount = playerState?.limitedCardsUsedCount?.[card.id] ?? 0;
+	const remainingUses = hasUsageLimit ? (card.usageLimit! - usedCount) : undefined;
+	const isUsable = hasUsageLimit ? (remainingUses! > 0) : true;
+
+	// プレイ可能判定: 自分のターン && クールダウンでない && 使用可能回数が残っている
+	const isPlayable = isMyTurn && !isCooldown && isUsable;
 
 	useEffect(() => {
 		const img = new Image();
@@ -66,12 +77,14 @@ export const useCardLogic = ({ card, player }: UseCardLogicProps): UseCardLogicR
 			: CardColors.CARD_UI.BORDER_DEFAULT;
 
 	return {
-		state: { isHovered, isSelected, isPlayable, isCooldown, isMyTurn },
+		state: { isHovered, isSelected, isPlayable, isCooldown, isMyTurn, isUsable },
 		data: {
 			textureUrl,
 			headerColor,
 			borderStateColor,
 			cooldownRounds: cooldownInfo?.roundsRemaining,
+			remainingUses,
+			hasUsageLimit
 		},
 		handlers: {
 			setIsHovered,

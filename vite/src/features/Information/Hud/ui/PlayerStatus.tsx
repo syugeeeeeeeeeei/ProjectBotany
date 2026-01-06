@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React from "react";
 import styled, { css } from "styled-components";
 import { useGameQuery, gameActions } from "@/core/api";
 import { PlayerType } from "@/shared/types";
@@ -17,24 +17,37 @@ const StatusWrapper = styled.div`
 
 const Header = styled.div<{ $color: string; $compact: boolean }>`
   display: flex;
-  align-items: center;
   justify-content: space-between;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   padding-bottom: 8px;
 
   .name {
     font-weight: 800;
-    font-size: ${({ $compact }) => ($compact ? "0.9rem" : "1.1rem")};
+    font-size: ${({ $compact }) => ($compact ? "0.9rem" : "1.15rem")};
     color: ${({ $color }) => $color};
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
   }
+`;
 
-  .score {
+const ScoreContainer = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+
+  .current-score {
     font-family: "Fira Code", monospace;
     font-size: 1.2rem;
     font-weight: bold;
+    color: white;
+  }
+
+  .opponent-score {
+    font-family: "Fira Code", monospace;
+    font-size: 0.8rem;
+    color: #999;
+    margin-top: 2px;
   }
 `;
 
@@ -67,17 +80,6 @@ const APDisplay = styled.div`
   flex-direction: column;
   gap: 2px;
   width: 100%;
-`;
-
-const DetailGrid = styled.div`
-  display: grid;
-  grid-template-columns: 1fr; /* 1列に変更 */
-  gap: 8px;
-  font-size: 0.75rem;
-  color: #888;
-  background: rgba(0, 0, 0, 0.3);
-  padding: 8px;
-  border-radius: 6px;
 `;
 
 const TurnEndButtonStyled = styled(BaseActionButton)<{
@@ -115,17 +117,17 @@ export const PlayerStatus: React.FC<PlayerStatusProps> = ({
 }) => {
   const playerState = useGameQuery.usePlayer(playerId);
   const score = useGameQuery.useScore(playerId);
+
+  // 相手の情報を取得
+  const opponentId = playerId === "alien" ? "native" : "alien";
+  const opponentScore = useGameQuery.useScore(opponentId);
+  const opponentLabel = opponentId === "alien" ? "外来種" : "在来種";
+
   const activePlayer = useGameQuery.useActivePlayer();
   const currentRound = useGameQuery.useCurrentRound();
 
   const isMyTurn = activePlayer === playerId;
   const themeColor = playerId === "alien" ? "#E57373" : "#66BB6A"; // Red / Green
-
-  // クールダウン中のカード枚数
-  const cooldownCount = useMemo(
-    () => playerState?.cooldownActiveCards.length ?? 0,
-    [playerState],
-  );
 
   if (!playerState) return null;
 
@@ -149,7 +151,7 @@ export const PlayerStatus: React.FC<PlayerStatusProps> = ({
     <APDisplay>
       <StatRow>
         <span style={{ fontSize: isOpen ? "0.85rem" : "0.7rem" }}>
-          {isOpen ? "Environment (AP)" : "AP"}
+          {isOpen ? "エンバイロメント (AP)" : "AP"}
         </span>
         <span
           style={{
@@ -180,7 +182,7 @@ export const PlayerStatus: React.FC<PlayerStatusProps> = ({
               marginBottom: "4px",
             }}
           >
-            {playerId.toUpperCase()}
+            {playerId === "alien" ? "外来種" : "在来種"}
           </div>
           <div
             style={{
@@ -189,7 +191,7 @@ export const PlayerStatus: React.FC<PlayerStatusProps> = ({
               marginBottom: "8px",
             }}
           >
-            {score}
+            {score} 点
           </div>
         </div>
 
@@ -204,7 +206,7 @@ export const PlayerStatus: React.FC<PlayerStatusProps> = ({
             onClick={handleTurnEnd}
             style={{ padding: "6px", fontSize: "0.7rem", marginTop: "8px" }}
           >
-            END
+            終了
           </TurnEndButtonStyled>
         )}
       </StatusWrapper>
@@ -216,21 +218,18 @@ export const PlayerStatus: React.FC<PlayerStatusProps> = ({
     <StatusWrapper>
       <Header $color={themeColor} $compact={false}>
         <div className="name">{playerState.playerName}</div>
-        <div className="score">{score} pts</div>
+        <ScoreContainer>
+          <div className="current-score">{score} 点</div>
+          <div className="opponent-score">
+            {opponentLabel}: {opponentScore} 点
+          </div>
+        </ScoreContainer>
       </Header>
 
       {/* AP Bar */}
       {ApBar}
 
-      {/* Details (Deck Count Removed) */}
-      <DetailGrid>
-        <div>
-          <div>COOLDOWN</div>
-          <div style={{ color: "white", fontSize: "1rem" }}>
-            {cooldownCount} cards
-          </div>
-        </div>
-      </DetailGrid>
+      {/* 詳細情報 (COOLDOWN削除) */}
 
       {/* Turn End Button Integration */}
       <TurnEndButtonStyled

@@ -18,10 +18,10 @@ const AnimatedMeshBasicMaterial = animated.meshBasicMaterial;
 interface Card3DProps {
   card: CardDefinition & { instanceId: string };
   player: PlayerType;
-  opacity: number;
+  isDimmed: boolean;
 }
 
-const Card3D: React.FC<Card3DProps> = ({ card, player, opacity }) => {
+const Card3D: React.FC<Card3DProps> = ({ card, player, isDimmed }) => {
   const { state, data, handlers } = useCardLogic({ card, player });
 
   const baseShape = useMemo(() => createRoundedRectShape(), []);
@@ -35,23 +35,21 @@ const Card3D: React.FC<Card3DProps> = ({ card, player, opacity }) => {
       <CardBase
         isSelected={state.isSelected}
         borderStateColor={data.borderStateColor}
-        opacity={opacity}
       />
-      <CardBaseInner baseShape={baseShape} opacity={opacity} />
-      <CardContentHeader
-        card={card}
-        opacity={opacity}
-        headerShape={headerShape}
-        data={data}
-      />
-      <CardContentCost card={card} opacity={opacity} />
-      <CardContentImage opacity={opacity} textureUrl={data.textureUrl} />
-      <CardContentDescription opacity={opacity} card={card} />
+      <CardBaseInner baseShape={baseShape} />
+      <CardContentHeader card={card} headerShape={headerShape} data={data} />
+      <CardContentCost card={card} />
+      <CardContentImage textureUrl={data.textureUrl} />
+      <CardContentDescription card={card} />
+      {data.hasUsageLimit && (
+        <CardContentUsageLimit remainingUses={data.remainingUses} />
+      )}
       <CardOverlayCooldown
         isCooldown={state.isCooldown}
         cooldownRounds={data.cooldownRounds}
-        opacity={opacity}
       />
+      <CardOverlayUsageLimit isUsable={state.isUsable} />
+      <CardOverlayDim isDimmed={isDimmed} />
     </animated.group>
   );
 };
@@ -63,11 +61,9 @@ export default Card3D;
 const CardBase = ({
   isSelected,
   borderStateColor,
-  opacity,
 }: {
   isSelected: boolean;
   borderStateColor: string;
-  opacity: number;
 }) => {
   const { CARD_BASE } = CardLayout;
   return (
@@ -79,49 +75,35 @@ const CardBase = ({
         color={borderStateColor}
         emissive={isSelected ? borderStateColor : "black"}
         emissiveIntensity={isSelected ? 0.5 : 0}
-        transparent
-        opacity={opacity}
+        // ✨ 修正: transparent を削除 (不透明化)
       />
     </RoundedBox>
   );
 };
 
-const CardBaseInner = ({
-  baseShape,
-  opacity,
-}: {
-  baseShape: THREE.Shape;
-  opacity: number;
-}) => (
+const CardBaseInner = ({ baseShape }: { baseShape: THREE.Shape }) => (
   <mesh position={CardLayout.AREAS.BASE_INNER.POSITION}>
     <shapeGeometry args={[baseShape]} />
     <AnimatedMeshStandardMaterial
       color={CardLayout.COLORS.CARD_UI.BASE_BG}
-      transparent
-      opacity={opacity}
+      // ✨ 修正: transparent を削除
     />
   </mesh>
 );
 
 const CardContentHeader = ({
   card,
-  opacity,
   headerShape,
   data,
 }: {
   card: CardDefinition;
-  opacity: number;
   headerShape: THREE.Shape;
   data: UseCardLogicResult["data"];
 }) => (
   <>
     <mesh position={CardLayout.AREAS.HEADER.POSITION}>
       <shapeGeometry args={[headerShape]} />
-      <AnimatedMeshBasicMaterial
-        color={data.headerColor}
-        transparent
-        opacity={opacity}
-      />
+      <AnimatedMeshBasicMaterial color={data.headerColor} />
     </mesh>
     <Text
       position={CardLayout.AREAS.TEXT.HEADER.POSITION}
@@ -137,20 +119,13 @@ const CardContentHeader = ({
   </>
 );
 
-const CardContentCost = ({
-  card,
-  opacity,
-}: {
-  card: CardDefinition;
-  opacity: number;
-}) => (
+const CardContentCost = ({ card }: { card: CardDefinition }) => (
   <>
     <mesh position={CardLayout.AREAS.COST.POSITION}>
       <circleGeometry args={[CardLayout.AREAS.COST.RADIUS, 32]} />
       <AnimatedMeshBasicMaterial
         color={CardLayout.COLORS.BORDER}
-        transparent
-        opacity={opacity}
+        // ✨ 修正: transparent を削除
       />
     </mesh>
     <Text
@@ -166,35 +141,53 @@ const CardContentCost = ({
   </>
 );
 
-const CardContentImage = ({
-  opacity,
-  textureUrl,
+const CardContentUsageLimit = ({
+  remainingUses,
 }: {
-  opacity: number;
-  textureUrl: string;
-}) => {
+  remainingUses?: number;
+}) => (
+  <>
+    <mesh position={CardLayout.AREAS.USAGE_LIMIT.POSITION}>
+      <circleGeometry args={[CardLayout.AREAS.USAGE_LIMIT.RADIUS, 32]} />
+      <AnimatedMeshBasicMaterial
+        color={CardLayout.COLORS.USAGE_LIMIT_BG}
+        // ✨ 修正: transparent を削除
+      />
+    </mesh>
+    <Text
+      position={CardLayout.AREAS.TEXT.USAGE_LIMIT.POSITION}
+      fontSize={CardLayout.AREAS.TEXT.USAGE_LIMIT.FONT_SIZE}
+      font={CardLayout.AREAS.TEXT.USAGE_LIMIT.FONT}
+      color={CardLayout.AREAS.TEXT.USAGE_LIMIT.COLOR}
+      anchorX="center"
+      anchorY="middle"
+    >
+      {remainingUses}
+    </Text>
+  </>
+);
+
+const CardContentImage = ({ textureUrl }: { textureUrl: string }) => {
   const texture = useTexture(textureUrl);
   return (
     <animated.mesh position={CardLayout.AREAS.IMAGE.POSITION}>
       <planeGeometry args={CardLayout.AREAS.IMAGE.SIZE} />
-      <meshStandardMaterial map={texture} opacity={opacity} />
+      <meshStandardMaterial map={texture} />
+      {/* ✨ 修正: 画像にアルファチャンネルがない場合はtransparent不要。
+          もし透過PNGを使うならtransparent={true}が必要ですが、
+          カードイラストなら通常は不透明でOKと判断して削除。
+          必要に応じて戻してください。 */}
     </animated.mesh>
   );
 };
 
-const CardContentDescription = ({
-  opacity,
-  card,
-}: {
-  opacity: number;
-  card: CardDefinition;
-}) => (
+const CardContentDescription = ({ card }: { card: CardDefinition }) => (
   <>
     <mesh position={CardLayout.AREAS.DESC.POSITION}>
       <planeGeometry args={CardLayout.AREAS.DESC.SIZE} />
       <AnimatedMeshBasicMaterial
         color={CardLayout.COLORS.CARD_UI.DESC_BG}
-        opacity={opacity}
+        // ✨ 修正: transparent を削除
       />
     </mesh>
     <Text
@@ -216,21 +209,22 @@ const CardContentDescription = ({
 const CardOverlayCooldown = ({
   isCooldown,
   cooldownRounds,
-  opacity,
 }: {
   isCooldown: boolean;
   cooldownRounds?: number;
-  opacity: number;
 }) => {
   if (!isCooldown) return null;
   return (
     <>
       <mesh position={CardLayout.AREAS.COOLDOWN.POSITION}>
         <planeGeometry args={CardLayout.AREAS.COOLDOWN.SIZE} />
-        <meshBasicMaterial
+        <meshStandardMaterial
           color={CardLayout.AREAS.COOLDOWN.COLOR}
           transparent
-          opacity={opacity * 0.6}
+          opacity={CardLayout.AREAS.COOLDOWN.OPACITY}
+          roughness={0.1}
+          metalness={0.2}
+          depthWrite={false} // ✨ オーバーレイなのでdepthWriteを切っておくのが無難
         />
       </mesh>
       <Text
@@ -244,5 +238,36 @@ const CardOverlayCooldown = ({
         {cooldownRounds}
       </Text>
     </>
+  );
+};
+
+const CardOverlayUsageLimit = ({ isUsable }: { isUsable: boolean }) => {
+  if (isUsable) return null;
+  return (
+    <mesh position={CardLayout.AREAS.COOLDOWN.POSITION}>
+      <planeGeometry args={CardLayout.AREAS.COOLDOWN.SIZE} />
+      <meshBasicMaterial
+        color="#330000"
+        transparent
+        opacity={0.7}
+        depthWrite={false} // ✨ オーバーレイなのでdepthWriteを切る
+      />
+    </mesh>
+  );
+};
+
+// ✨ Dim表現用のオーバーレイ
+const CardOverlayDim = ({ isDimmed }: { isDimmed: boolean }) => {
+  if (!isDimmed) return null;
+  return (
+    <mesh position={CardLayout.AREAS.DIM_OVERLAY.POSITION}>
+      <planeGeometry args={CardLayout.AREAS.DIM_OVERLAY.SIZE} />
+      <meshBasicMaterial
+        color={CardLayout.AREAS.DIM_OVERLAY.COLOR}
+        transparent
+        opacity={CardLayout.AREAS.DIM_OVERLAY.OPACITY}
+        depthWrite={false} // ✨ 修正: これを追加して深度書き込みを無効化
+      />
+    </mesh>
   );
 };

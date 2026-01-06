@@ -32,9 +32,14 @@ const CardWrapper: React.FC<CardWrapperProps> = ({
   onDeselect,
 }) => {
   const xLocal = HandLayout.calcCardXLocal(index);
-  const targetOpacity = isSelected
-    ? 1
-    : HandLayout.calcTargetOpacity({ isVisible, isAnySelected, isSelected });
+
+  // ✨ Opacity計算をDim判定に変更
+  const isDimmed = HandLayout.calcDimState({
+    isVisible,
+    isAnySelected,
+    isSelected,
+  });
+
   const targetZ = HandLayout.calcTargetZ({
     isSelected,
     isAnySelected,
@@ -48,7 +53,6 @@ const CardWrapper: React.FC<CardWrapperProps> = ({
       HandLayout.CARD.ROTATION.Y,
       HandLayout.CARD.ROTATION.Z,
     ] as [number, number, number],
-    opacity: targetOpacity,
     config: HandLayout.ANIMATION.SPRING_CONFIG,
   });
 
@@ -63,7 +67,6 @@ const CardWrapper: React.FC<CardWrapperProps> = ({
         );
         if (isSelected) {
           onDeselect();
-          return;
         } else {
           onSelect(card);
         }
@@ -72,7 +75,7 @@ const CardWrapper: React.FC<CardWrapperProps> = ({
       <Card3D
         card={card}
         player={player}
-        opacity={spring.opacity as unknown as number}
+        isDimmed={isDimmed} // ✨ opacityの代わりにDimフラグを渡す
       />
     </animated.group>
   );
@@ -103,7 +106,8 @@ const Hand3D: React.FC<{ player: PlayerType }> = ({ player }) => {
         onSwipeRight={handlers.onSwipeRight}
         onClick={handlers.onAreaClick}
         facingFactor={layout.facingFactor}
-        enabled={!state.isInteractionLocked && state.isMyTurn}
+        // ✨ 操作ロックされていない限り、いつでもジェスチャー可能にする
+        enabled={!state.isInteractionLocked}
       />
 
       <animated.group position-x={layout.xPos}>

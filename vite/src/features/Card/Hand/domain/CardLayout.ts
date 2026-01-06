@@ -16,8 +16,6 @@ export const CardLayout = {
 		BORDER_THICKNESS: 0.09, // 0.06 * 1.5
 		get Z_SURFACE() {
 			// 表面のZ座標 (中心から厚みの半分 + オフセット)
-			// Original: 0.1 - 0.049 = 0.051
-			// New: 0.15 - 0.0735 = 0.0765
 			return 0.0765;
 		},
 	},
@@ -31,8 +29,9 @@ export const CardLayout = {
 		IMAGE: 0.007,
 		DESC_BG: 0.007,
 		COST_BG: 0.009,
-		TEXT: 0.02, // テキストは背景から少し浮かせる
-		OVERLAY: 0.1, // 最前面
+		TEXT: 0.01, // テキストは背景から少し浮かせる
+		OVERLAY: 0.02, // 最前面
+		DIM_OVERLAY: 0.021, // Dim用オーバーレイはさらに上
 	},
 
 	// --- 3) Helper for Z positioning ---
@@ -114,6 +113,20 @@ export const CardLayout = {
 			},
 		},
 
+		// 使用制限表示エリア (右下あたり)
+		USAGE_LIMIT: {
+			RADIUS: 0.15,
+			X_OFFSET: 0.285,
+			Y_OFFSET: 0.285,
+			get POSITION(): [number, number, number] {
+				return [
+					CardLayout.CARD_BASE.WIDTH / 2 - this.X_OFFSET,
+					-(CardLayout.CARD_BASE.HEIGHT / 2 - this.Y_OFFSET), // Costと対角(右下)
+					CardLayout.getZ(CardLayout.layers.COST_BG),
+				];
+			},
+		},
+
 		IMAGE: {
 			TOP_Y_OFFSET: 0.015,
 			IMAGE_PLANE_HEIGHT: 1.35, // 0.9 * 1.5
@@ -170,10 +183,24 @@ export const CardLayout = {
 		},
 
 		COOLDOWN: {
-			OPACITY: 0.6,
-			COLOR: "gray",
+			OPACITY: 0.85, // 凍結感のために少し不透明度を上げる
+			COLOR: "#aaddff", // 氷っぽい色
+			TEXTURE_SCALE: 1,
 			get POSITION(): [number, number, number] {
-				return [0, 0, CardLayout.getZ(CardLayout.layers.OVERLAY)];
+				// 少しZを上げて干渉を防ぐ
+				return [0, 0, CardLayout.getZ(CardLayout.layers.OVERLAY + 0.02)];
+			},
+			get SIZE(): [number, number] {
+				// カード全体を覆う
+				return [CardLayout.CARD_BASE.WIDTH, CardLayout.CARD_BASE.HEIGHT];
+			},
+		},
+
+		DIM_OVERLAY: {
+			COLOR: "black",
+			OPACITY: 0.3,
+			get POSITION(): [number, number, number] {
+				return [0, 0, CardLayout.getZ(CardLayout.layers.DIM_OVERLAY)];
 			},
 			get SIZE(): [number, number] {
 				return [CardLayout.CARD_BASE.WIDTH, CardLayout.CARD_BASE.HEIGHT];
@@ -183,7 +210,7 @@ export const CardLayout = {
 		TEXT: {
 			HEADER: {
 				FONT: "MPLUS1p-Bold.ttf",
-				FONT_SIZE: 0.21, // 0.14 * 1.5
+				FONT_SIZE: 0.21,
 				ANCHOR_X: "center" as const,
 				ANCHOR_Y: "middle" as const,
 				get POSITION(): [number, number, number] {
@@ -203,6 +230,15 @@ export const CardLayout = {
 					// Costエリアのpositionに依存
 					const [x, y, z] = CardLayout.AREAS.COST.POSITION;
 					return [x, y, z + 0.01]; // 少し浮かせる
+				},
+			},
+			USAGE_LIMIT: {
+				FONT: "MPLUS1p-Bold.ttf",
+				FONT_SIZE: 0.18,
+				COLOR: "white", // 背景色次第で変更
+				get POSITION(): [number, number, number] {
+					const [x, y, z] = CardLayout.AREAS.USAGE_LIMIT.POSITION;
+					return [x, y, z + 0.01];
 				},
 			},
 			DESC: {
@@ -230,11 +266,12 @@ export const CardLayout = {
 			COOLDOWN: {
 				FONT: "MPLUS1p-Bold.ttf",
 				FONT_SIZE: 0.75, // 0.5 * 1.5
-				COLOR: "white",
+				COLOR: "#004488", // 氷の上の濃い青
 				ANCHOR_X: "center" as const,
 				ANCHOR_Y: "middle" as const,
 				get POSITION(): [number, number, number] {
-					return [0, 0, CardLayout.getZ(CardLayout.layers.OVERLAY + 0.01)];
+					// オーバーレイよりさらに手前
+					return [0, 0, CardLayout.getZ(CardLayout.layers.OVERLAY + 0.03)];
 				},
 			},
 		},
@@ -244,6 +281,7 @@ export const CardLayout = {
 		BORDER: "#B8860B",
 		CARD_UI: DESIGN.COLORS.CARD_UI,
 		CARD_TYPES: DESIGN.COLORS.CARD_TYPES,
+		USAGE_LIMIT_BG: "#444", // 使用制限バッジの背景
 	},
 } as const;
 

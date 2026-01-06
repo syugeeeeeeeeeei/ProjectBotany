@@ -6,14 +6,14 @@ import { HandLayout } from "../domain/HandLayout";
 /**
  * 手札の表示・非表示（出し入れ）の状態とアニメーションを管理するフック
  */
-export const useToggleHand = (isMyTurn: boolean, isAnySelected: boolean) => {
+export const useToggleHand = (isAnySelected: boolean) => {
 	const [isVisible, setIsVisible] = useState(true);
 
-	// 1. ユーザーが明示的に「出し」ていて
-	// 2. 自分のターンで
-	// 3. かつ、カードを選択していない時だけ「Show」の位置にする
+	// 1. ユーザーが明示的に「出し」ていて (isVisible)
+	// 2. かつ、誰もカードを選択していない時だけ「Show」の位置にする
 	// 選択中は、手札の土台（親グループ）は自動的に「Hide」の位置（奥）へ移動させる
-	const effectiveIsVisible = isMyTurn && isVisible && !isAnySelected;
+	// ✨ 修正: 相手のターンでも自由にShow/Hide操作は可能にするため isMyTurn の条件を削除
+	const effectiveIsVisible = isVisible && !isAnySelected;
 
 	const { zPos } = useSpring({
 		zPos: effectiveIsVisible

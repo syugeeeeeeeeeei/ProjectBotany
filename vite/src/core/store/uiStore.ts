@@ -20,10 +20,10 @@ interface UIState {
   /** 選択中のカードID (インスタンスID) */
   selectedCardId: string | null;
 
-  /** ✨ 配置可能状態かどうか (1秒ホバー制限用) */
+  /** 配置可能状態かどうか (1秒ホバー制限用) */
   isHoverValid: boolean;
 
-  /** ✨ 通知スタック (最大3件) */
+  /** 通知スタック (最大3件) */
   notifications: NotificationItem[];
 
   /** カードプレビューモードかどうか */
@@ -42,13 +42,15 @@ interface UIActions {
   hoverCell: (cell: CellState | null) => void;
   selectCard: (cardId: string | null) => void;
 
-  /** ✨ 配置可能フラグを設定 */
+  /** 配置可能フラグを設定 */
   setHoverValid: (isValid: boolean) => void;
 
-  /** ✨ 通知を追加 */
+  /** 通知を追加 */
   pushNotification: (message: string, type?: NotificationItem["type"], player?: PlayerType) => void;
-  /** ✨ 通知を削除 */
+  /** 通知を削除 */
   removeNotification: (id: string) => void;
+  /** ✨ 全ての通知を削除 (ターン交代時用) */
+  clearNotifications: () => void;
 
   setCardPreview: (isPreview: boolean) => void;
   setInteractionLock: (isLocked: boolean) => void;
@@ -96,7 +98,7 @@ export const useUIStore = create(
         state.isHoverValid = isValid;
       }),
 
-    // ✨ 通知ロジック
+    // 通知ロジック
     pushNotification: (message, type = "info", player) =>
       set((state) => {
         const newItem: NotificationItem = {
@@ -113,6 +115,12 @@ export const useUIStore = create(
     removeNotification: (id) =>
       set((state) => {
         state.notifications = state.notifications.filter((n) => n.id !== id);
+      }),
+
+    // ✨ 全削除アクションの実装
+    clearNotifications: () =>
+      set((state) => {
+        state.notifications = [];
       }),
 
     setCardPreview: (isPreview) =>

@@ -65,6 +65,13 @@ export const playCardFeature: GameFeature = {
           });
         }
 
+        // ✨ 修正: 使用回数制限の更新
+        const newLimitedCardsUsedCount = { ...playerState.limitedCardsUsedCount };
+        if (cardDef.usageLimit !== undefined) {
+          const currentCount = newLimitedCardsUsedCount[cardDef.id] || 0;
+          newLimitedCardsUsedCount[cardDef.id] = currentCount + 1;
+        }
+
         const updatedPlayerState = {
           ...nextState.playerStates[activePlayerId],
           // AP消費
@@ -73,6 +80,8 @@ export const playCardFeature: GameFeature = {
           cardLibrary: playerState.cardLibrary,
           // クールダウン適用
           cooldownActiveCards: newCooldowns,
+          // ✨ 使用回数更新を適用
+          limitedCardsUsedCount: newLimitedCardsUsedCount,
         };
 
         const finalState = {

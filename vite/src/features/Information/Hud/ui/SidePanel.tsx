@@ -8,6 +8,10 @@ const LAYOUT = {
   OFFSET: "0px",
 };
 
+// 内部コンテンツの最小幅（WIDTH_OPEN - padding左右）
+// これを設定することで、パネルが広がる途中でも中身が折り返されずに表示される
+const MIN_CONTENT_WIDTH = "240px";
+
 type PanelPosition = "left" | "right";
 
 const PanelContainer = styled.div<{
@@ -39,18 +43,34 @@ const PanelContainer = styled.div<{
         `}
 `;
 
-const PanelContent = styled.div<{ $position: PanelPosition; $isOpen: boolean }>`
+const PanelContent = styled.div<{
+  $position: PanelPosition;
+  $isOpen: boolean;
+  $isActive?: boolean;
+  $accentColor?: string;
+}>`
   pointer-events: auto;
   background: rgba(20, 20, 20, 0.85);
   backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+
+  /* デフォルトのボーダーまたはアクティブ時のボーダー */
+  border: 1px solid
+    ${({ $isActive, $accentColor }) =>
+      $isActive && $accentColor ? $accentColor : "rgba(255, 255, 255, 0.1)"};
+
   border-radius: ${({ $position }) =>
     $position === "left" ? "0 12px 12px 0" : "12px 0 0 12px"};
   padding: 10px;
   display: flex;
   flex-direction: column;
   gap: 10px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+
+  /* アクティブ時は発光効果を追加、非アクティブ時は通常の影のみ */
+  box-shadow: ${({ $isActive, $accentColor }) =>
+    $isActive && $accentColor
+      ? `0 0 15px ${$accentColor}66, 0 8px 32px rgba(0, 0, 0, 0.5)`
+      : "0 8px 32px rgba(0, 0, 0, 0.5)"};
+
   overflow: hidden;
   transition: all 0.3s ease;
 
@@ -60,6 +80,17 @@ const PanelContent = styled.div<{ $position: PanelPosition; $isOpen: boolean }>`
     css`
       align-items: center;
       padding: 15px 5px;
+    `}
+`;
+
+// アニメーション中のレイアウト崩れを防ぐラッパー
+const InnerContentWrapper = styled.div<{ $isOpen: boolean }>`
+  width: 100%;
+  /* 開いている時は、コンテナが伸びている途中でも中身の幅を確保する */
+  ${({ $isOpen }) =>
+    $isOpen &&
+    css`
+      min-width: ${MIN_CONTENT_WIDTH};
     `}
 `;
 
@@ -84,10 +115,17 @@ const ToggleButton = styled.button`
 
 interface SidePanelProps {
   position: PanelPosition;
+  isActive?: boolean; // 手番かどうか
+  accentColor?: string; // 強調色
   children: (isOpen: boolean) => React.ReactNode; // Render prop pattern
 }
 
-export const SidePanel: React.FC<SidePanelProps> = ({ position, children }) => {
+export const SidePanel: React.FC<SidePanelProps> = ({
+  position,
+  isActive,
+  accentColor,
+  children,
+}) => {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
@@ -96,7 +134,12 @@ export const SidePanel: React.FC<SidePanelProps> = ({ position, children }) => {
         className="content-rotator"
         style={{ width: "100%", height: "100%" }}
       >
-        <PanelContent $position={position} $isOpen={isOpen}>
+        <PanelContent
+          $position={position}
+          $isOpen={isOpen}
+          $isActive={isActive}
+          $accentColor={accentColor}
+        >
           <ToggleButton onClick={() => setIsOpen(!isOpen)}>
             {isOpen
               ? position === "left"
@@ -106,7 +149,9 @@ export const SidePanel: React.FC<SidePanelProps> = ({ position, children }) => {
                 ? "MENU >"
                 : "< MENU"}
           </ToggleButton>
-          {children(isOpen)}
+          <InnerContentWrapper $isOpen={isOpen}>
+            {children(isOpen)}
+          </InnerContentWrapper>
         </PanelContent>
       </div>
     </PanelContainer>

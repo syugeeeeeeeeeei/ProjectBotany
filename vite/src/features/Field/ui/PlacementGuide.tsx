@@ -23,36 +23,57 @@ export const PlacementGuide: React.FC = () => {
     <group name="guide-layer">
       {/* 1. 全マスガイド (置ける/置けないの一覧) */}
       {allCellGuides.map((guide, idx) => {
-        const color = guide.isValid ? "#00FFFF" : "#FF0000"; // 水色 or 赤
+        // 配置不可なら「鮮やかな赤」で「高不透明度」
+        const color = guide.isValid ? "#00FFFF" : "#FF3333";
+        const opacity = guide.isValid ? 0.5 : 0.5; // 不透明度アップ (0.2 -> 0.6)
         const position = getPosition(guide.x, guide.y, 0.02);
 
         return (
           <group key={`base-guide-${idx}`} position={position}>
             {guide.isValid ? (
+              // 配置可能: 薄いリング
               <mesh rotation={[-Math.PI / 2, 0, 0]} raycast={() => null}>
                 <ringGeometry
                   args={[0.4, 0.45, 4]}
-                  // rotation={[0, 0, Math.PI / 4]}
                   rotateX={0}
                   rotateY={0}
                   rotateZ={Math.PI / 4}
                 />
                 <meshBasicMaterial
                   color={color}
-                  opacity={0.3}
+                  opacity={opacity}
                   transparent
                   side={DoubleSide}
                 />
               </mesh>
             ) : (
+              // 配置不可: 明確なバツ印 (X)
               <group>
+                {/* 右下がり斜線 */}
                 <mesh
                   rotation={[-Math.PI / 2, 0, Math.PI / 4]}
                   position={[0, 0, 0]}
                   raycast={() => null}
                 >
-                  <planeGeometry args={[0.6, 0.05]} />
-                  <meshBasicMaterial color={color} opacity={0.2} transparent />
+                  <planeGeometry args={[0.7, 0.08]} />
+                  <meshBasicMaterial
+                    color={color}
+                    opacity={opacity}
+                    transparent
+                  />
+                </mesh>
+                {/* 左下がり斜線 (追加) */}
+                <mesh
+                  rotation={[-Math.PI / 2, 0, -Math.PI / 4]}
+                  position={[0, 0, 0]}
+                  raycast={() => null}
+                >
+                  <planeGeometry args={[0.7, 0.08]} />
+                  <meshBasicMaterial
+                    color={color}
+                    opacity={opacity}
+                    transparent
+                  />
                 </mesh>
               </group>
             )}
@@ -63,8 +84,7 @@ export const PlacementGuide: React.FC = () => {
       {/* 2. 効果範囲ハイライト (ホバー時のみ) */}
       {effectRange.map((p, idx) => {
         const position = getPosition(p.x, p.y, 0.03);
-        // 配置可能(isHoverValid)になったらハイライトも少し強調する
-        const highlightOpacity = isHoverValid ? 0.4 : 0.2;
+        const highlightOpacity = isHoverValid ? 0.7 : 0.3; // 少し強調
 
         return (
           <group key={`effect-range-${idx}`} position={position}>
@@ -96,7 +116,7 @@ export const PlacementGuide: React.FC = () => {
             y={previewPosition.y}
             status="seed"
             isPreview={true}
-            isReady={isHoverValid} // ✨ 状態を渡す
+            isReady={isHoverValid}
           />
         </group>
       )}

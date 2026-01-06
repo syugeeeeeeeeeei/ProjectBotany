@@ -12,17 +12,24 @@ export const RoundSystem = {
     const { currentRound, playerStates, gameField } = gameState;
     const nextRound = currentRound + 1;
 
-    // APのリセットと上限更新
+    // APのリセットと上限更新、およびクールダウンの更新
     const newPlayerStates = { ...playerStates };
     Object.keys(newPlayerStates).forEach((key) => {
       const playerId = key as keyof typeof playerStates;
       const player = newPlayerStates[playerId];
       const newMaxAp = Math.min(nextRound, gameState.maximumRounds);
 
+      // ✨ 修正: クールダウンの更新処理を追加
+      // 残りラウンド数を1減らし、0以下のものを除去する
+      const updatedCooldowns = player.cooldownActiveCards
+        .map((c) => ({ ...c, roundsRemaining: c.roundsRemaining - 1 }))
+        .filter((c) => c.roundsRemaining > 0);
+
       newPlayerStates[playerId] = {
         ...player,
         maxEnvironment: newMaxAp,
         currentEnvironment: newMaxAp,
+        cooldownActiveCards: updatedCooldowns, // 更新されたクールダウンリストを適用
       };
     });
 

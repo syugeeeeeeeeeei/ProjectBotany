@@ -52,7 +52,7 @@ export const cardMasterData: CardDefinition[] = [
   },
   {
     id: "alien-4",
-    name: "ミズバショウ（外来）",
+    name: "ミズバショウ",
     description:
       "【拡散】周囲1マス\n【反撃】なし\n\n大きな葉で光を遮り、広範囲の在来種を衰退させる。拡散範囲が広い。",
     cost: 3,

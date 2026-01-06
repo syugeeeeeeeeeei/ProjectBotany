@@ -41,17 +41,16 @@ export const useHandLogic = (player: PlayerType) => {
 		[cards, selectedCardId]
 	);
 
-	/** ✨ ターン終了時の自動解除（バグ修正） */
+	/** ✨ ターン終了時の自動解除 */
 	useEffect(() => {
-		// 自分のターンではなくなり、かつ「自分のカード」が選択されたままなら解除する
-		// これにより、相手側のインスタンスが自分の選択を消してしまうのを防ぐ
 		if (!isMyTurn && isMyCardSelected) {
 			console.log(`[UI] 🔄 Turn Ended for ${player}: Deselecting my card.`);
 			selectionActions.deselect();
 		}
 	}, [isMyTurn, isMyCardSelected, selectionActions, player]);
 
-	const { state: toggleState, animation: toggleAnim, actions: toggleActions } = useToggleHand(isMyTurn, isAnySelected);
+	// ✨ isMyTurnを渡さず、相手ターンでも操作可能にする
+	const { state: toggleState, animation: toggleAnim, actions: toggleActions } = useToggleHand(isAnySelected);
 
 	const maxPage = Math.max(0, Math.ceil(cards.length / HandLayout.CARDS_PER_PAGE) - 1);
 	const pageWidth = HandLayout.PAGE_WIDTH;
@@ -74,11 +73,22 @@ export const useHandLogic = (player: PlayerType) => {
 		onCardSelect: useCallback((card: CardWithInstanceId) => {
 			if (isInteractionLocked || !isMyTurn) return;
 
+			// クールダウンチェック
 			const isCooldown = playerState?.cooldownActiveCards.some(c => c.cardId === card.instanceId);
 			if (isCooldown) {
 				gameActions.ui.notify({ message: "クールダウン中です", player });
 				return;
 			}
+
+			// ✨ 使用回数チェック
+			if (card.usageLimit !== undefined) {
+				const usedCount = playerState?.limitedCardsUsedCount?.[card.id] ?? 0;
+				if (usedCount >= card.usageLimit) {
+					gameActions.ui.notify({ message: "使用回数制限に達しています", player });
+					return;
+				}
+			}
+
 			selectionActions.select(card.instanceId);
 		}, [isInteractionLocked, isMyTurn, playerState, player, selectionActions]),
 

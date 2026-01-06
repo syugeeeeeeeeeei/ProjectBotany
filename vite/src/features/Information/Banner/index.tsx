@@ -1,5 +1,5 @@
 import { GameFeature } from "@/core/types/architecture";
-import { BannerManager } from "./ui/BannerManger";
+import { BannerManager } from "./ui/BannerManager";
 
 export const bannerFeature: GameFeature = {
   key: "info-banner",
