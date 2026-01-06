@@ -3,8 +3,8 @@ import { useMemo, useState, useEffect } from "react";
 import type { ThreeEvent } from "@react-three/fiber";
 import { useGameQuery } from "@/core/api/queries";
 import { gameActions } from "@/core/api/actions";
-import type { CardDefinition, PlayerType } from "@/shared/types"; // 修正
-import { CardColors } from "../domain/CardLayout"; // ファイル名ケース修正 (CardLayout -> cardLayout)
+import type { CardDefinition, PlayerType } from "@/shared/types";
+import { CardColors } from "../domain/CardLayout";
 
 type UseCardLogicProps = {
 	card: CardDefinition & { instanceId: string };
@@ -63,14 +63,16 @@ export const useCardLogic = ({
 		e.stopPropagation();
 
 		if (!isMyTurn) {
-			gameActions.ui.notify("相手のターンです", player);
+			// 修正: オブジェクト形式で渡す
+			gameActions.ui.notify({ message: "相手のターンです", player });
 			return;
 		}
 		if (isCooldown) {
-			gameActions.ui.notify(
-				`このカードはあと${cooldownInfo?.roundsRemaining}ラウンド使用できません。`,
+			// 修正: オブジェクト形式で渡す
+			gameActions.ui.notify({
+				message: `このカードはあと${cooldownInfo?.roundsRemaining}ラウンド使用できません。`,
 				player,
-			);
+			});
 			return;
 		}
 

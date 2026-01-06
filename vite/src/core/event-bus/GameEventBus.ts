@@ -8,22 +8,17 @@ import { CoreEventMap } from "@/core/types/events";
  * アプリケーション全体をつなぐ神経網
  */
 export class GameEventBus {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  private emitter: Emitter<any>;
+  private emitter: Emitter<CoreEventMap>;
 
   constructor() {
-    // CoreEventMapはインデックスシグネチャを持たないため、
-    // mittの厳密な型定義(Record<string, unknown>)と競合する場合がある。
-    // そのため、ここでは any でインスタンス化し、メソッド側で型安全性を担保する。
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    this.emitter = mitt<any>();
+    this.emitter = mitt<CoreEventMap>();
   }
 
   /**
    * イベントを発行する
+   * ジェネリクスにより、CoreEventMapで定義された正しいペイロードのみを受け付ける
    */
   emit<K extends keyof CoreEventMap>(key: K, payload: CoreEventMap[K]): void {
-    // 開発時のデバッグログ (必要に応じてフィルタリング)
     if (import.meta.env.DEV) {
       console.debug(`[EventBus] emit: ${key}`, payload);
     }

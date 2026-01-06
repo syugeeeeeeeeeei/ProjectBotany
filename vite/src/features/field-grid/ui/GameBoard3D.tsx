@@ -17,14 +17,15 @@ const Cell: React.FC<{ cell: CellState }> = ({ cell }) => {
   );
 
   const getCellColor = () => {
-    switch (cell.cellType) {
-      case "native_area":
+    // 修正: cell.type を参照し、定義済みの値と比較
+    switch (cell.type) {
+      case "native":
         return DESIGN.COLORS.NATIVE_AREA;
-      case "alien_area":
+      case "alien":
         return DESIGN.COLORS.ALIEN_INVASION;
-      case "pioneer_vegetation_area":
+      case "pioneer":
         return DESIGN.COLORS.RECOVERY_PENDING;
-      case "bare_ground_area":
+      case "bare":
         return DESIGN.COLORS.EMPTY;
       default:
         return DESIGN.COLORS.DEFAULT_CELL;
@@ -39,6 +40,7 @@ const Cell: React.FC<{ cell: CellState }> = ({ cell }) => {
 
   const handleClick = (e: ThreeEvent<MouseEvent>) => {
     e.stopPropagation();
+    // 修正: CELL_CLICKイベント定義済みのためエラー解消
     gameEventBus.emit("CELL_CLICK", { cell });
   };
 
@@ -73,7 +75,6 @@ const Cell: React.FC<{ cell: CellState }> = ({ cell }) => {
 };
 
 const AlienToken: React.FC<{ x: number; y: number }> = ({ x, y }) => {
-  // Fixed: id removed
   const posX = (x - (7 - 1) / 2) * DESIGN.BOARD.CELL_GAP;
   const posZ = (y - (10 - 1) / 2) * DESIGN.BOARD.CELL_GAP;
 

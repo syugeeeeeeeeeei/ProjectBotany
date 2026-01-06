@@ -1,6 +1,6 @@
-// vite/src/features/alien-expansion/index.ts
+// vite/src/features/alien-expansion/index.tsx
 import { GameFeature } from "@/core/types/architecture";
-import { gameEventBus } from "@/core/event-bus/GameEventBus"; // インスタンス
+import { gameEventBus } from "@/core/event-bus/GameEventBus";
 import { useGameStore } from "@/core/store/gameStore";
 import { gameActions } from "@/core/api/actions";
 import { processAlienExpansion } from "./logic";
@@ -18,11 +18,13 @@ export const alienExpansionFeature: GameFeature = {
       }
     };
 
-    // 修正: gameEventBus インスタンスを使用
     gameEventBus.on("ROUND_END", handleRoundEnd);
 
     return () => {
       gameEventBus.off("ROUND_END", handleRoundEnd);
     };
   },
+
+  // UIを持たないFeatureは常にnullを返す
+  renderUI: () => null,
 };

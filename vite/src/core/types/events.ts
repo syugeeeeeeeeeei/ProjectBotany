@@ -1,14 +1,14 @@
 // vite/src/core/types/events.ts
 
 import { PlayerId } from "@/shared/types/primitives";
-import { GameState } from "@/shared/types/game-schema";
+import { GameState, CellState } from "@/shared/types/game-schema";
 
 /**
  * ゲーム内で発生するイベントのマップ定義
  * key: イベント名
  * value: イベントのペイロード（引数）の型
  */
-export interface CoreEventMap {
+export type CoreEventMap = {
   // システム系
   GAME_INIT: void;
 
@@ -26,6 +26,9 @@ export interface CoreEventMap {
   PLAYER_ACTION_START: { playerId: PlayerId };
   PLAYER_ACTION_END: { playerId: PlayerId };
 
-  // UI系 (オーバーレイ表示など)
+  // UI系
   REQUEST_TOAST: { message: string; type: "info" | "error" | "success" };
-}
+
+  // 盤面操作
+  CELL_CLICK: { cell: CellState };
+};
