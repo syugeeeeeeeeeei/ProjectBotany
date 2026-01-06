@@ -6,7 +6,7 @@ import { useGameStore } from "../store/gameStore";
 
 export const RoundSystem = {
   /**
-   * ラウンド開始処理: APの回復や植生遷移を行う
+   * ラウンド開始処理
    */
   startRound(gameState: GameState): GameState {
     const { currentRound, playerStates, gameField } = gameState;
@@ -26,7 +26,7 @@ export const RoundSystem = {
       };
     });
 
-    // 植生遷移: 先駆植生(pioneer) -> 在来種(native)
+    // 植生遷移
     const newCells: CellState[] = [];
     for (let y = 0; y < gameField.height; y++) {
       for (let x = 0; x < gameField.width; x++) {
@@ -46,26 +46,29 @@ export const RoundSystem = {
       ...gameState,
       currentRound: nextRound,
       currentPhase: "start",
-      activePlayerId: "alien", // 新しいラウンドは外来種から
+      activePlayerId: "alien",
       playerStates: newPlayerStates,
       gameField: newField,
     };
   },
 
   /**
-   * ラウンド終了時の処理を実行し、自動的に次のラウンドを開始する
+   * ラウンド終了時の処理
    */
   endRoundProcess(gameState: GameState): void {
     console.log(`🏁 Ending Round ${gameState.currentRound}...`);
 
-    // 1. ラウンド終了イベント発行（Featureが拡散・成長を実行する）
+    // 1. ラウンド終了イベント発行
+    // この中で Feature (Growth/Expansion) が Store を更新する
     gameEventBus.emit("ROUND_END", { round: gameState.currentRound });
 
-    // 2. 次のラウンドへ自動遷移
-    // 拡散処理などが同期的に終わる前提で、次のラウンドのステートを計算
-    const nextRoundState = this.startRound(gameState);
+    // 2. 重要：Featureによって更新された「最新のステート」を取得し直す
+    const latestState = useGameStore.getState();
 
-    // 3. ストアを更新
+    // 3. 最新のステートを元に次のラウンドを計算
+    const nextRoundState = this.startRound(latestState);
+
+    // 4. ストアを更新
     useGameStore.getState().setState(nextRoundState);
     console.log(`⏭️ Transitioned to Round ${nextRoundState.currentRound}`);
   },

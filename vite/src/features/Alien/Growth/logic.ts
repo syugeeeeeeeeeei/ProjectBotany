@@ -1,14 +1,12 @@
-// vite/src/features/alien-growth/logic.ts
+// vite/src/features/Alien/Growth/logic.ts
 import { GameState } from "@/shared/types/game-schema";
 
 /**
  * 外来種の成長処理
  * * 【修正後のロジック】
- * - currentRound 未満の spawnedRound を持つ種のみを成長させる。
- * - 外来種ターン(R1)に置かれた種：
- * 在来種ターン終了時の ROUND_END 発火時点ではまだ currentRound は 1 のまま。
- * したがって、この判定では「次のラウンドの開始時」に成長させる必要がある。
- * * 猶予を「1手番分」にするため、RoundSystem側でラウンドを進める直前に判定を行います。
+ * - ROUND_END イベント（ラウンド終了直前）で実行される。
+ * - 判定条件を spawnedRound <= currentRound に変更。
+ * - これにより、外来種がそのラウンドにまいた種は、在来種のターンを経た後のラウンド終了時に成長する。
  */
 export const processAlienGrowth = (gameState: GameState): GameState => {
 	const { alienInstances, currentRound } = gameState;
@@ -19,9 +17,9 @@ export const processAlienGrowth = (gameState: GameState): GameState => {
 	console.group("[Feature: Alien Growth] Processing...");
 
 	Object.values(newAlienInstances).forEach((instance) => {
-		// 判定: 「種」であり、かつ「現在のラウンドより前に配置された」もの
-		// 在来種ターンの反撃で置かれた種(R1)は、R2の終了時まで成長しません。
-		if (instance.status === "seed" && instance.spawnedRound < currentRound) {
+		// 判定: 「種」であり、かつ「現在のラウンド以前に配置された」もの
+		// これにより、R1に置かれた種は R1の終了時（ROUND_END）に成長します。
+		if (instance.status === "seed" && instance.spawnedRound <= currentRound) {
 			newAlienInstances[instance.instanceId] = {
 				...instance,
 				status: "plant",
@@ -29,7 +27,7 @@ export const processAlienGrowth = (gameState: GameState): GameState => {
 			hasChanges = true;
 			grownCount++;
 
-			console.log(`[Growth] 🌱 Seed (Spawned R${instance.spawnedRound}) matured at End of R${currentRound - 1}`);
+			console.log(`[Growth] 🌱 Seed (Spawned R${instance.spawnedRound}) matured at the end of Round ${currentRound}`);
 		}
 	});
 
