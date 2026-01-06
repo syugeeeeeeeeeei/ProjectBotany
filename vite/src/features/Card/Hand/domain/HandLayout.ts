@@ -24,17 +24,19 @@ export const HandLayout = {
 	CARD: {
 		// SCALE: 1.5 は削除 (物理サイズ自体を大きくしたため)
 		ROTATION: {
-			X: (facingFactor: number) => (Math.PI / 2.2) * -facingFactor,
-			Y: (facingFactor: number) => ((1 - facingFactor) / 2) * Math.PI,
+			// 見た目の反転は Hand3D 側の親 group で 180° 回転させるため、
+			// ここでは facingFactor を受け取らない「純粋な向き」に固定する
+			X: -(Math.PI / 2.2),
+			Y: 0,
 			Z: 0,
 		},
 	},
 
 	GESTURE: {
-		PLANE_PADDING_X: 1, // 4 * 1.5
-		PLANE_HEIGHT: 5,    // 4 * 1.5
+		PLANE_PADDING_X: 1,
+		PLANE_HEIGHT: 4.5,
 		ROTATION: { X: -Math.PI / 2, Y: 0, Z: 0 },
-		POSITION: { X: 0, Y: -0.3, Z: -0.225 }, // -0.2 * 1.5, -0.15 * 1.5
+		POSITION: { X: 0, Y: -0.3, Z: -0.225 },
 		MATERIAL: { OPACITY: 0, DEPTH_WRITE: false },
 	},
 
@@ -52,12 +54,13 @@ export const HandLayout = {
 		);
 	},
 
-	calcCardXLocal(index: number, facingFactor: number) {
+	// facingFactor を受け取らない「純粋な」ローカルX
+	calcCardXLocal(index: number) {
 		const pageWidth = this.PAGE_WIDTH;
 		const cardWidth = CardLayout.CARD_BASE.WIDTH;
 		const gap = this.CARD_GAP_X;
 		const x = -pageWidth / 2 + index * (cardWidth + gap) + cardWidth / 2;
-		return x * facingFactor;
+		return x;
 	},
 
 	calcTargetOpacity(params: {
@@ -66,35 +69,36 @@ export const HandLayout = {
 		isSelected: boolean;
 	}) {
 		const { isVisible, isAnySelected, isSelected } = params;
-		const dim = this.ANIMATION.OPACITY_DIM;
 
-		if (isSelected) return 1;
-		if (!isVisible) return dim;
+		if (!isVisible) return 0.6;
 		if (!isAnySelected) return 1;
-		return dim;
+		return isSelected ? 1 : this.ANIMATION.OPACITY_DIM;
 	},
 
+	// facingFactor を受け取らない（親groupの180°回転で反転させる）
 	calcTargetZ(params: {
 		isSelected: boolean;
 		isAnySelected: boolean;
 		isVisible: boolean;
-		facingFactor: number;
 	}) {
-		const { isSelected, isAnySelected, isVisible, facingFactor } = params;
+		const { isSelected, isAnySelected, isVisible } = params;
 
+		// 選択されている
 		if (isSelected) {
 			if (isVisible) {
-				return facingFactor * this.ANIMATION.Z_SELECTED;
+				// Show状態
+				return this.ANIMATION.Z_SELECTED;
 			} else {
+				// Hide状態
 				const showBaseLine = (this.POSITION.Z.HIDDEN - this.POSITION.Z.VISIBLE);
-				return facingFactor * this.ANIMATION.Z_SELECTED - showBaseLine;
+				return this.ANIMATION.Z_SELECTED - showBaseLine;
 			}
 		}
-
+		// 選択されていない
 		if (!isVisible) return 0;
 
 		if (isAnySelected) {
-			return facingFactor * (this.POSITION.Z.HIDDEN - this.POSITION.Z.VISIBLE);
+			return this.POSITION.Z.HIDDEN - this.POSITION.Z.VISIBLE;
 		}
 
 		return 0;
@@ -107,12 +111,9 @@ export const HandLayout = {
 		] as const;
 	},
 
-	calcPageOffsetX(params: {
-		pageIndex: number;
-		pageWidth: number;
-		facingFactor: number;
-	}) {
-		const { pageIndex, pageWidth, facingFactor } = params;
-		return pageIndex * (pageWidth + this.PAGE_GAP_X) * facingFactor;
+	// facingFactor を受け取らない（親groupの180°回転で反転）
+	calcPageOffsetX(params: { pageIndex: number; pageWidth: number }) {
+		const { pageIndex, pageWidth } = params;
+		return pageIndex * (pageWidth + this.PAGE_GAP_X);
 	},
 } as const;

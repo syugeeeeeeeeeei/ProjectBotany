@@ -1,8 +1,6 @@
 // vite/src/features/card-hand/hooks/useCardLogic.ts
 import { useMemo, useState, useEffect } from "react";
-import type { ThreeEvent } from "@react-three/fiber";
 import { useGameQuery } from "@/core/api/queries";
-import { gameActions } from "@/core/api/actions";
 import type { CardDefinition, PlayerType } from "@/shared/types";
 import { CardColors } from "../domain/CardLayout";
 
@@ -17,6 +15,7 @@ export type UseCardLogicResult = {
 		isSelected: boolean;
 		isPlayable: boolean;
 		isCooldown: boolean;
+		isMyTurn: boolean;
 	};
 	data: {
 		textureUrl: string;
@@ -25,28 +24,20 @@ export type UseCardLogicResult = {
 		cooldownRounds?: number;
 	};
 	handlers: {
-		onClick: (e: ThreeEvent<MouseEvent>) => void;
-		onPointerEnter: (e: ThreeEvent<PointerEvent>) => void;
-		onPointerLeave: (e: ThreeEvent<PointerEvent>) => void;
+		setIsHovered: (isHovered: boolean) => void;
 	};
 };
 
-export const useCardLogic = ({
-	card,
-	player,
-}: UseCardLogicProps): UseCardLogicResult => {
+export const useCardLogic = ({ card, player }: UseCardLogicProps): UseCardLogicResult => {
 	const [isHovered, setIsHovered] = useState(false);
-	const [textureUrl, setTextureUrl] = useState<string>(
-		"https://placehold.co/256x160/ccc/999?text=Loading",
-	);
+	const [textureUrl, setTextureUrl] = useState<string>("https://placehold.co/256x160/ccc/999?text=Loading");
 
 	const selectedCardId = useGameQuery.ui.useSelectedCardId();
 	const activePlayerId = useGameQuery.useActivePlayer();
 	const playerState = useGameQuery.usePlayer(player);
 
-	const cooldownInfo = playerState?.cooldownActiveCards.find(
-		(c) => c.cardId === card.instanceId,
-	);
+	// クールダウン情報の取得
+	const cooldownInfo = playerState?.cooldownActiveCards.find((c) => c.cardId === card.instanceId);
 	const isCooldown = !!cooldownInfo;
 	const isSelected = selectedCardId === card.instanceId;
 	const isMyTurn = activePlayerId === player;
@@ -59,54 +50,12 @@ export const useCardLogic = ({
 		img.onload = () => setTextureUrl(card.imagePath);
 	}, [card.imagePath]);
 
-	const handleClick = (e: ThreeEvent<MouseEvent>) => {
-		e.stopPropagation();
-
-		console.log(`[UI] 👆 Card Clicked: ${card.name} (ID: ${card.instanceId})`);
-
-		if (!isMyTurn) {
-			console.warn("[UI] 🚫 Action Denied: Not your turn.");
-			gameActions.ui.notify({ message: "相手のターンです", player });
-			return;
-		}
-		if (isCooldown) {
-			console.warn(`[UI] ⏳ Action Denied: Cooldown active (${cooldownInfo?.roundsRemaining} turns left).`);
-			gameActions.ui.notify({
-				message: `このカードはあと${cooldownInfo?.roundsRemaining}ラウンド使用できません。`,
-				player,
-			});
-			return;
-		}
-
-		if (isSelected) {
-			console.log("[UI] Card Deselected");
-			gameActions.ui.deselectCard();
-		} else {
-			console.log("[UI] Card Selected");
-			gameActions.ui.selectCard(card.instanceId);
-		}
-	};
-
-	const handlePointerEnter = (e: ThreeEvent<PointerEvent>) => {
-		e.stopPropagation();
-		if (isPlayable) setIsHovered(true);
-	};
-
-	const handlePointerLeave = (e: ThreeEvent<PointerEvent>) => {
-		e.stopPropagation();
-		setIsHovered(false);
-	};
-
 	const headerColor = useMemo(() => {
 		switch (card.cardType) {
-			case "alien":
-				return CardColors.CARD_TYPES.ALIEN;
-			case "eradication":
-				return CardColors.CARD_TYPES.ERADICATION;
-			case "recovery":
-				return CardColors.CARD_TYPES.RECOVERY;
-			default:
-				return CardColors.CARD_TYPES.DEFAULT;
+			case "alien": return CardColors.CARD_TYPES.ALIEN;
+			case "eradication": return CardColors.CARD_TYPES.ERADICATION;
+			case "recovery": return CardColors.CARD_TYPES.RECOVERY;
+			default: return CardColors.CARD_TYPES.DEFAULT;
 		}
 	}, [card.cardType]);
 
@@ -117,7 +66,7 @@ export const useCardLogic = ({
 			: CardColors.CARD_UI.BORDER_DEFAULT;
 
 	return {
-		state: { isHovered, isSelected, isPlayable, isCooldown },
+		state: { isHovered, isSelected, isPlayable, isCooldown, isMyTurn },
 		data: {
 			textureUrl,
 			headerColor,
@@ -125,9 +74,7 @@ export const useCardLogic = ({
 			cooldownRounds: cooldownInfo?.roundsRemaining,
 		},
 		handlers: {
-			onClick: handleClick,
-			onPointerEnter: handlePointerEnter,
-			onPointerLeave: handlePointerLeave,
+			setIsHovered,
 		},
 	};
 };

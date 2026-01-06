@@ -1,126 +1,84 @@
 // vite/src/features/card-hand/hooks/useHandLogic.ts
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import { useSpring } from "@react-spring/three";
-import { useGesture } from "@use-gesture/react";
 import { useGameQuery } from "@/core/api/queries";
 import { gameActions } from "@/core/api/actions";
-import type { PlayerType, CardDefinition } from "@/shared/types"; // 修正
-import { cardMasterData } from "@/shared/data/cardMasterData"; // 修正: Named Import
+import type { PlayerType, CardDefinition } from "@/shared/types";
+import { cardMasterData } from "@/shared/data/cardMasterData";
 import { HandLayout } from "../domain/HandLayout";
+import { useToggleHand } from "./useToggleHand";
+import { useCardSelected } from "./useCardSelected";
 
 type CardWithInstanceId = CardDefinition & { instanceId: string };
 
 export const useHandLogic = (player: PlayerType) => {
 	const playerState = useGameQuery.usePlayer(player);
 	const activePlayerId = useGameQuery.useActivePlayer();
-
-	const selectedCardId = useGameQuery.ui.useSelectedCardId();
 	const isInteractionLocked = useGameQuery.ui.useIsInteractionLocked();
 
 	const [currentPage, setCurrentPage] = useState(0);
-	const [isVisible, setIsVisible] = useState(true);
 
 	const facingFactor = playerState?.facingFactor ?? 1;
 	const isMyTurn = activePlayerId === player;
 
-	const effectiveIsVisible = isMyTurn && isVisible;
+	const { selectedCardId, isAnySelected, actions: selectionActions } = useCardSelected();
+
+	// ターン終了時に解除
+	useEffect(() => {
+		if (!isMyTurn && isAnySelected) {
+			selectionActions.deselect();
+		}
+	}, [isMyTurn, isAnySelected, selectionActions]);
+
+	const { state: toggleState, animation: toggleAnim, actions: toggleActions } = useToggleHand(isMyTurn, isAnySelected);
 
 	const cards = useMemo(() => {
-		if (!playerState) return [];
-		return playerState.cardLibrary
-			.map((inst: { cardDefinitionId: string; instanceId: string }) => {
-				const def = cardMasterData.find((c) => c.id === inst.cardDefinitionId);
-				return def ? { ...def, instanceId: inst.instanceId } : null;
+		const definitions = playerState?.cardLibrary ?? [];
+		return definitions
+			.map((c) => {
+				const def = cardMasterData.find((m) => m.id === c.cardDefinitionId);
+				if (!def) return null;
+				return { ...def, instanceId: c.instanceId } as CardWithInstanceId;
 			})
-			.filter((c: CardWithInstanceId | null): c is CardWithInstanceId => c !== null);
-	}, [playerState]);
+			.filter(Boolean) as CardWithInstanceId[];
+	}, [playerState?.cardLibrary]);
 
-	const isMyCardSelected = useMemo(() => {
-		if (!selectedCardId) return false;
-		return cards.some((c: CardWithInstanceId) => c.instanceId === selectedCardId);
-	}, [cards, selectedCardId]);
-
-	const maxPage = Math.max(
-		0,
-		Math.ceil(cards.length / HandLayout.CARDS_PER_PAGE) - 1,
-	);
-
+	const maxPage = Math.max(0, Math.ceil(cards.length / HandLayout.CARDS_PER_PAGE) - 1);
 	const pageWidth = HandLayout.PAGE_WIDTH;
 
 	const { xPos } = useSpring({
-		xPos: -currentPage * (pageWidth + HandLayout.PAGE_GAP_X) * facingFactor,
+		xPos: -currentPage * (pageWidth + HandLayout.PAGE_GAP_X),
 		config: HandLayout.ANIMATION.SPRING_CONFIG,
 	});
 
-	const { zPos } = useSpring({
-		zPos: effectiveIsVisible
-			? HandLayout.POSITION.Z.VISIBLE
-			: HandLayout.POSITION.Z.HIDDEN,
-		config: HandLayout.ANIMATION.SPRING_CONFIG,
-	});
+	const handlers = {
+		onSwipeUp: useCallback(() => toggleActions.show(), [toggleActions]),
+		onSwipeDown: useCallback(() => toggleActions.hide(), [toggleActions]),
+		onSwipeLeft: useCallback(() => setCurrentPage((p) => Math.min(maxPage, p + 1)), [maxPage]),
+		onSwipeRight: useCallback(() => setCurrentPage((p) => Math.max(0, p - 1)), []),
+		onAreaClick: useCallback(() => isAnySelected && selectionActions.deselect(), [isAnySelected, selectionActions]),
 
-	const bindGesture = useGesture(
-		{
-			onDrag: ({
-				movement: [mx, my],
-				velocity: [vx, vy],
-				direction: [dx, dy],
-				last,
-				tap,
-				event,
-			}) => {
-				if (tap || !last) return;
-				event.stopPropagation();
+		// バリデーション付きの選択処理
+		onCardSelect: useCallback((card: CardWithInstanceId) => {
+			if (isInteractionLocked) return;
+			if (!isMyTurn) {
+				gameActions.ui.notify({ message: "相手のターンです", player });
+				return;
+			}
+			const isCooldown = playerState?.cooldownActiveCards.some(c => c.cardId === card.instanceId);
+			if (isCooldown) {
+				gameActions.ui.notify({ message: "クールダウン中です", player });
+				return;
+			}
+			selectionActions.select(card.instanceId);
+		}, [isInteractionLocked, isMyTurn, playerState, player, selectionActions]),
 
-				const FLICK_DIST = 45;
-				const FLICK_VEL = 0.5;
-
-				if (Math.abs(mx) > Math.abs(my)) {
-					if (Math.abs(mx) > FLICK_DIST && Math.abs(vx) > FLICK_VEL) {
-						const pageDir = -Math.sign(dx) * facingFactor;
-						setCurrentPage((prev) =>
-							Math.max(0, Math.min(maxPage, prev + pageDir)),
-						);
-					}
-					return;
-				}
-
-				if (Math.abs(my) > FLICK_DIST && Math.abs(vy) > FLICK_VEL * 0.5) {
-					const isUp = dy * facingFactor < 0;
-					const isDown = dy * facingFactor > 0;
-
-					if (isDown && isVisible) setIsVisible(false);
-					else if (isUp && !isVisible) setIsVisible(true);
-				}
-			},
-
-			onClick: ({ event }) => {
-				event.stopPropagation();
-				if (effectiveIsVisible && selectedCardId) {
-					gameActions.ui.deselectCard();
-				}
-			},
-		},
-		{
-			enabled: !isInteractionLocked && isMyTurn,
-			drag: { filterTaps: true, threshold: 10 },
-		},
-	);
+		onCardDeselect: useCallback(() => selectionActions.deselect(), [selectionActions]),
+	};
 
 	return {
-		state: {
-			cards,
-			currentPage,
-			effectiveIsVisible,
-			isMyCardSelected,
-			selectedCardId,
-		},
-		layout: {
-			facingFactor,
-			zPos,
-			xPos,
-			pageWidth,
-		},
-		bindGesture,
+		state: { cards, isVisible: toggleState.isVisible, effectiveIsVisible: toggleState.effectiveIsVisible, isAnySelected, selectedCardId, isInteractionLocked, isMyTurn },
+		layout: { facingFactor, zPos: toggleAnim.zPos, xPos, pageWidth },
+		handlers,
 	};
 };

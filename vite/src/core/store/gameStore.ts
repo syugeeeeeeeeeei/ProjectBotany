@@ -51,8 +51,8 @@ export const useGameStore = create<GameStore>()(
 
     // プレイヤー状態
     playerStates: {
-      native: createInitialPlayerState("native", "在来種サイド"),
-      alien: createInitialPlayerState("alien", "外来種サイド"),
+      native: createInitialPlayerState("native", "在来種"),
+      alien: createInitialPlayerState("alien", "外来種"),
     },
 
     // --- アクション ---
@@ -65,8 +65,8 @@ export const useGameStore = create<GameStore>()(
       );
 
       // 2. プレイヤー状態のリセット
-      const nativeState = createInitialPlayerState("native", "在来種サイド");
-      const alienState = createInitialPlayerState("alien", "外来種サイド");
+      const nativeState = createInitialPlayerState("native", "在来種");
+      const alienState = createInitialPlayerState("alien", "外来種");
 
       // 3. ✨ 修正: 初期スコアの算出
       // フィールド初期化直後の状態（在来種と裸地のみ）をカウントして反映

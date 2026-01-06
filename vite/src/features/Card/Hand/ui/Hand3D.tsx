@@ -1,13 +1,12 @@
 // vite/src/features/card-hand/ui/Hand3D.tsx
 import React from "react";
 import { animated, to, useSpring } from "@react-spring/three";
-import { Plane } from "@react-three/drei";
 import type { PlayerType, CardDefinition } from "@/shared/types";
 
 import { useHandLogic } from "../hooks/useHandLogic";
 import { HandLayout } from "../domain/HandLayout";
 import Card3D from "./Card3D";
-import { useGameQuery } from "@/core/api";
+import GestureArea from "./parts/GestureArea";
 
 type CardWithInstanceId = CardDefinition & { instanceId: string };
 
@@ -15,41 +14,38 @@ interface CardWrapperProps {
   card: CardWithInstanceId;
   index: number;
   player: PlayerType;
-  facingFactor: number;
   isSelected: boolean;
   isAnySelected: boolean;
   isVisible: boolean;
+  onSelect: (card: CardWithInstanceId) => void;
+  onDeselect: () => void;
 }
 
 const CardWrapper: React.FC<CardWrapperProps> = ({
   card,
   index,
   player,
-  facingFactor,
   isSelected,
   isAnySelected,
   isVisible,
+  onSelect,
+  onDeselect,
 }) => {
-  const xLocal = HandLayout.calcCardXLocal(index, facingFactor);
-
-  const targetOpacity = HandLayout.calcTargetOpacity({
-    isVisible,
-    isAnySelected,
-    isSelected,
-  });
-
+  const xLocal = HandLayout.calcCardXLocal(index);
+  const targetOpacity = isSelected
+    ? 1
+    : HandLayout.calcTargetOpacity({ isVisible, isAnySelected, isSelected });
   const targetZ = HandLayout.calcTargetZ({
     isSelected,
     isAnySelected,
     isVisible,
-    facingFactor,
   });
 
   const spring = useSpring({
     position: [xLocal, 0, targetZ] as [number, number, number],
     rotation: [
-      HandLayout.CARD.ROTATION.X(facingFactor),
-      HandLayout.CARD.ROTATION.Y(facingFactor),
+      HandLayout.CARD.ROTATION.X,
+      HandLayout.CARD.ROTATION.Y,
       HandLayout.CARD.ROTATION.Z,
     ] as [number, number, number],
     opacity: targetOpacity,
@@ -60,6 +56,15 @@ const CardWrapper: React.FC<CardWrapperProps> = ({
     <animated.group
       position={spring.position}
       rotation={spring.rotation as unknown as [number, number, number]}
+      onClick={(e) => {
+        e.stopPropagation();
+        if (isSelected) {
+          onDeselect();
+          return;
+        } else {
+          onSelect(card);
+        }
+      }}
     >
       <Card3D
         card={card}
@@ -71,18 +76,13 @@ const CardWrapper: React.FC<CardWrapperProps> = ({
 };
 
 const Hand3D: React.FC<{ player: PlayerType }> = ({ player }) => {
-  const { state, layout, bindGesture } = useHandLogic(player);
-  /** ✨ デバッグ設定を購読 */
-  const { showGestureArea } = useGameQuery.ui.useDebugSettings();
-
+  const { state, layout, handlers } = useHandLogic(player);
   if (state.cards.length === 0) return null;
 
   const pages: CardWithInstanceId[][] = [];
   for (let i = 0; i < state.cards.length; i += HandLayout.CARDS_PER_PAGE) {
     pages.push(state.cards.slice(i, i + HandLayout.CARDS_PER_PAGE));
   }
-
-  const gesturePlaneArgs = HandLayout.calcGesturePlaneArgs(layout.pageWidth);
 
   return (
     <animated.group
@@ -91,36 +91,18 @@ const Hand3D: React.FC<{ player: PlayerType }> = ({ player }) => {
         HandLayout.POSITION.Y,
         z * layout.facingFactor,
       ])}
+      rotation={[0, layout.facingFactor === -1 ? Math.PI : 0, 0]}
     >
-      {/* Gesture Area */}
-      <Plane
-        args={gesturePlaneArgs}
-        rotation={[
-          HandLayout.GESTURE.ROTATION.X,
-          HandLayout.GESTURE.ROTATION.Y,
-          HandLayout.GESTURE.ROTATION.Z,
-        ]}
-        position={[
-          HandLayout.GESTURE.POSITION.X,
-          HandLayout.GESTURE.POSITION.Y,
-          HandLayout.GESTURE.POSITION.Z, // 既に親 group が移動するため、ここは一定のオフセット
-        ]}
-        /** * ✨ デバッグモードがONなら、判定エリアが非表示でもプレーン自体は visible にする
-         * ただしクリックを阻害しないよう、非アクティブ時は pointerEvents は bindGesture 側で制御
-         */
-        visible={state.effectiveIsVisible || showGestureArea}
-        {...bindGesture()}
-      >
-        <meshStandardMaterial
-          transparent
-          /** ✨ デバッグ表示：ONなら見えるようにし、色はピンクなどで強調 */
-          opacity={showGestureArea ? 0.3 : HandLayout.GESTURE.MATERIAL.OPACITY}
-          color={showGestureArea ? "#ff00ff" : "white"}
-          depthWrite={HandLayout.GESTURE.MATERIAL.DEPTH_WRITE}
-        />
-      </Plane>
+      <GestureArea
+        onSwipeUp={handlers.onSwipeUp}
+        onSwipeDown={handlers.onSwipeDown}
+        onSwipeLeft={handlers.onSwipeLeft}
+        onSwipeRight={handlers.onSwipeRight}
+        onClick={handlers.onAreaClick}
+        facingFactor={layout.facingFactor}
+        enabled={!state.isInteractionLocked && state.isMyTurn}
+      />
 
-      {/* Cards List */}
       <animated.group position-x={layout.xPos}>
         {pages.map((pageCards, pageIndex) => (
           <group
@@ -128,7 +110,6 @@ const Hand3D: React.FC<{ player: PlayerType }> = ({ player }) => {
             position-x={HandLayout.calcPageOffsetX({
               pageIndex,
               pageWidth: layout.pageWidth,
-              facingFactor: layout.facingFactor,
             })}
           >
             {pageCards.map((card, cardIndex) => (
@@ -137,10 +118,11 @@ const Hand3D: React.FC<{ player: PlayerType }> = ({ player }) => {
                 card={card}
                 index={cardIndex}
                 player={player}
-                facingFactor={layout.facingFactor}
                 isSelected={state.selectedCardId === card.instanceId}
-                isAnySelected={state.isMyCardSelected}
+                isAnySelected={state.isAnySelected}
                 isVisible={state.effectiveIsVisible}
+                onSelect={handlers.onCardSelect}
+                onDeselect={handlers.onCardDeselect}
               />
             ))}
           </group>
