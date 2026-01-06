@@ -166,5 +166,6 @@ export const FieldSystem = {
       }
     }
     return points;
-  }
+  },
+
 };

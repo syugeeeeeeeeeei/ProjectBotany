@@ -11,6 +11,8 @@ export const GAME_SETTINGS = {
   FIELD_HEIGHT: 10,
   /** ゲームの最大ラウンド数 */
   MAXIMUM_ROUNDS: 8,
+  /** 初期AP */
+  INITIAL_ENVIRONMENT: 1,
 
   /** デバッグ設定 */
   DEBUG: {

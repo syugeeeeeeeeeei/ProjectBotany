@@ -39,6 +39,10 @@ export const RoundSystem = {
 
     const newField = FieldSystem.updateCells(gameField, newCells);
 
+    // ✨ 追加: 最新のフィールドからスコアを再計算
+    const nativeScore = FieldSystem.countCellsByType(newField, "native");
+    const alienScore = FieldSystem.countCellsByType(newField, "alien");
+
     // ROUND_STARTイベントを発行
     gameEventBus.emit("ROUND_START", { round: nextRound });
 
@@ -49,6 +53,8 @@ export const RoundSystem = {
       activePlayerId: "alien",
       playerStates: newPlayerStates,
       gameField: newField,
+      nativeScore, // 更新されたスコアを反映
+      alienScore,  // 更新されたスコアを反映
     };
   },
 
@@ -66,7 +72,8 @@ export const RoundSystem = {
     const latestState = useGameStore.getState();
 
     // 3. 最新のステートを元に次のラウンドを計算
-    const nextRoundState = this.startRound(latestState);
+    // ✨ 安全のため this ではなく RoundSystem.startRound を参照
+    const nextRoundState = RoundSystem.startRound(latestState);
 
     // 4. ストアを更新
     useGameStore.getState().setState(nextRoundState);
