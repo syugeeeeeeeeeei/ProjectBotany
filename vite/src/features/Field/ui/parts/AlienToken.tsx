@@ -55,7 +55,7 @@ export const AlienToken: React.FC<AlienTokenProps> = ({
   return (
     // Y軸のポジションを 0.15 にして盤面から浮かせる
     <group position={[posX, 0.15, posZ]}>
-      <Float speed={8} rotationIntensity={0.1} floatIntensity={0.5}>
+      <Float speed={4} rotationIntensity={0.1} floatIntensity={0.5}>
         <Token3D
           imageUrl={imageUrl}
           scale={0.3}
@@ -64,7 +64,7 @@ export const AlienToken: React.FC<AlienTokenProps> = ({
         />
         {/* エフェクト */}
         <Sparkles
-          count={8}
+          count={4}
           scale={1.2}
           size={6}
           speed={0.4}

@@ -49,8 +49,8 @@ export const useHandLogic = (player: PlayerType) => {
 		}
 	}, [isMyTurn, isMyCardSelected, selectionActions, player]);
 
-	// ✨ isMyTurnを渡さず、相手ターンでも操作可能にする
-	const { state: toggleState, animation: toggleAnim, actions: toggleActions } = useToggleHand(isAnySelected);
+	// ✨ isMyTurnを渡し、相手ターンは強制Hide状態にする
+	const { state: toggleState, animation: toggleAnim, actions: toggleActions } = useToggleHand(isAnySelected, isMyTurn);
 
 	const maxPage = Math.max(0, Math.ceil(cards.length / HandLayout.CARDS_PER_PAGE) - 1);
 	const pageWidth = HandLayout.PAGE_WIDTH;

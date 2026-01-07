@@ -105,7 +105,7 @@ const executeEradicationCard = (
   card: EradicationCardDefinition,
   targetPoint: Point
 ): GameState => {
-  const { eradicationRange, eradicationType, postState, chainDestruction } = card;
+  const { eradicationRange, eradicationType, postState, chainDestruction, preventsCounter } = card;
   let currentGameState = { ...gameState };
   let removedCount = 0;
   let affectedCount = 0;
@@ -133,8 +133,12 @@ const executeEradicationCard = (
           const masterData = getCardDefinition(instance.cardDefinitionId);
           const hasCounter = masterData?.counterAbility === "spread_seed";
 
-          // 反撃判定 (物理駆除 かつ 反撃能力持ち)
-          if (eradicationType === "physical" && hasCounter) {
+          // 反撃判定:
+          // 物理駆除(physical) かつ 反撃無効(preventsCounter)を持っていなければ反撃発動
+          // ※ 完全駆除(complete) の場合は常に反撃なし
+          const isCounterEffective = eradicationType === "physical" && !preventsCounter;
+
+          if (isCounterEffective && hasCounter) {
             console.warn(`[PlayCard] ⚠️ Counter Ability Triggered at [${p.x}, ${p.y}]!`);
             // 駆除される外来種のIDを渡して反撃を発動
             currentGameState = triggerCounterEffect(currentGameState, p, instance.cardDefinitionId);

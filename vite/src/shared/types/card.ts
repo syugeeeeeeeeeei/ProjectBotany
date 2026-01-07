@@ -52,6 +52,8 @@ export interface EradicationCardDefinition extends CardBase {
 	eradicationRange: GridShape;
 	/** 駆除タイプ: 物理(反撃あり) vs 完全(反撃なし) */
 	eradicationType: EradicationType;
+	/** 反撃無効: trueなら物理駆除でも反撃を防ぐ (Optional) */
+	preventsCounter?: boolean;
 	/** 連鎖駆除: 支配下の赤マスもまとめて消すか */
 	chainDestruction: boolean;
 	/** 駆除後の土地状態 */
