@@ -9,11 +9,11 @@ import { DESIGN } from "@/shared/constants/design-tokens";
 export const CardLayout = {
 	// --- 1) Base physical size (x1.5 of original) ---
 	CARD_BASE: {
-		WIDTH: 3, // 1.8 * 1.5
-		HEIGHT: 4.4, // 2.8 * 1.5
-		THICKNESS: 0.15, // 0.1 * 1.5
-		CORNER_RADIUS: 0.075, // 0.05 * 1.5
-		BORDER_THICKNESS: 0.09, // 0.06 * 1.5
+		WIDTH: 2.9,
+		HEIGHT: 4.4,
+		THICKNESS: 0.15,
+		CORNER_RADIUS: 0.075,
+		BORDER_THICKNESS: 0.09,
 		get Z_SURFACE() {
 			// 表面のZ座標 (中心から厚みの半分 + オフセット)
 			return 0.0765;

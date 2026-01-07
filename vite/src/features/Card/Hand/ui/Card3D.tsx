@@ -1,6 +1,7 @@
 // vite/src/features/card-hand/ui/Card3D.tsx
 import React, { useMemo } from "react";
-import { animated } from "@react-spring/three";
+// ✨ to を追加
+import { animated, useSpring } from "@react-spring/three";
 import { RoundedBox, Text, useTexture } from "@react-three/drei";
 import * as THREE from "three";
 import type { CardDefinition, PlayerType } from "@/shared/types";
@@ -49,6 +50,8 @@ const Card3D: React.FC<Card3DProps> = ({ card, player, isDimmed }) => {
         cooldownRounds={data.cooldownRounds}
       />
       <CardOverlayUsageLimit isUsable={state.isUsable} />
+
+      {/* ✨ 修正: コンポーネント内でアニメーション制御するため isDimmed をそのまま渡す */}
       <CardOverlayDim isDimmed={isDimmed} />
     </animated.group>
   );
@@ -75,7 +78,6 @@ const CardBase = ({
         color={borderStateColor}
         emissive={isSelected ? borderStateColor : "black"}
         emissiveIntensity={isSelected ? 0.5 : 0}
-        // ✨ 修正: transparent を削除 (不透明化)
       />
     </RoundedBox>
   );
@@ -84,10 +86,7 @@ const CardBase = ({
 const CardBaseInner = ({ baseShape }: { baseShape: THREE.Shape }) => (
   <mesh position={CardLayout.AREAS.BASE_INNER.POSITION}>
     <shapeGeometry args={[baseShape]} />
-    <AnimatedMeshStandardMaterial
-      color={CardLayout.COLORS.CARD_UI.BASE_BG}
-      // ✨ 修正: transparent を削除
-    />
+    <AnimatedMeshStandardMaterial color={CardLayout.COLORS.CARD_UI.BASE_BG} />
   </mesh>
 );
 
@@ -123,10 +122,7 @@ const CardContentCost = ({ card }: { card: CardDefinition }) => (
   <>
     <mesh position={CardLayout.AREAS.COST.POSITION}>
       <circleGeometry args={[CardLayout.AREAS.COST.RADIUS, 32]} />
-      <AnimatedMeshBasicMaterial
-        color={CardLayout.COLORS.BORDER}
-        // ✨ 修正: transparent を削除
-      />
+      <AnimatedMeshBasicMaterial color={CardLayout.COLORS.BORDER} />
     </mesh>
     <Text
       position={CardLayout.AREAS.TEXT.COST.POSITION}
@@ -149,10 +145,7 @@ const CardContentUsageLimit = ({
   <>
     <mesh position={CardLayout.AREAS.USAGE_LIMIT.POSITION}>
       <circleGeometry args={[CardLayout.AREAS.USAGE_LIMIT.RADIUS, 32]} />
-      <AnimatedMeshBasicMaterial
-        color={CardLayout.COLORS.USAGE_LIMIT_BG}
-        // ✨ 修正: transparent を削除
-      />
+      <AnimatedMeshBasicMaterial color={CardLayout.COLORS.USAGE_LIMIT_BG} />
     </mesh>
     <Text
       position={CardLayout.AREAS.TEXT.USAGE_LIMIT.POSITION}
@@ -173,10 +166,6 @@ const CardContentImage = ({ textureUrl }: { textureUrl: string }) => {
     <animated.mesh position={CardLayout.AREAS.IMAGE.POSITION}>
       <planeGeometry args={CardLayout.AREAS.IMAGE.SIZE} />
       <meshStandardMaterial map={texture} />
-      {/* ✨ 修正: 画像にアルファチャンネルがない場合はtransparent不要。
-          もし透過PNGを使うならtransparent={true}が必要ですが、
-          カードイラストなら通常は不透明でOKと判断して削除。
-          必要に応じて戻してください。 */}
     </animated.mesh>
   );
 };
@@ -185,10 +174,7 @@ const CardContentDescription = ({ card }: { card: CardDefinition }) => (
   <>
     <mesh position={CardLayout.AREAS.DESC.POSITION}>
       <planeGeometry args={CardLayout.AREAS.DESC.SIZE} />
-      <AnimatedMeshBasicMaterial
-        color={CardLayout.COLORS.CARD_UI.DESC_BG}
-        // ✨ 修正: transparent を削除
-      />
+      <AnimatedMeshBasicMaterial color={CardLayout.COLORS.CARD_UI.DESC_BG} />
     </mesh>
     <Text
       position={CardLayout.AREAS.TEXT.DESC.POSITION}
@@ -224,7 +210,7 @@ const CardOverlayCooldown = ({
           opacity={CardLayout.AREAS.COOLDOWN.OPACITY}
           roughness={0.1}
           metalness={0.2}
-          depthWrite={false} // ✨ オーバーレイなのでdepthWriteを切っておくのが無難
+          depthWrite={false}
         />
       </mesh>
       <Text
@@ -250,24 +236,34 @@ const CardOverlayUsageLimit = ({ isUsable }: { isUsable: boolean }) => {
         color="#330000"
         transparent
         opacity={0.7}
-        depthWrite={false} // ✨ オーバーレイなのでdepthWriteを切る
+        depthWrite={false}
       />
     </mesh>
   );
 };
 
-// ✨ Dim表現用のオーバーレイ
+// ✨ 改良版: アニメーション対応のDimオーバーレイ
 const CardOverlayDim = ({ isDimmed }: { isDimmed: boolean }) => {
-  if (!isDimmed) return null;
+  // アニメーション設定: isDimmedが変わると opacity が滑らかに変化
+  const { opacity } = useSpring({
+    opacity: isDimmed ? CardLayout.AREAS.DIM_OVERLAY.OPACITY : 0,
+    config: { tension: 400, friction: 30 }, // 素早く、かつ滑らかに
+  });
+
   return (
-    <mesh position={CardLayout.AREAS.DIM_OVERLAY.POSITION}>
+    // visible={opacity.to(o => o > 0.01)} により、
+    // 完全に透明なときは描画自体をスキップさせる（GPU負荷軽減）
+    <animated.mesh
+      position={CardLayout.AREAS.DIM_OVERLAY.POSITION}
+      visible={opacity.to((o) => o > 0.01)}
+    >
       <planeGeometry args={CardLayout.AREAS.DIM_OVERLAY.SIZE} />
-      <meshBasicMaterial
+      <AnimatedMeshBasicMaterial
         color={CardLayout.AREAS.DIM_OVERLAY.COLOR}
         transparent
-        opacity={CardLayout.AREAS.DIM_OVERLAY.OPACITY}
-        depthWrite={false} // ✨ 修正: これを追加して深度書き込みを無効化
+        opacity={opacity}
+        depthWrite={false}
       />
-    </mesh>
+    </animated.mesh>
   );
 };

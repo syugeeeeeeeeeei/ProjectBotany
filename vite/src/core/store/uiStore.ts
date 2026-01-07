@@ -34,6 +34,7 @@ interface UIState {
   /** デバッグ設定 */
   debugSettings: {
     showGestureArea: boolean;
+    showFps: boolean; // ✨ 追加: FPS表示フラグ
   };
 }
 
@@ -71,6 +72,7 @@ export const useUIStore = create(
 
     debugSettings: {
       showGestureArea: false,
+      showFps: false, // ✨ 初期値: 非表示
     },
 
     // Actions

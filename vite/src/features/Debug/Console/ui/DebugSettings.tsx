@@ -28,10 +28,15 @@ const SettingItem = styled.label`
 `;
 
 export const DebugSettings: React.FC = () => {
-  const { showGestureArea } = useGameQuery.ui.useDebugSettings();
+  // ✨ ストアから showFps も取得
+  const { showGestureArea, showFps } = useGameQuery.ui.useDebugSettings();
 
   const handleGestureToggle = (e: React.ChangeEvent<HTMLInputElement>) => {
     gameActions.ui.updateDebugSettings({ showGestureArea: e.target.checked });
+  };
+
+  const handleFpsToggle = (e: React.ChangeEvent<HTMLInputElement>) => {
+    gameActions.ui.updateDebugSettings({ showFps: e.target.checked });
   };
 
   return (
@@ -43,6 +48,11 @@ export const DebugSettings: React.FC = () => {
           onChange={handleGestureToggle}
         />
         <span>Gesture Area 🟢</span>
+      </SettingItem>
+
+      <SettingItem>
+        <input type="checkbox" checked={showFps} onChange={handleFpsToggle} />
+        <span>Show FPS 📈</span>
       </SettingItem>
       {/* 今後ここに他の設定を追加可能 */}
     </SettingsContainer>

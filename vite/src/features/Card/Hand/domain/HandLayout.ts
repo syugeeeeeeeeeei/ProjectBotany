@@ -8,7 +8,7 @@ import { CardLayout } from "./CardLayout"
 export const HandLayout = {
 	CARDS_PER_PAGE: 3,
 
-	CARD_GAP_X: 0.25,
+	CARD_GAP_X: 0.2,
 
 	PAGE_GAP_X: 3,
 
@@ -43,7 +43,7 @@ export const HandLayout = {
 	ANIMATION: {
 		Z_SELECTED: 2.5,
 		Z_DEFAULT: 0,
-		SPRING_CONFIG: { tension: 250, friction: 30 },
+		SPRING_CONFIG: { tension: 500, friction: 50 },
 	},
 
 	get PAGE_WIDTH() {

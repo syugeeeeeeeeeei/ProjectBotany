@@ -34,5 +34,5 @@ export const FeaturesRegistry: GameFeature[] = [
 
 
   // デバッグ機能
-  // debugConsoleFeature,
+  debugConsoleFeature,
 ];

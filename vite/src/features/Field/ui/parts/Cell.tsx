@@ -1,6 +1,6 @@
 import React, { useRef, useState } from "react";
 import { ThreeEvent, useFrame } from "@react-three/fiber";
-import { RoundedBox, Edges, useCursor } from "@react-three/drei"; // ✨ 追加
+import { RoundedBox, useCursor } from "@react-three/drei"; // ✨ Edges を削除
 import * as THREE from "three";
 import { CellState } from "@/shared/types/game-schema";
 import { DESIGN } from "@/shared/constants/design-tokens";
@@ -28,6 +28,15 @@ export const Cell: React.FC<CellProps> = ({ cell }) => {
 
     // Y軸のターゲット位置 (ホバー時は 0.1 上げる)
     const targetY = hovered ? 0.1 : 0;
+
+    // ✨ 最適化: 現在位置とターゲットの差が極小なら計算をスキップ (Early Return)
+    if (Math.abs(meshRef.current.position.y - targetY) < 0.001) {
+      if (meshRef.current.position.y !== targetY) {
+        meshRef.current.position.y = targetY; // 位置を確定
+      }
+      return;
+    }
+
     // 線形補間(Lerp)で滑らかに移動
     meshRef.current.position.y = THREE.MathUtils.lerp(
       meshRef.current.position.y,
@@ -49,11 +58,12 @@ export const Cell: React.FC<CellProps> = ({ cell }) => {
 
   return (
     <group ref={meshRef} position={[posX, 0, posZ]}>
-      {/* ✨ RoundedBox: 角の丸い厚みのあるボックス */}
+      {/* ✨ RoundedBox: ポリゴン数を削減 */}
       <RoundedBox
-        args={[DESIGN.BOARD.CELL_SIZE, 0.1, DESIGN.BOARD.CELL_SIZE]} // 幅, 厚み, 奥行き
-        radius={0.05} // 角の丸み
-        smoothness={4} // 丸みの滑らかさ
+        args={[DESIGN.BOARD.CELL_SIZE, 0.1, DESIGN.BOARD.CELL_SIZE]}
+        radius={0.05}
+        smoothness={1} // ✨ 4 -> 1 に削減 (Triangles激減)
+        creaseAngle={0.4} // ✨ ポリゴンが少なくても滑らかに見えるよう調整
         onPointerOver={handlePointerOver}
         onPointerOut={handlePointerOut}
         onPointerUp={handlers.handleClick}
@@ -63,16 +73,9 @@ export const Cell: React.FC<CellProps> = ({ cell }) => {
         <meshStandardMaterial
           color={styles.cellColor}
           emissive={styles.emissiveColor}
-          emissiveIntensity={styles.emissiveIntensity + (hovered ? 0.5 : 0)} // ホバー時に発光強化
+          emissiveIntensity={styles.emissiveIntensity + (hovered ? 0.5 : 0)}
           roughness={0.4}
           metalness={0.1}
-        />
-
-        {/* ✨ エッジ: 輪郭線をうっすら表示してタイルの境界を明確に */}
-        <Edges
-          threshold={15} // 角の角度閾値
-          color={hovered ? "white" : "black"}
-          scale={1.0}
         />
       </RoundedBox>
     </group>
