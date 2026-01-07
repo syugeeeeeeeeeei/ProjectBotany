@@ -3,6 +3,25 @@ import { useThree } from "@react-three/fiber";
 import { useEffect } from "react";
 import * as THREE from "three";
 
+const DarkOverlay = ({ opacity = 0.3 }) => {
+  return (
+    <mesh
+      position={[0, -5, 0]} // 背景(-1)より少し手前
+      rotation={[-Math.PI / 2, 0, 0]}
+      renderOrder={-1}
+    >
+      <planeGeometry args={[50, 50]} />
+      <meshBasicMaterial
+        color="black"
+        transparent
+        opacity={opacity}
+        depthTest={true}
+        depthWrite={false}
+      />
+    </mesh>
+  );
+};
+
 /**
  * 背景画像を最高画質で管理するコンポーネント
  */
@@ -30,7 +49,12 @@ const SceneBackground = ({ image }: { image: string }) => {
     }
   }, [texture, gl]);
 
-  return <primitive attach="background" object={texture} />;
+  return (
+    <>
+      <primitive attach="background" object={texture} />
+      <DarkOverlay opacity={0.2} />
+    </>
+  );
 };
 
 export default SceneBackground;

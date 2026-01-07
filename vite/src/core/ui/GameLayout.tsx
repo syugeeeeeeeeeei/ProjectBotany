@@ -1,6 +1,7 @@
+// src/core/ui/GameLayout.tsx
 import React, { Suspense, useEffect } from "react";
 import { Canvas, useThree } from "@react-three/fiber";
-import { OrbitControls } from "@react-three/drei";
+import { Environment, OrbitControls } from "@react-three/drei";
 import SceneBackground from "./SceneBackground";
 // import { EnvironmentModel } from "@/features/Field/ui/parts/_EnvironmentModel";
 
@@ -18,6 +19,7 @@ const SceneController = () => {
   const { camera } = useThree();
 
   useEffect(() => {
+    // カメラ設定: 真上(0, 10, 0)からの視点
     camera.position.set(0, 10, 0);
     camera.lookAt(0, 0, 0);
   }, [camera]);
@@ -40,16 +42,53 @@ const SceneSetup = () => {
     <>
       <SceneController />
       <color attach="background" args={["#1a1a1a"]} />
-      <ambientLight intensity={0.6} />
+
+      {/* 💡 ライティング修正: 盤面全体を均一に照らす構成
+        1. ambientLight: 全体の明るさを底上げし、端が暗くなるのを防ぐ。
+        2. hemisphereLight: 上からの光と、地面からの照り返しをブレンドして自然な明るさを作る。
+        3. directionalLight: 影を作る主光源。位置を斜めにして立体感を出す。
+      */}
+
+      {/* ベースライト: 強めに設定して暗部をなくす */}
+      <ambientLight intensity={0.8} />
+
+      {/* 天球光: 空間全体を柔らかな光で包む */}
+      <hemisphereLight
+        color="#ffffff" // 空の色
+        groundColor="#555555" // 地面の色
+        intensity={1}
+      />
+
+      {/* 3. メイン光源 (Key Light): 影をつくる強い光 */}
       <directionalLight
-        position={[10, 20, 10]}
-        intensity={2}
+        position={[15, 25, 15]} // 右手前上空から
+        intensity={1}
         castShadow
         shadow-mapSize={[2048, 2048]}
+        shadow-bias={-0.0005}
+        // ✨ 重要: 影の計算範囲を広げる (デフォルトは狭い)
+        // これにより盤面の端までしっかり影が落ち、立体感が出ます
+        shadow-camera-left={-30}
+        shadow-camera-right={30}
+        shadow-camera-top={30}
+        shadow-camera-bottom={-30}
       />
-      {/* 背景モデルを配置 */}
+
+      {/* 4. サブ光源 (Fill Light): メインの逆側から当てる補助光 */}
+      {/* 影は落とさず(castShadowなし)、メイン光の影になる側面をふんわり照らす */}
+      <directionalLight
+        position={[-15, 10, -15]} // 左奥から
+        intensity={0.6}
+      />
+
+      {/* 環境反射: マットな質感用 */}
+      <Environment preset="park" blur={3} background={false} />
+
+      {/* 背景モデル/画像 */}
       {/* <EnvironmentModel /> */}
       <SceneBackground image="/textures/テーブル3.jpg" />
+
+      {/* デバッグ用グリッド */}
       {/* <gridHelper args={[20, 20, 0x444444, 0x222222]} position={[0, -0.1, 0]} /> */}
     </>
   );
@@ -57,8 +96,6 @@ const SceneSetup = () => {
 
 /**
  * GameLayoutコンポーネント
- * ※ 以前のコードから React.FC の型注釈を削除（または統一）し、
- * Fast Refreshがコンポーネントとして正しく認識できるようにします。
  */
 export const GameLayout = ({ children, uiOverlay }: GameLayoutProps) => {
   return (
@@ -81,17 +118,14 @@ export const GameLayout = ({ children, uiOverlay }: GameLayoutProps) => {
       >
         <Canvas
           shadows
-          // 1. ピクセル比の設定
-          // iPad Air 4のDPRは2です。[1, 2]とすることでデバイスに合わせて1〜2の間で自動調整します。
           dpr={[1, 2]}
-          // 2. レンダラーの詳細設定
           gl={{
-            antialias: true, // ギザギザ（ジャギー）を抑制
-            alpha: false, // 背景が不要ならfalseにするとパフォーマンス向上
-            stencil: false, // 不要なバッファを無効化してメモリ節約
-            depth: true, // 奥行き計算を有効に
-            powerPreference: "high-performance", // GPUを優先使用
-            precision: "highp", // シェーダーの計算精度を最高に
+            antialias: true,
+            alpha: false,
+            stencil: false,
+            depth: true,
+            powerPreference: "high-performance",
+            precision: "highp",
           }}
         >
           <Suspense fallback={null}>

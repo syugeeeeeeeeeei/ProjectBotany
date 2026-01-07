@@ -14,11 +14,11 @@ export const DESIGN = {
   // --- カラーパレット (Cells, HUD, Alerts, Card Types) ---
   COLORS: {
     // セル用
-    NATIVE_AREA: "#2E7D32",
-    ALIEN_CORE: "#C62828",
-    ALIEN_INVASION: "#E57373",
-    EMPTY: "#757575",
-    RECOVERY_PENDING: "#FDD835",
+    NATIVE_AREA: "#236026",
+    ALIEN_CORE: "#991a1a",
+    ALIEN_INVASION: "#c24141",
+    EMPTY: "#5d5d5d",
+    RECOVERY_PENDING: "#4cd100",
     DEFAULT_CELL: "#444444",
     EMISSIVE_DEFAULT: "black",
 

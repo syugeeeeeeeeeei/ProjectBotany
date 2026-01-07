@@ -1,6 +1,8 @@
 // vite/src/features/field-grid/ui/GameBoard3D.tsx
 import React, { useRef } from "react";
 import { Group } from "three";
+import { ThreeEvent } from "@react-three/fiber";
+// ✨ Environment, Stars などのライティング系インポートを削除
 import { useGameQuery } from "@/core/api/queries";
 import { useUIStore } from "@/core/store/uiStore";
 import { Cell } from "./parts/Cell";
@@ -22,41 +24,38 @@ const GameBoard3D: React.FC = () => {
   const boardWidth = field.width * 1.05;
   const boardHeight = field.height * 1.05;
 
-  // 背景クリックハンドラ
-  // 盤面の裏や隙間をクリックしたときに選択を解除する
-  const handleBackgroundClick = (e: MouseEvent) => {
+  const handleBackgroundClick = (e: ThreeEvent<MouseEvent>) => {
     e.stopPropagation();
-    // カードクリック等のstopPropagationが効いていればここは呼ばれない
     deselectCard();
   };
 
   return (
     <group ref={boardRef}>
-      {/* ✨ 修正: 背景プレーンも onPointerUp ではなく onClick を使用する。
-           これにより、Hand3D(onClick) で stopPropagation されたイベントが
-           ここで拾われるのを確実に防ぐことができる。
-       */}
+      {/* 💡 ライト設定はここから削除されました */}
+
+      {/* クリック判定用の透明な床 */}
       <mesh
-        position={[0, 0, 0]}
+        position={[0, -0.1, 0]}
         rotation={[-Math.PI / 2, 0, 0]}
         onClick={handleBackgroundClick}
-        visible={false} // 不可視
+        visible={false}
       >
-        <planeGeometry args={[1000, 1000]} /> {/* 確実に画面全体を覆うサイズ */}
+        <planeGeometry args={[100, 100]} />
       </mesh>
 
-      {/* 🟫 盤面の茶色ベース */}
+      {/* 盤面ベース */}
       {cols > 0 && rows > 0 && (
-        <BoardBase width={boardWidth} height={boardHeight} thickness={0.001} />
+        <BoardBase width={boardWidth} height={boardHeight} thickness={0.1} />
       )}
 
-      <group name="grid-layer">
+      {/* グリッドレイヤー */}
+      <group name="grid-layer" position={[0, 0.01, 0]}>
         {field.cells.flat().map((cell) => (
           <Cell key={`cell-${cell.x}-${cell.y}`} cell={cell} />
         ))}
       </group>
 
-      <group name="token-layer">
+      <group name="token-layer" position={[0, 0.05, 0]}>
         {Object.values(activeAliens).map((alien) => (
           <AlienToken
             key={`alien-${alien.instanceId}`}
@@ -68,7 +67,9 @@ const GameBoard3D: React.FC = () => {
       </group>
 
       {/* ガイドレイヤー */}
-      <PlacementGuide />
+      <group position={[0, 0.07, 0]}>
+        <PlacementGuide />
+      </group>
     </group>
   );
 };
