@@ -17,7 +17,7 @@ export const cardMasterData: CardDefinition[] = [
       "【拡散】左右1マス\n【反撃】なし\n\n近年急増している外来種。拡散力は低いが、コストが軽く、隙間に入り込んでくる。",
     cost: 1,
     cardType: "alien",
-    deckCount: 2,
+    deckCount: 1,
     imagePath: "/plants/ナガミヒナゲシ.png",
     expansionPower: 1,
     expansionRange: "horizon", // 左右
@@ -30,7 +30,7 @@ export const cardMasterData: CardDefinition[] = [
       "【拡散】上下1マス\n【反撃】種子散布\n\n水辺を好む外来種。千切れた茎から再生するため、半端な駆除は拡散を招く。",
     cost: 1,
     cardType: "alien",
-    deckCount: 2,
+    deckCount: 1,
     imagePath: "/plants/ブラジルチドメグサ.png",
     expansionPower: 1,
     expansionRange: "vertical", // 上下（川の流れなど）
@@ -57,7 +57,7 @@ export const cardMasterData: CardDefinition[] = [
       "【拡散】周囲1マス\n【反撃】なし\n\n大きな葉で光を遮り、広範囲の在来種を衰退させる。拡散範囲が広い。",
     cost: 3,
     cardType: "alien",
-    deckCount: 1,
+    deckCount: 2,
     imagePath: "/plants/ミズバショウ.png",
     expansionPower: 1,
     expansionRange: "range", // 周囲8マス（正方形）
@@ -76,7 +76,6 @@ export const cardMasterData: CardDefinition[] = [
     expansionPower: 2, // 遠くまで届く
     expansionRange: "x_cross", // 斜め
     counterAbility: "spread_seed", // 厄介な反撃持ち
-    cooldownTurns: 1,
     usageLimit: 3,
   },
   {
@@ -91,7 +90,7 @@ export const cardMasterData: CardDefinition[] = [
     expansionPower: 2,
     expansionRange: "range", // 周囲広範囲
     counterAbility: "spread_seed",
-    cooldownTurns: 2,
+    cooldownTurns: 1,
     usageLimit: 2,
   },
 
@@ -106,7 +105,7 @@ export const cardMasterData: CardDefinition[] = [
       "【物理駆除】1マス\n草刈り機などで地上部を刈り取る。低コストだが、再生能力を持つ外来種には逆効果となる場合がある。",
     cost: 1,
     cardType: "eradication",
-    deckCount: 3,
+    deckCount: 1,
     imagePath: "/actions/erad/kariharai.png",
     eradicationPower: 1,
     eradicationRange: "point", // 1マス
@@ -121,7 +120,7 @@ export const cardMasterData: CardDefinition[] = [
       "【物理駆除】十字範囲\n手作業で抜き取る。範囲は広いが、根の断片を残すと再生を許してしまう。",
     cost: 2,
     cardType: "eradication",
-    deckCount: 2,
+    deckCount: 1,
     imagePath: "/actions/erad/tedori.png",
     eradicationPower: 1,
     eradicationRange: "cross", // 十字
@@ -139,6 +138,7 @@ export const cardMasterData: CardDefinition[] = [
     deckCount: 2,
     imagePath: "/actions/erad/shakou.png",
     eradicationPower: 2,
+    cooldownTurns: 1,
     eradicationRange: "point",
     eradicationType: "complete", // 完全（反撃無効）
     chainDestruction: false,
@@ -174,7 +174,8 @@ export const cardMasterData: CardDefinition[] = [
     eradicationType: "complete",
     chainDestruction: true, // 連鎖的に破壊する
     postState: "bare",
-    usageLimit: 1,
+    cooldownTurns: 1,
+    usageLimit: 2,
   },
 
   // =================================================================
@@ -188,7 +189,7 @@ export const cardMasterData: CardDefinition[] = [
       "【回復】1マス (裸地→先駆)\n外来種の種を含まない清浄な土を入れる。裸地を塞ぎ、侵入を防ぐ壁を作る。",
     cost: 1,
     cardType: "recovery",
-    deckCount: 3,
+    deckCount: 1,
     imagePath: "/actions/recov/kyakudo.png",
     recoveryPower: 1, // 裸地 -> 先駆
     recoveryRange: "point",
@@ -201,7 +202,7 @@ export const cardMasterData: CardDefinition[] = [
       "【回復】1マス (裸地→在来)\n在来種の苗を直接植え付ける。時間をかけずに緑を取り戻すことができる。",
     cost: 2,
     cardType: "recovery",
-    deckCount: 2,
+    deckCount: 1,
     imagePath: "/actions/recov/shokusai.png",
     recoveryPower: 2, // 裸地 -> 在来種 (即時回復)
     recoveryRange: "point",
@@ -212,9 +213,10 @@ export const cardMasterData: CardDefinition[] = [
     name: "モニタリング保全",
     description:
       "【回復】十字範囲 (裸地→先駆) + 防御\n広範囲の植生を回復し、監視を行うことで次の侵入を防ぐ(1ラウンド防御)。",
-    cost: 3,
+    cost: 2,
     cardType: "recovery",
     deckCount: 2,
+    cooldownTurns: 1,
     imagePath: "/actions/recov/monitoring.png",
     recoveryPower: 1,
     recoveryRange: "cross",
@@ -232,6 +234,7 @@ export const cardMasterData: CardDefinition[] = [
     recoveryPower: 2, // 即時回復
     recoveryRange: "vertical", // 縦列
     protection: "none",
+    cooldownTurns: 1,
     usageLimit: 2,
   },
   {
