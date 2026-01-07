@@ -43,9 +43,9 @@ const SceneController = () => {
   return (
     <OrbitControls
       makeDefault
-      enableZoom={true}
-      enableRotate={true}
-      enablePan={true}
+      enableZoom={false}
+      enableRotate={false}
+      enablePan={false}
     />
   );
 };
