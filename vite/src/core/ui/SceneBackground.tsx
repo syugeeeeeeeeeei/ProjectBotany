@@ -12,7 +12,7 @@ const DarkOverlay = ({ opacity = 0.3 }) => {
     >
       <planeGeometry args={[50, 50]} />
       <meshBasicMaterial
-        color="black"
+        color="#000000"
         transparent
         opacity={opacity}
         depthTest={true}

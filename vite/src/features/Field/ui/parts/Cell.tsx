@@ -71,7 +71,7 @@ export const Cell: React.FC<CellProps> = ({ cell }) => {
         {/* ✨ エッジ: 輪郭線をうっすら表示してタイルの境界を明確に */}
         <Edges
           threshold={15} // 角の角度閾値
-          color={hovered ? "white" : "#black"}
+          color={hovered ? "white" : "black"}
           scale={1.0}
         />
       </RoundedBox>

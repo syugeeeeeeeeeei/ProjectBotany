@@ -1,14 +1,10 @@
 import React, { useMemo } from "react";
 import * as THREE from "three";
-import {
-  Float,
-  MeshDistortMaterial,
-  Sparkles,
-  useTexture,
-} from "@react-three/drei";
+import { Float, Sparkles, useTexture } from "@react-three/drei";
 import { AlienInstance } from "@/shared/types/game-schema";
 import { DESIGN } from "@/shared/constants/design-tokens";
 import { cardMasterData } from "@/shared/data/cardMasterData";
+import { SeedToken } from "./SeedToken";
 
 interface AlienTokenProps {
   x: number;
@@ -31,7 +27,7 @@ export const AlienToken: React.FC<AlienTokenProps> = ({
   const posZ = (y - (10 - 1) / 2) * DESIGN.BOARD.CELL_GAP;
 
   const opacity = isPreview ? (isReady ? 0.9 : 0.3) : 1.0;
-  const transparent = isPreview;
+  // const transparent = isPreview;
 
   // カード情報の取得
   const cardDef = useMemo(
@@ -39,36 +35,19 @@ export const AlienToken: React.FC<AlienTokenProps> = ({
     [cardDefinitionId],
   );
   // 画像パスの特定 (見つからない場合はデフォルト画像など)
-  const imageUrl = cardDef?.imagePath || "/plants/default.png";
-
+  const imageUrl =
+    cardDef?.imagePath || "https://placehold.co/256x160/ccc/999?text=Loading";
+  console.log(imageUrl);
   // --- 1. Seed (種) の描画 ---
   if (status === "seed") {
-    const baseColor = isPreview && isReady ? "#CCFF90" : "#8BC34A";
-    const emissiveColor = "#33691E";
-
     return (
-      <group position={[posX, 0.3, posZ]}>
-        <Float speed={2} rotationIntensity={1} floatIntensity={1.5}>
-          <mesh castShadow receiveShadow>
-            <icosahedronGeometry args={[0.15, 0]} />
-            <MeshDistortMaterial
-              color={baseColor}
-              emissive={emissiveColor}
-              emissiveIntensity={isPreview && isReady ? 2.0 : 0.8}
-              roughness={0.2}
-              metalness={0.8}
-              distort={0.4}
-              speed={2}
-              opacity={opacity}
-              transparent={transparent}
-            />
-          </mesh>
-        </Float>
-        <mesh position={[0, -0.28, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-          <circleGeometry args={[0.15, 32]} />
-          <meshBasicMaterial color="black" transparent opacity={0.2} />
-        </mesh>
-      </group>
+      <SeedToken
+        x={x}
+        y={y}
+        imageUrl={imageUrl}
+        isPreview={isPreview}
+        isReady={isReady}
+      />
     );
   }
 
@@ -76,22 +55,24 @@ export const AlienToken: React.FC<AlienTokenProps> = ({
   return (
     // Y軸のポジションを 0.15 にして盤面から浮かせる
     <group position={[posX, 0.15, posZ]}>
-      <Token3D
-        imageUrl={imageUrl}
-        scale={0.3}
-        rotation={[-Math.PI / 2, 0, Math.PI]}
-        opacity={opacity}
-      />
-      {/* エフェクト */}
-      <Sparkles
-        count={5}
-        scale={1.2}
-        size={3}
-        speed={0.4}
-        opacity={0.3}
-        color="#E1BEE7"
-        position={[0, 0.5, 0]}
-      />
+      <Float speed={8} rotationIntensity={0.1} floatIntensity={0.5}>
+        <Token3D
+          imageUrl={imageUrl}
+          scale={0.3}
+          rotation={[-Math.PI / 2, 0, Math.PI]}
+          opacity={opacity}
+        />
+        {/* エフェクト */}
+        <Sparkles
+          count={8}
+          scale={1.2}
+          size={6}
+          speed={0.4}
+          opacity={0.4}
+          color="#E1BEE7"
+          position={[0, 0, 0]}
+        />
+      </Float>
     </group>
   );
 };
