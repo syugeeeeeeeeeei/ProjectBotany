@@ -198,7 +198,7 @@ export const CardLayout = {
 
 		DIM_OVERLAY: {
 			COLOR: "black",
-			OPACITY: 0.3,
+			OPACITY: 0.2,
 			get POSITION(): [number, number, number] {
 				return [0, 0, CardLayout.getZ(CardLayout.layers.DIM_OVERLAY)];
 			},

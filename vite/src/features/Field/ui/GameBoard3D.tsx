@@ -6,7 +6,7 @@ import { useUIStore } from "@/core/store/uiStore";
 import { Cell } from "./parts/Cell";
 import { AlienToken } from "./parts/AlienToken";
 import { PlacementGuide } from "./PlacementGuide";
-// import { DESIGN } from "@/shared/constants/design-tokens";
+import { BoardBase } from "./parts/BoardBase";
 
 const GameBoard3D: React.FC = () => {
   const field = useGameQuery.useField();
@@ -15,6 +15,12 @@ const GameBoard3D: React.FC = () => {
   const deselectCard = useUIStore((s) => s.deselectCard);
 
   if (!field || !field.cells) return null;
+
+  const rows = field.cells.length;
+  const cols = field.cells[0]?.length ?? 0;
+
+  const boardWidth = field.width * 1.05;
+  const boardHeight = field.height * 1.05;
 
   // 背景クリックハンドラ
   // 盤面の裏や隙間をクリックしたときに選択を解除する
@@ -31,13 +37,18 @@ const GameBoard3D: React.FC = () => {
            ここで拾われるのを確実に防ぐことができる。
        */}
       <mesh
-        position={[0, -0.1, 0]}
+        position={[0, 0, 0]}
         rotation={[-Math.PI / 2, 0, 0]}
         onClick={handleBackgroundClick}
         visible={false} // 不可視
       >
         <planeGeometry args={[1000, 1000]} /> {/* 確実に画面全体を覆うサイズ */}
       </mesh>
+
+      {/* 🟫 盤面の茶色ベース */}
+      {cols > 0 && rows > 0 && (
+        <BoardBase width={boardWidth} height={boardHeight} thickness={0.001} />
+      )}
 
       <group name="grid-layer">
         {field.cells.flat().map((cell) => (

@@ -11,6 +11,12 @@ const App: React.FC = () => {
     // Core初期化
     initializeGameComposition();
 
+    // ✨ 追加: iPad等での長押しによるコンテキストメニュー表示を防止
+    const handleContextMenu = (e: MouseEvent) => {
+      e.preventDefault();
+    };
+    window.addEventListener("contextmenu", handleContextMenu);
+
     // 全FeatureのLogic初期化を実行
     const cleanups: (() => void)[] = [];
     FeaturesRegistry.forEach((feature) => {
@@ -23,12 +29,13 @@ const App: React.FC = () => {
     });
 
     return () => {
+      // ✨ 追加: イベントリスナーの解除
+      window.removeEventListener("contextmenu", handleContextMenu);
       cleanups.forEach((cleanup) => cleanup());
     };
   }, []);
 
   // 2. コンポーネントの描画委譲
-  // CoreはSlotを渡すだけで、中身の型を知る必要はない
   const renderSlot = (slot: UISlot) => (
     <>
       {FeaturesRegistry.map((feature) => (

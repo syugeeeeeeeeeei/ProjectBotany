@@ -6,7 +6,7 @@
 export const DESIGN = {
   // --- 盤面 (Field Grid) ---
   BOARD: {
-    CELL_GAP: 1.0,
+    CELL_GAP: 1,
     CELL_SIZE: 0.9,
     DEFAULT_ROTATION_X: -Math.PI / 2,
   },
