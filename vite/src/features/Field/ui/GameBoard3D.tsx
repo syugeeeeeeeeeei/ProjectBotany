@@ -11,6 +11,7 @@ import { PlacementGuide } from "./PlacementGuide";
 import { BoardBase } from "./parts/BoardBase";
 // ✨ 修正: パスが正しいか確認してください (ファイル名が RendorMonitor になっている場合はそちらに合わせてください)
 import { RenderMonitor } from "@/features/Debug/Console/ui/RenderMonitor";
+import { GeometryMonitor } from "@/features/Debug/Console/ui/GeometryMonitor";
 
 const GameBoard3D: React.FC = () => {
   const field = useGameQuery.useField();
@@ -43,6 +44,7 @@ const GameBoard3D: React.FC = () => {
           <Stats />
           {/* Htmlコンポーネントでラップし、DOMレイヤーとして描画 */}
           <RenderMonitor />
+          <GeometryMonitor />
         </>
       )}
 

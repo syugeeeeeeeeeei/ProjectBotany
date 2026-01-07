@@ -51,7 +51,10 @@ const Header = styled.div`
 const LogArea = styled.div`
   flex: 1;
   overflow-y: auto;
-  padding: 8px;
+  padding-left: 8px;
+  padding-right: 8px;
+  margin-bottom: 50px;
+  margin-top: 10px;
   display: flex;
   flex-direction: column-reverse;
   gap: 4px;
