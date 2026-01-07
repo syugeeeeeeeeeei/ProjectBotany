@@ -1,8 +1,6 @@
-// vite/src/features/field-grid/ui/GameBoard3D.tsx
 import React, { useRef } from "react";
 import { Group } from "three";
 import { ThreeEvent } from "@react-three/fiber";
-// ✨ Environment, Stars などのライティング系インポートを削除
 import { useGameQuery } from "@/core/api/queries";
 import { useUIStore } from "@/core/store/uiStore";
 import { Cell } from "./parts/Cell";
@@ -31,8 +29,6 @@ const GameBoard3D: React.FC = () => {
 
   return (
     <group ref={boardRef}>
-      {/* 💡 ライト設定はここから削除されました */}
-
       {/* クリック判定用の透明な床 */}
       <mesh
         position={[0, -0.1, 0]}
@@ -62,6 +58,7 @@ const GameBoard3D: React.FC = () => {
             x={alien.currentX}
             y={alien.currentY}
             status={alien.status}
+            cardDefinitionId={alien.cardDefinitionId} // ✨ 追加: カードIDを渡す
           />
         ))}
       </group>
