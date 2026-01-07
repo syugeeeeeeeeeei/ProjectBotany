@@ -64,7 +64,8 @@ const SceneSetup = () => {
         position={[15, 25, 15]} // 右手前上空から
         intensity={1}
         castShadow
-        shadow-mapSize={[2048, 2048]}
+        /* ✨ 修正: シャドウマップサイズを削減 (2048 -> 1024) */
+        shadow-mapSize={[1024, 1024]}
         shadow-bias={-0.0005}
         // ✨ 重要: 影の計算範囲を広げる (デフォルトは狭い)
         // これにより盤面の端までしっかり影が落ち、立体感が出ます

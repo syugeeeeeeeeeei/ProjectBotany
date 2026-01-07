@@ -10,8 +10,10 @@ const DashboardWrapper = styled.div<{ $isOpen: boolean }>`
   width: calc(100% - 40px);
   max-width: 650px;
   height: ${(props) => (props.$isOpen ? "450px" : "0px")};
+  /* ✨ 修正: 背景色の不透明度を維持し、blurを削除 */
   background-color: rgba(15, 15, 15, 0.96);
-  backdrop-filter: blur(12px);
+  /* backdrop-filter: blur(12px); <-- GPU負荷軽減のため削除 */
+
   border: ${(props) => (props.$isOpen ? "1px solid #00ff0044" : "none")};
   border-radius: 12px;
   z-index: 100000;

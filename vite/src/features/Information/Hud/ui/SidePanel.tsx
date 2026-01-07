@@ -50,8 +50,9 @@ const PanelContent = styled.div<{
   $accentColor?: string;
 }>`
   pointer-events: auto;
-  background: rgba(20, 20, 20, 0.85);
-  backdrop-filter: blur(12px);
+  /* ✨ 修正: backdrop-filterを廃止し、不透明度を上げて視認性を確保 (0.85 -> 0.95) */
+  background: rgba(20, 20, 20, 0.95);
+  /* backdrop-filter: blur(12px); <-- GPU負荷軽減のため削除 */
 
   /* デフォルトのボーダーまたはアクティブ時のボーダー */
   border: 1px solid
