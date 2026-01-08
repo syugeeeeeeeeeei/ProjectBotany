@@ -8,7 +8,7 @@ import { cardMasterData } from "@/shared/data/cardMasterData";
 import { DESIGN } from "@/shared/constants/design-tokens";
 
 // 最低ホバー時間
-const HOVER_THRESHOLD = 150;
+const HOVER_THRESHOLD = 50;
 
 export const useCellLogic = (cell: CellState) => {
 	const isSelected = useUIStore(

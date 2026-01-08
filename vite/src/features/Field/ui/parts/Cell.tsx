@@ -53,7 +53,10 @@ export const Cell: React.FC<CellProps> = ({ cell }) => {
 
   const handlePointerOut = () => {
     setHover(false);
-    handlers.handlePointerOut();
+    // ✨ 修正: マスの隙間に移動した際のちらつきを防ぐため、
+    // ここで Global State (hoveredCell) をクリアしないように変更。
+    // 解除は GameBoard3D の背景ホバーで行う。
+    // handlers.handlePointerOut();
   };
 
   return (
