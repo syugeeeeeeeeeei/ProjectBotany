@@ -43,7 +43,7 @@ export const HandLayout = {
 	ANIMATION: {
 		Z_SELECTED: 2.5,
 		Z_DEFAULT: 0,
-		SPRING_CONFIG: { tension: 900, friction: 40 },
+		SPRING_CONFIG: { tension: 700, friction: 40 },
 	},
 
 	get PAGE_WIDTH() {
