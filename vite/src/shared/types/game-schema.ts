@@ -68,6 +68,11 @@ export interface CellState {
 
   /** このマスに存在するユニットのID (Seed/Core) */
   alienUnitId?: string;
+
+  /** * ✨ 追加: 先駆植生が生成されたラウンド 
+   * (次のラウンド終了時まで維持するために使用)
+   */
+  pioneerCreatedAt?: number;
 }
 
 export interface FieldState {

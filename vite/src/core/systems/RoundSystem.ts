@@ -39,7 +39,23 @@ export const RoundSystem = {
       for (let x = 0; x < gameField.width; x++) {
         const cell = gameField.cells[y][x];
         if (cell.type === "pioneer") {
-          newCells.push({ ...cell, type: "native", ownerId: "native" });
+          // ✨ 修正: 生成された直後のラウンド開始時には回復しないようにする
+          // pioneerCreatedAt は先駆植生が作られたラウンド (例: 1)
+          // currentRound は終了したばかりのラウンド (例: 1)
+          // この startRound が呼ばれるのは R1終了後の R2開始処理。
+          // 1-n に作られた場合: pioneerCreatedAt = 1, currentRound = 1
+          // 1 > 1 (False) となり回復しない。
+          // R2終了後の R3開始処理: currentRound = 2
+          // 2 > 1 (True) となり回復する。
+          const createdAt = cell.pioneerCreatedAt ?? 0;
+          if (currentRound > createdAt) {
+            newCells.push({
+              ...cell,
+              type: "native",
+              ownerId: "native",
+              pioneerCreatedAt: undefined // 属性を消去
+            });
+          }
         }
       }
     }

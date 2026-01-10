@@ -9,8 +9,8 @@ import {
   RecoveryCardDefinition,
   CellState,
   AlienInstance,
-  CellType, // ✨ 追加
-  StateTransition, // ✨ 追加
+  CellType,
+  StateTransition,
 } from "@/shared/types";
 import { Point, GridShape, PlayerId } from "@/shared/types/primitives";
 import { FieldUtils } from "@/core/api/utils";
@@ -49,9 +49,6 @@ export const executeCardEffect = (
 };
 
 // --- ヘルパー: Transitionマッチング ---
-/**
- * セルタイプにマッチする遷移ルールを探す
- */
 const findMatchingTransition = (
   transitions: StateTransition[],
   cellType: CellType
@@ -86,7 +83,6 @@ const executeAlienCard = (
 
   if (!targetCell) return gameState;
 
-  // ✨ 修正: ターゲットバリデーション（配列対応）
   const allowedTargets = getAllowedTargets(card.transition);
 
   if (!allowedTargets.includes(targetCell.type)) {
@@ -152,7 +148,6 @@ const executeEradicationCard = (
       return gameState;
     }
   } else {
-    // 通常駆除の場合、有効な遷移があるかチェック
     const allowedTargets = getAllowedTargets(transition);
     if (!allowedTargets.includes(targetCell.type)) {
       const msg = "無効なターゲットです。";
@@ -189,49 +184,42 @@ const executeEradicationCard = (
     const cell = FieldUtils.getCell(currentGameState.gameField, p);
     if (!cell) return;
 
-    // 1. 外来種ユニット(Core/Alien)の処理
-    const isAlien = cell.type === "alien" || cell.type === "alien-core";
-    if (isAlien) {
+    // 1. 外来種ユニット(Core)の処理
+    // ✨ 修正: 反撃判定とインスタンス削除は alien-core の場合のみ行う
+    if (cell.type === "alien-core" && cell.alienUnitId) {
       const unitId = cell.alienUnitId;
+      const instance = currentGameState.alienInstances[unitId];
 
-      if (unitId) {
-        const instance = currentGameState.alienInstances[unitId];
-
-        // 反撃判定: Core かつ Simple駆除
-        const isCore = cell.type === "alien-core";
+      if (instance) {
+        // 反撃判定: Simple駆除 かつ 反撃無効化属性なし
         const isSimple = eradicationType === "simple";
+        const masterData = getCardDefinition(instance.cardDefinitionId);
+        const hasCounter = masterData?.counterAbility === "spread_seed";
 
-        if (isCore && instance) {
-          const masterData = getCardDefinition(instance.cardDefinitionId);
-          const hasCounter = masterData?.counterAbility === "spread_seed";
-
-          if (isSimple && !preventsCounter && hasCounter) {
-            console.warn(`[PlayCard] ⚠️ Counter Ability Triggered at [${p.x}, ${p.y}]!`);
-            currentGameState = triggerCounterEffect(currentGameState, p, instance.cardDefinitionId);
-          }
-
-          const newAlienInstances = { ...currentGameState.alienInstances };
-          delete newAlienInstances[unitId];
-          currentGameState.alienInstances = newAlienInstances;
-          removedCount++;
-        } else if (cell.type === "alien") {
-          removedCount++;
+        if (isSimple && !preventsCounter && hasCounter) {
+          console.warn(`[PlayCard] ⚠️ Counter Ability Triggered at [${p.x}, ${p.y}]!`);
+          // ✨ 修正: 駆除された外来種(Core)の座標を渡す
+          currentGameState = triggerCounterEffect(currentGameState, p, instance.cardDefinitionId);
         }
+
+        // インスタンス削除処理
+        const newAlienInstances = { ...currentGameState.alienInstances };
+        delete newAlienInstances[unitId];
+        currentGameState.alienInstances = newAlienInstances;
+        removedCount++;
       }
+    } else if (cell.type === "alien") {
+      // 領域(alien)の場合はユニット削除処理は不要だが、除去カウントは増やす
+      removedCount++;
     }
 
     // 2. 地形の変更処理
-    // ✨ 修正: Chainの場合は特別扱い、それ以外は Transition 配列からルールを探す
     let resultType: CellType | null = null;
 
     if (eradicationType === "chain" && (cell.type === "alien" || cell.type === "alien-core")) {
-      // Chainの場合、Coreに対する遷移ルールを全Alienマスに適用する
-      // (通常は alien-core -> bare のルールが定義されているはず)
-      // Coreへのルールを検索して適用
       const rule = findMatchingTransition(transition, "alien-core");
       if (rule) resultType = rule.result;
     } else {
-      // 通常: セルタイプごとのルールを適用
       const rule = findMatchingTransition(transition, cell.type);
       if (rule) resultType = rule.result;
     }
@@ -292,17 +280,18 @@ const executeRecoveryCard = (
     const cell = FieldUtils.getCell(currentGameState.gameField, p);
     if (!cell) return;
 
-    // ✨ 修正: 遷移ルール検索
     const rule = findMatchingTransition(transition, cell.type);
 
     if (rule) {
       const nextType = rule.result;
       let nextOwner: string | null = cell.ownerId;
+      let pioneerCreatedAt: number | undefined = undefined;
 
       if (nextType === "native") {
         nextOwner = "native";
       } else if (nextType === "pioneer") {
         nextOwner = null;
+        pioneerCreatedAt = currentGameState.currentRound;
       }
 
       if (nextType !== cell.type) {
@@ -310,6 +299,7 @@ const executeRecoveryCard = (
           ...cell,
           type: nextType,
           ownerId: nextOwner as PlayerId,
+          pioneerCreatedAt: pioneerCreatedAt,
         };
         currentGameState.gameField = FieldUtils.updateCell(
           currentGameState.gameField,
@@ -332,27 +322,37 @@ const triggerCounterEffect = (gameState: GameState, center: Point, originCardId:
   const newState = { ...gameState };
   const { gameField } = newState;
 
-  const neighbors = getCellsByShape(gameField.width, gameField.height, center, "range", 1);
+  // ✨ 修正: 盤面内の全裸地マスを取得
+  const allBareCells = FieldUtils.getCellsByType(gameField, "bare");
 
-  const bareNeighbors = neighbors.filter(p => {
-    const c = FieldUtils.getCell(gameField, p);
-    return c?.type === "bare";
-  });
+  // ✨ 修正: 駆除対象となったマス(center)を候補から除外
+  // (駆除前の状態だとまだbareではないかもしれないが、座標一致で除外する)
+  const candidates = allBareCells.filter(p => !(p.x === center.x && p.y === center.y));
 
-  const seedCount = Math.min(bareNeighbors.length, 2);
-  if (seedCount === 0) return newState;
+  // ✨ 修正: 50%の確率で2個、それ以外は1個生成
+  const countBase = Math.random() < 0.5 ? 2 : 1;
+  const seedCount = Math.min(candidates.length, countBase);
 
-  const shuffled = bareNeighbors.sort(() => 0.5 - Math.random());
+  if (seedCount === 0) {
+    console.log("[Counter] No available bare cells for counter spread.");
+    return newState;
+  }
+
+  const shuffled = candidates.sort(() => 0.5 - Math.random());
   const targets = shuffled.slice(0, seedCount);
 
-  console.log(`[Counter] Spawning ${seedCount} seeds around [${center.x}, ${center.y}] from ${originCardId}`);
+  console.log(`[Counter] Spawning ${seedCount} seeds (Target: ${countBase}) from ${originCardId}`);
 
   targets.forEach(p => {
     const newId = uuidv4();
+
+    // 反撃で生まれた種は「次のラウンドに生まれた扱い」(+1)
+    const effectiveSpawnRound = newState.currentRound + 1;
+
     const newInstance: AlienInstance = {
       instanceId: newId,
       cardDefinitionId: originCardId,
-      spawnedRound: newState.currentRound,
+      spawnedRound: effectiveSpawnRound,
       status: "seed",
       currentX: p.x,
       currentY: p.y,
