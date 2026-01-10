@@ -5,7 +5,7 @@ import { cardHandFeature } from "@/features/Card/Hand";
 import { playCardFeature } from "@/features/Card/PlayCard";
 import { alienGrowthFeature } from "@/features/Alien/Growth";
 import { alienExpansionFeature } from "@/features/Alien/Expansion";
-import { debugConsoleFeature } from "@/features/Debug/Console";
+// import { debugConsoleFeature } from "@/features/Debug/Console";
 import { hudFeature } from "@/features/Information/Hud";
 import { alertFeature } from "@/features/Information/Alert";
 import { bannerFeature } from "@/features/Information/Banner";
