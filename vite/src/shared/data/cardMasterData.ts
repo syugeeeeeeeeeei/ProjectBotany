@@ -14,7 +14,7 @@ export const cardMasterData: CardDefinition[] = [
     id: "alien-1",
     name: "ナガミヒナゲシ",
     description:
-      "【拡散】左右1マス\n【反撃】なし\n\n近年急増している外来種。拡散力は低いが、コストが軽く、隙間に入り込んでくる。",
+      "【拡散】左右1マス\n【反撃】なし\n\n特定外来生物ではないが、近年数を増やし侵略性が警戒される。\n少し毒があり、あまり警戒されずに徐々に勢力を広げる。",
     cost: 1,
     cardType: "alien",
     deckCount: 1,
@@ -27,7 +27,7 @@ export const cardMasterData: CardDefinition[] = [
     id: "alien-2",
     name: "ブラジルチドメグサ",
     description:
-      "【拡散】上下1マス\n【反撃】種子散布\n\n水辺を好む外来種。千切れた茎から再生するため、半端な駆除は拡散を招く。",
+      "【拡散】上下1マス\n【反撃】種子散布\n\n特定外来生物。\nアクアリウムから逸出し、河川や水路で繁殖する。\n茎だけでも増殖し駆除が困難。",
     cost: 1,
     cardType: "alien",
     deckCount: 1,
@@ -40,7 +40,7 @@ export const cardMasterData: CardDefinition[] = [
     id: "alien-3",
     name: "オオキンケイギク",
     description:
-      "【拡散】十字1マス\n【反撃】なし\n\n鮮やかな花を咲かせるが、在来種を駆逐する力が強い。物理駆除で確実に処理しよう。",
+      "【拡散】十字1マス\n【反撃】なし\n\n特定外来生物。\n観賞用に持ち込まれた。\n繁殖・拡散が速い。\n道路沿いなどに多く、在来種を駆逐する。",
     cost: 2,
     cardType: "alien",
     deckCount: 2,
@@ -54,7 +54,7 @@ export const cardMasterData: CardDefinition[] = [
     id: "alien-4",
     name: "ミズバショウ",
     description:
-      "【拡散】周囲1マス\n【反撃】なし\n\n大きな葉で光を遮り、広範囲の在来種を衰退させる。拡散範囲が広い。",
+      "【拡散】周囲1マス\n【反撃】なし\n\n諏訪地域では外来植物。\n大きな葉で広範囲の面積を奪う。\n全国的には希少なため安易に駆除できない。",
     cost: 3,
     cardType: "alien",
     deckCount: 2,
@@ -68,7 +68,7 @@ export const cardMasterData: CardDefinition[] = [
     id: "alien-5",
     name: "オオハンゴンソウ",
     description:
-      "【拡散】斜め十字\n【反撃】種子散布\n\n地下茎で増える強害雑草。物理駆除では根が残り、そこから再生・拡散する恐れがある。",
+      "【拡散】斜め十字\n【反撃】種子散布\n\n特定外来生物。\n低木と競合するほど強く、森や山を侵す。\n根だけでも増え駆除が困難。",
     cost: 4,
     cardType: "alien",
     deckCount: 1,
@@ -82,7 +82,7 @@ export const cardMasterData: CardDefinition[] = [
     id: "alien-6",
     name: "アレチウリ",
     description:
-      "【拡散】周囲2マス\n【反撃】種子散布\n\nすべてを覆い尽くす「緑の怪物」。極めて強い拡散力と再生能力を持つ。",
+      "【拡散】周囲2マス\n【反撃】種子散布\n\n特定外来生物。\nつるを伸ばし、樹木や河川敷を覆い尽くす。\n密集して繁茂するため、物理的な駆除が難しい。",
     cost: 5,
     cardType: "alien",
     deckCount: 1,
