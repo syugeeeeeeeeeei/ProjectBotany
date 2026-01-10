@@ -18,4 +18,9 @@ export const FieldUtils = {
 
 	/** フィールド生成 (初期化用) */
 	initializeField: FieldSystem.initializeField,
+
+	/** * ✨ 追加: 特定の種類のセルリストを取得する
+	 * (連鎖駆除などで使用)
+	 */
+	getCellsByType: FieldSystem.getCellsByType,
 };

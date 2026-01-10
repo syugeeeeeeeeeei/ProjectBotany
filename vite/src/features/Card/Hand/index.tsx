@@ -1,5 +1,4 @@
 // vite/src/features/card-hand/index.tsx
-import React from "react";
 import { GameFeature } from "@/core/types/architecture";
 import Hand3D from "./ui/Hand3D";
 

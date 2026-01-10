@@ -37,4 +37,25 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          // Reactのコアライブラリ
+          vendor: ['react', 'react-dom', 'zod', 'zustand', 'immer'],
+
+          // ✨ 修正点: Three.js関連をさらに2つに分割して、1ファイルあたりのサイズを削減
+
+          // 1. Three.js 本体 (重いので単独にする)
+          'three-core': ['three'],
+
+          // 2. R3F (React Three Fiber) 関連のユーティリティ
+          'three-utils': ['@react-three/fiber', '@react-three/drei', '@react-spring/three'],
+        },
+      },
+    },
+    // 警告が出る閾値を設定 (1000kB = 1MB)
+    // ※ 分割してもこれを超える場合は、1500などに上げても問題ありません（3Dアプリなので許容範囲です）
+    chunkSizeWarningLimit: 1000,
+  },
 })

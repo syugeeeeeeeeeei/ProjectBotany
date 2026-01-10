@@ -10,9 +10,9 @@ import { cardMasterData } from "@/shared/data/cardMasterData";
 
 /**
  * 外来種の拡散処理 (Expansion)
- * * 【連鎖拡散ロジックへの修正】
- * - Core（トークン位置）だけでなく、その植物が支配している全マスを起点に拡散を計算します。
- * - 拡散によって生成された新しい外来種マスにも `alienUnitId` を付与し、次ラウンドの起点にします。
+ * ✨ 修正: 連鎖拡散ロジック
+ * - Core（トークン位置）だけでなく、その植物が支配している全マス(Core + Alien)を起点に拡散。
+ * - 拡散先は 'alien' タイプとなり、親の alienUnitId を継承する。
  */
 export const processAlienExpansion = (gameState: GameState): GameState => {
   const { alienInstances, gameField } = gameState;
@@ -32,7 +32,10 @@ export const processAlienExpansion = (gameState: GameState): GameState => {
     const cardDef = getAlienCardDefinition(instance.cardDefinitionId);
     if (!cardDef) return;
 
-    const { expansionPower, expansionRange } = cardDef;
+    // ✨ 変更: range プロパティから取得
+    const { range } = cardDef;
+    const expansionPower = range.scale;
+    const expansionRange = range.shape;
 
     // 1. このインスタンスに属する全てのマス（Coreおよび既に侵食済みのマス）を特定する
     const sourcePoints: Point[] = [];
@@ -62,11 +65,11 @@ export const processAlienExpansion = (gameState: GameState): GameState => {
         // 侵食可能判定（在来種・先駆植生・裸地）
         if (canInvade(currentCell)) {
           // すでに今回のループで他のマスから侵食済みでないかチェック
-          if (nextCells[p.y][p.x].type === "alien") return;
+          if (nextCells[p.y][p.x].type === "alien" || nextCells[p.y][p.x].type === "alien-core") return;
 
           const newCell: CellState = {
             ...currentCell,
-            type: "alien",
+            type: "alien", // ✨ 拡散先は通常の alien マス
             ownerId: "alien",
             // 重要: このマスをこのインスタンスの支配下として登録することで、次ラウンドの拡散起点にする
             alienUnitId: instance.instanceId,
@@ -106,7 +109,7 @@ export const processAlienExpansion = (gameState: GameState): GameState => {
  */
 const canInvade = (targetCell: CellState): boolean => {
   const t = targetCell.type;
-  // 外来種(alien)以外の3種であれば侵食可能
+  // 外来種(alien, alien-core)以外の3種であれば侵食可能
   return t === "native" || t === "pioneer" || t === "bare";
 };
 

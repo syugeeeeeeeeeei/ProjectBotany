@@ -23,7 +23,7 @@ export const Cell: React.FC<CellProps> = ({ cell }) => {
   useCursor(hovered); // ホバー時にカーソルを変更
 
   // アニメーション: ホバー時に少し浮き上がり、色を変化させる
-  useFrame((state, delta) => {
+  useFrame((_state, delta) => {
     if (!meshRef.current) return;
 
     // Y軸のターゲット位置 (ホバー時は 0.1 上げる)

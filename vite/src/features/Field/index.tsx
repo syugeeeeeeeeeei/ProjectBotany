@@ -1,5 +1,4 @@
 // vite/src/features/field-grid/index.tsx
-import React from "react";
 import { GameFeature } from "@/core/types/architecture";
 import GameBoard3D from "./ui/GameBoard3D";
 

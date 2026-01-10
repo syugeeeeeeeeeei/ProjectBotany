@@ -1,6 +1,7 @@
 /**
  * src/shared/data/cardMasterData.ts
  * プロジェクト「侵緑」カードマスターデータ
+ * ✨ 更新: 新しい CardDefinition スキーマ (range, transition[], EradicationType) に準拠
  */
 
 import { CardDefinition } from "../types/card";
@@ -8,7 +9,6 @@ import { CardDefinition } from "../types/card";
 export const cardMasterData: CardDefinition[] = [
   // =================================================================
   // 🌵 外来種カード (Alien Cards)
-  // [共通仕様] ターゲット: 裸地(Bare), 配置時: 種(Seed), 成長: 休眠1R後に成体化
   // =================================================================
   {
     id: "alien-1",
@@ -19,8 +19,8 @@ export const cardMasterData: CardDefinition[] = [
     cardType: "alien",
     deckCount: 1,
     imagePath: "/plants/ナガミヒナゲシ.png",
-    expansionPower: 1,
-    expansionRange: "horizon", // 左右
+    range: { shape: "horizon", scale: 1 }, // 左右1マス
+    transition: [{ target: "bare", result: "alien-core" }],
     counterAbility: "none",
   },
   {
@@ -32,9 +32,9 @@ export const cardMasterData: CardDefinition[] = [
     cardType: "alien",
     deckCount: 1,
     imagePath: "/plants/ブラジルチドメグサ.png",
-    expansionPower: 1,
-    expansionRange: "vertical", // 上下（川の流れなど）
-    counterAbility: "spread_seed", // 物理駆除時に周囲に種を撒く
+    range: { shape: "vertical", scale: 1 }, // 上下1マス
+    transition: [{ target: "bare", result: "alien-core" }],
+    counterAbility: "spread_seed", // 簡易駆除時に周囲に種を撒く
   },
   {
     id: "alien-3",
@@ -45,8 +45,8 @@ export const cardMasterData: CardDefinition[] = [
     cardType: "alien",
     deckCount: 2,
     imagePath: "/plants/オオキンケイギク.png",
-    expansionPower: 1,
-    expansionRange: "cross", // 十字
+    range: { shape: "cross", scale: 1 }, // 十字1マス
+    transition: [{ target: "bare", result: "alien-core" }],
     counterAbility: "none",
     cooldownTurns: 1,
   },
@@ -59,8 +59,8 @@ export const cardMasterData: CardDefinition[] = [
     cardType: "alien",
     deckCount: 2,
     imagePath: "/plants/ミズバショウ.png",
-    expansionPower: 1,
-    expansionRange: "range", // 周囲8マス（正方形）
+    range: { shape: "range", scale: 1 }, // 周囲1マス（3x3）
+    transition: [{ target: "bare", result: "alien-core" }],
     counterAbility: "none",
     cooldownTurns: 1,
   },
@@ -73,9 +73,9 @@ export const cardMasterData: CardDefinition[] = [
     cardType: "alien",
     deckCount: 1,
     imagePath: "/plants/オオハンゴンソウ.png",
-    expansionPower: 2, // 遠くまで届く
-    expansionRange: "x_cross", // 斜め
-    counterAbility: "spread_seed", // 厄介な反撃持ち
+    range: { shape: "x_cross", scale: 2 }, // 斜め十字（距離2）
+    transition: [{ target: "bare", result: "alien-core" }],
+    counterAbility: "spread_seed",
     usageLimit: 3,
   },
   {
@@ -87,8 +87,8 @@ export const cardMasterData: CardDefinition[] = [
     cardType: "alien",
     deckCount: 1,
     imagePath: "/plants/アレチウリ.png",
-    expansionPower: 2,
-    expansionRange: "range", // 周囲広範囲
+    range: { shape: "range", scale: 2 }, // 周囲2マス（5x5）
+    transition: [{ target: "bare", result: "alien-core" }],
     counterAbility: "spread_seed",
     cooldownTurns: 1,
     usageLimit: 2,
@@ -96,53 +96,46 @@ export const cardMasterData: CardDefinition[] = [
 
   // =================================================================
   // 🧹 駆除カード (Eradication Cards)
-  // [共通仕様] 完全(Complete)=反撃無効, 物理(Physical)=反撃許容
   // =================================================================
   {
     id: "erad-1",
     name: "刈り払い",
     description:
-      "【物理駆除】1マス\n草刈り機などで地上部を刈り取る。低コストだが、再生能力を持つ外来種には逆効果となる場合がある。",
+      "【簡易駆除】1マス\n草刈り機などで地上部を刈り取る。低コストだが、種子を広げるなど逆効果となる場合がある。",
     cost: 1,
     cardType: "eradication",
     deckCount: 1,
     imagePath: "/actions/erad/kariharai.png",
-    eradicationPower: 1,
-    eradicationRange: "point", // 1マス
-    eradicationType: "physical", // ★物理（反撃受ける）
-    chainDestruction: false,
-    postState: "bare", // 駆除後は裸地
+    range: { shape: "point", scale: 1 },
+    transition: [{ target: ["alien", "alien-core"], result: "pioneer" }],
+    eradicationType: "simple",
   },
   {
     id: "erad-2",
     name: "手取り除草",
     description:
-      "【物理駆除】十字範囲\n手作業で抜き取る。範囲は広いが、根の断片を残すと再生を許してしまう。",
+      "【簡易駆除】十字範囲\n手作業で抜き取る。範囲は広いが、根の断片を残すと再生を許してしまう。",
     cost: 2,
     cardType: "eradication",
     deckCount: 1,
     imagePath: "/actions/erad/tedori.png",
-    eradicationPower: 1,
-    eradicationRange: "cross", // 十字
-    eradicationType: "physical", // ★物理
-    chainDestruction: false,
-    postState: "bare",
+    range: { shape: "cross", scale: 1 },
+    transition: [{ target: ["alien", "alien-core"], result: "bare" }],
+    eradicationType: "simple",
   },
   {
     id: "erad-3",
-    name: "遮光シート被覆",
+    name: "遮光シート",
     description:
-      "【完全駆除】1マス\n防草シートで覆い、光合成を阻害して枯死させる。「種子散布」等の反撃を無効化する。",
+      "【完全駆除】周囲\n防草シートで覆い、光合成を阻害して枯死させる。種子の散布を防ぎ、環境負荷も低い",
     cost: 3,
     cardType: "eradication",
     deckCount: 2,
     imagePath: "/actions/erad/shakou.png",
-    eradicationPower: 2,
     cooldownTurns: 1,
-    eradicationRange: "point",
-    eradicationType: "complete", // 完全（反撃無効）
-    chainDestruction: false,
-    postState: "pioneer", // シートが土を守るため、先駆植生になりやすい
+    range: { shape: "range", scale: 1 },
+    transition: [{ target: ["alien", "alien-core"], result: "pioneer" }],
+    eradicationType: "complete",
   },
   {
     id: "erad-4",
@@ -153,102 +146,86 @@ export const cardMasterData: CardDefinition[] = [
     cardType: "eradication",
     deckCount: 1,
     imagePath: "/actions/erad/kussaku.png",
-    eradicationPower: 3,
-    eradicationRange: "range", // 周囲8マス
-    eradicationType: "complete", // 完全
-    chainDestruction: false,
-    postState: "bare",
+    range: { shape: "x_cross", scale: 2 },
+    transition: [{ target: ["alien", "alien-core"], result: "bare" }],
+    eradicationType: "complete",
     usageLimit: 2,
   },
   {
     id: "erad-5",
     name: "抜本的駆除計画",
     description:
-      "【連鎖駆除】\n指定した外来種(Core)と、その支配下にある全ての侵略マスを根こそぎ駆除する最終手段。",
+      "【連鎖駆除】\nあらゆる手段・莫大なコストを投じ、指定した外来種を根こそぎ駆除する最終手段。",
     cost: 5,
     cardType: "eradication",
     deckCount: 1,
     imagePath: "/actions/erad/bappon.png",
-    eradicationPower: 3,
-    eradicationRange: "point", // 起点は1つだが連鎖する
-    eradicationType: "complete",
-    chainDestruction: true, // 連鎖的に破壊する
-    postState: "bare",
+    range: { shape: "point", scale: 1 },
+    transition: [{ target: "alien-core", result: "bare" }],
+    eradicationType: "chain",
     cooldownTurns: 1,
     usageLimit: 2,
   },
 
   // =================================================================
   // 🌿 回復カード (Recovery Cards)
-  // [共通仕様] Power 1: 裸地->先駆, Power 2: 裸地->在来
   // =================================================================
   {
     id: "recov-1",
     name: "客土（土入れ）",
     description:
-      "【回復】1マス (裸地→先駆)\n外来種の種を含まない清浄な土を入れる。裸地を塞ぎ、侵入を防ぐ壁を作る。",
+      "【回復】範囲1マス (裸地→先駆植生)\n外来種の種を含まない清浄な土を入れる。裸地を塞ぎ、在来種が定着できる土台を作る",
     cost: 1,
     cardType: "recovery",
     deckCount: 1,
     imagePath: "/actions/recov/kyakudo.png",
-    recoveryPower: 1, // 裸地 -> 先駆
-    recoveryRange: "point",
+    range: { shape: "cross", scale: 1 },
+    transition: [{ target: "bare", result: "pioneer" }],
     protection: "none",
   },
   {
     id: "recov-2",
     name: "在来種植栽",
     description:
-      "【回復】1マス (裸地→在来)\n在来種の苗を直接植え付ける。時間をかけずに緑を取り戻すことができる。",
+      "【回復】範囲1マス (先駆植生→在来)\n在来種の苗を直接植え付ける。時間をかけずに緑を取り戻すことができる。",
     cost: 2,
     cardType: "recovery",
     deckCount: 1,
     imagePath: "/actions/recov/shokusai.png",
-    recoveryPower: 2, // 裸地 -> 在来種 (即時回復)
-    recoveryRange: "point",
+    range: { shape: "range", scale: 1 },
+    transition: [{ target: "pioneer", result: "native" }],
     protection: "none",
   },
   {
     id: "recov-3",
-    name: "モニタリング保全",
-    description:
-      "【回復】十字範囲 (裸地→先駆) + 防御\n広範囲の植生を回復し、監視を行うことで次の侵入を防ぐ(1ラウンド防御)。",
-    cost: 2,
-    cardType: "recovery",
-    deckCount: 2,
-    cooldownTurns: 1,
-    imagePath: "/actions/recov/monitoring.png",
-    recoveryPower: 1,
-    recoveryRange: "cross",
-    protection: "1_round", // 次のターンの侵入不可
-  },
-  {
-    id: "recov-4",
     name: "河川環境管理",
     description:
-      "【回復】縦一列 (裸地→在来)\n川の流れに沿って環境を整え、外来種の侵入しにくい自然な水辺を再生する。",
-    cost: 4,
+      "【回復】縦一列 (裸地→先駆植生)\n川の流れに沿って環境を整え、外来種の侵入しにくい自然な水辺を再生する。",
+    cost: 3,
     cardType: "recovery",
     deckCount: 1,
     imagePath: "/actions/recov/kasen.png",
-    recoveryPower: 2, // 即時回復
-    recoveryRange: "vertical", // 縦列
+    range: { shape: "vertical", scale: 2 },
+    transition: [{ target: "bare", result: "pioneer" }],
     protection: "none",
-    cooldownTurns: 1,
     usageLimit: 2,
   },
   {
-    id: "recov-5",
+    id: "recov-4",
     name: "大地の恵み",
     description:
       "【回復】周囲 (先駆→在来)\n生態系本来の回復力を呼び覚ます。広範囲の先駆植生が一斉に在来種へ遷移する。",
-    cost: 5,
+    cost: 4,
     cardType: "recovery",
     deckCount: 1,
     imagePath: "/actions/recov/megumi.png",
-    recoveryPower: 3, // 先駆 -> 在来種 (広範囲仕上げ用)
-    recoveryRange: "range",
+    range: { shape: "range", scale: 2 }, // 周囲2マス（5x5）
+    // ✨ ユーザー提示のロジック: 先駆と裸地の両方を在来に戻す
+    transition: [
+      { target: "bare", result: "pioneer" },
+      { target: "pioneer", result: "native" }
+    ],
     protection: "none",
-    usageLimit: 1,
+    usageLimit: 2,
   },
 ];

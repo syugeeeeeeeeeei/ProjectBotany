@@ -12,6 +12,7 @@ node_modules/
 /dist
 /build
 /packages/database/dist
+/vite/dist
 
 # IDE & OS files
 .idea/

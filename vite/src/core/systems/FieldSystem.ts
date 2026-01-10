@@ -41,7 +41,6 @@ export const FieldSystem = {
     const bareIndices = new Set<number>();
 
     // 重複しないようにインデックスを選ぶ
-    // (万が一フィールドサイズが10未満の場合は全裸地になるが、仕様上考慮外とする)
     while (bareIndices.size < bareCount && bareIndices.size < totalCells) {
       const randomIndex = Math.floor(Math.random() * totalCells);
       bareIndices.add(randomIndex);
@@ -81,8 +80,6 @@ export const FieldSystem = {
    * 座標からセルを取得 (範囲外ならnull)
    */
   getCell(field: FieldState, p: Point): CellState | null {
-    // 修正: this.isValidCoordinate ではなく FieldSystem.isValidCoordinate を使用
-    // 関数参照として渡された場合の this 落ち対策
     if (!FieldSystem.isValidCoordinate(field, p)) return null;
     return field.cells[p.y][p.x];
   },
@@ -92,10 +89,8 @@ export const FieldSystem = {
    */
   updateCell(field: FieldState, newCell: CellState): FieldState {
     const { x, y } = newCell;
-    // 修正: this -> FieldSystem
     if (!FieldSystem.isValidCoordinate(field, { x, y })) return field;
 
-    // 2次元配列のコピーを作成 (浅いコピーで行まで、該当行は新しく作成)
     const newCells = [...field.cells];
     newCells[y] = [...field.cells[y]];
     newCells[y][x] = newCell;
@@ -110,7 +105,7 @@ export const FieldSystem = {
    * 指定範囲のセルを一括更新する
    */
   updateCells(field: FieldState, newCells: CellState[]): FieldState {
-    const currentCells = [...field.cells]; // 行の参照コピー
+    const currentCells = [...field.cells];
 
     let isModified = false;
     newCells.forEach((cell) => {
@@ -121,7 +116,6 @@ export const FieldSystem = {
         y >= 0 &&
         y < field.height
       ) {
-        // 必要に応じて行をコピー（まだコピーされてなければ）
         if (currentCells[y] === field.cells[y]) {
           currentCells[y] = [...field.cells[y]];
         }
@@ -140,12 +134,17 @@ export const FieldSystem = {
 
   /**
    * ユーティリティ: 特定の種類のセルをカウントする
+   * ✨ 修正: 'alien' を指定した場合、 'alien-core' も含めてカウントする
+   * (勝利条件判定などで「外来種側のマス数」として扱うため)
    */
   countCellsByType(field: FieldState, type: CellType): number {
     let count = 0;
     for (const row of field.cells) {
       for (const cell of row) {
         if (cell.type === type) {
+          count++;
+        } else if (type === "alien" && cell.type === "alien-core") {
+          // alien-core も alien としてカウント
           count++;
         }
       }
@@ -155,12 +154,15 @@ export const FieldSystem = {
 
   /**
    * ユーティリティ: 特定の種類のセル座標リストを取得
+   * ✨ 修正: 'alien' を指定した場合、 'alien-core' も含めて取得する
    */
   getCellsByType(field: FieldState, type: CellType): Point[] {
     const points: Point[] = [];
     for (let y = 0; y < field.height; y++) {
       for (let x = 0; x < field.width; x++) {
         if (field.cells[y][x].type === type) {
+          points.push({ x, y });
+        } else if (type === "alien" && field.cells[y][x].type === "alien-core") {
           points.push({ x, y });
         }
       }

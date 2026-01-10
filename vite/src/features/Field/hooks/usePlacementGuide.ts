@@ -3,9 +3,10 @@ import { useGameQuery } from "@/core/api/queries";
 import { useUIStore } from "@/core/store/uiStore";
 import { cardMasterData } from "@/shared/data/cardMasterData";
 import { getCellsByShape } from "@/features/Card/PlayCard/logic";
-import { GridShape, Point } from "@/shared/types/primitives";
-import { CardDefinition, FieldState } from "@/shared/types";
+import { Point } from "@/shared/types/primitives";
+import { CardDefinition, FieldState, CellType } from "@/shared/types";
 import { DESIGN } from "@/shared/constants/design-tokens";
+import { FieldUtils } from "@/core/api/utils";
 
 /**
  * ガイド表示に必要なロジックを提供するカスタムフック
@@ -22,7 +23,6 @@ export const usePlacementGuide = () => {
 	const selectedCard = useMemo<CardDefinition | null>(() => {
 		if (!selectedCardId) return null;
 
-		// パターンA: InstanceID から手札を検索
 		if (playerState) {
 			const handCard = playerState.cardLibrary.find(
 				(c) => c.instanceId === selectedCardId
@@ -31,15 +31,12 @@ export const usePlacementGuide = () => {
 				return cardMasterData.find((c) => c.id === handCard.cardDefinitionId) ?? null;
 			}
 		}
-
-		// パターンB: DefinitionID が直接指定 (デバッグ用)
 		const directMaster = cardMasterData.find(c => c.id === selectedCardId);
 		if (directMaster) return directMaster;
 
 		return null;
 	}, [selectedCardId, playerState]);
 
-	// デバッグログ
 	useEffect(() => {
 		if (selectedCardId && !selectedCard) {
 			console.warn(`[PlacementGuide] Card ID '${selectedCardId}' not found.`);
@@ -51,12 +48,14 @@ export const usePlacementGuide = () => {
 		const cell = fieldData.cells[y]?.[x];
 		if (!cell) return false;
 
-		if (card.cardType === "alien") {
-			// 外来種は「裸地」のみ
-			return cell.type === "bare";
-		}
-		// 駆除・回復は盤面内ならターゲット可能
-		return true;
+		// ✨ 修正: 配列内のいずれかのターゲットにマッチするかチェック
+		const allowedTargets: CellType[] = [];
+		card.transition.forEach(t => {
+			const targets = Array.isArray(t.target) ? t.target : [t.target];
+			allowedTargets.push(...targets);
+		});
+
+		return allowedTargets.includes(cell.type);
 	};
 
 	// 2. 全マスのガイド情報 (配置可能かどうかのマップ)
@@ -78,24 +77,31 @@ export const usePlacementGuide = () => {
 	const effectRange = useMemo<Point[]>(() => {
 		if (!hoveredCell || !selectedCard || !field) return [];
 
-		let rangeShape: GridShape = "point";
-
-		// カードタイプごとの形状定義
-		if (selectedCard.cardType === "alien") {
-			// 外来種の場合、配置範囲は1マスだが、
-			// 「成体時の効果範囲（拡散範囲）」をハイライトしたい
-			rangeShape = selectedCard.expansionRange;
-		} else if (selectedCard.cardType === "eradication") {
-			rangeShape = selectedCard.eradicationRange;
-		} else if (selectedCard.cardType === "recovery") {
-			rangeShape = selectedCard.recoveryRange;
+		// 連鎖駆除 (Chain) の特別ハイライト
+		if (selectedCard.cardType === "eradication" && selectedCard.eradicationType === "chain") {
+			const cell = FieldUtils.getCell(field, hoveredCell);
+			// Coreにホバーしている場合のみ、その一族全体をハイライト
+			if (cell && cell.type === "alien-core" && cell.alienUnitId) {
+				const linkedCells = [
+					...FieldUtils.getCellsByType(field, "alien"),
+					...FieldUtils.getCellsByType(field, "alien-core")
+				].filter(p => {
+					const c = FieldUtils.getCell(field, p);
+					return c?.alienUnitId === cell.alienUnitId;
+				});
+				return linkedCells;
+			}
 		}
+
+		// 通常の範囲計算
+		const { shape, scale } = selectedCard.range;
 
 		return getCellsByShape(
 			field.width,
 			field.height,
 			{ x: hoveredCell.x, y: hoveredCell.y },
-			rangeShape
+			shape,
+			scale
 		);
 	}, [hoveredCell, selectedCard, field]);
 
