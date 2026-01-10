@@ -37,7 +37,7 @@ export const playCardFeature: GameFeature = {
       // 1. コスト（AP）不足チェック
       if (playerState.currentEnvironment < cardDef.cost) {
         console.warn(`[PlayCard] Not enough AP. Required: ${cardDef.cost}, Current: ${playerState.currentEnvironment}`);
-        gameActions.ui.notify({ message: "APが不足しています", player: activePlayerId });
+        gameActions.ui.notify({ message: "APが不足しています" });
         return;
       }
 
@@ -47,7 +47,7 @@ export const playCardFeature: GameFeature = {
       );
       if (isCooldown) {
         console.warn(`[PlayCard] Card is on cooldown.`);
-        gameActions.ui.notify({ message: "クールダウン中です", player: activePlayerId });
+        gameActions.ui.notify({ message: "クールダウン中です" });
         return;
       }
 

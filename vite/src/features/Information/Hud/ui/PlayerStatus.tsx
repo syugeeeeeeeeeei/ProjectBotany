@@ -139,7 +139,6 @@ export const PlayerStatus: React.FC<PlayerStatusProps> = ({
       gameActions.ui.notify({
         message: "相手のターンです",
         type: "error",
-        player: playerId,
       });
       return;
     }

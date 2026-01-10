@@ -1,6 +1,11 @@
-import { useUIStore, NotificationItem } from "@/core/store/uiStore";
+// vite/src/core/systems/AlertSystem.tsx
+import {
+  useUIStore,
+  NotificationItem,
+  NotificationTarget,
+} from "@/core/store/uiStore";
+import { useGameStore } from "@/core/store/gameStore"; // ✨ 追加: アクティブプレイヤー取得用
 import { v4 as uuidv4 } from "uuid";
-import { PlayerType } from "@/shared/types";
 
 // 通知のデフォルト表示時間 (ms)
 const DEFAULT_DURATION = 3000;
@@ -10,16 +15,26 @@ export class AlertSystem {
 
   /**
    * 通知を追加し、自動削除タイマーをセットする
+   * target が 'current' の場合は現在のターンプレイヤーに解決される
    */
   static notify(
     message: string,
     type: NotificationItem["type"] = "info",
-    player?: PlayerType,
+    target: "native" | "alien" | "broadcast" | "current" = "current", // ✨ 修正: target指定に対応
   ) {
     const id = uuidv4();
 
+    // ターゲットの解決
+    let resolvedTarget: NotificationTarget;
+    if (target === "current") {
+      // 現在のStore状態からアクティブプレイヤーを取得
+      resolvedTarget = useGameStore.getState().activePlayerId;
+    } else {
+      resolvedTarget = target;
+    }
+
     // Storeに追加
-    useUIStore.getState().pushNotification(message, type, player);
+    useUIStore.getState().pushNotification(message, type, resolvedTarget);
 
     // 自動削除タイマーのセット
     this.scheduleRemoval(id, DEFAULT_DURATION);

@@ -76,7 +76,7 @@ export const useHandLogic = (player: PlayerType) => {
 			// クールダウンチェック
 			const isCooldown = playerState?.cooldownActiveCards.some(c => c.cardId === card.instanceId);
 			if (isCooldown) {
-				gameActions.ui.notify({ message: "クールダウン中です", player });
+				gameActions.ui.notify({ message: "クールダウン中です" });
 				return;
 			}
 
@@ -84,13 +84,13 @@ export const useHandLogic = (player: PlayerType) => {
 			if (card.usageLimit !== undefined) {
 				const usedCount = playerState?.limitedCardsUsedCount?.[card.id] ?? 0;
 				if (usedCount >= card.usageLimit) {
-					gameActions.ui.notify({ message: "使用回数制限に達しています", player });
+					gameActions.ui.notify({ message: "使用回数制限に達しています" });
 					return;
 				}
 			}
 
 			selectionActions.select(card.instanceId);
-		}, [isInteractionLocked, isMyTurn, playerState, player, selectionActions]),
+		}, [isInteractionLocked, isMyTurn, playerState, selectionActions]),
 
 		onCardDeselect: useCallback(() => selectionActions.deselect(), [selectionActions]),
 	};

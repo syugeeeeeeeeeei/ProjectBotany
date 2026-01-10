@@ -1,14 +1,30 @@
+// vite/src/core/store/uiStore.ts
 import { create } from "zustand";
 import { immer } from "zustand/middleware/immer";
 import { v4 as uuidv4 } from "uuid";
-import { CellState, PlayerType } from "@/shared/types";
+import { CellState } from "@/shared/types";
+
+// 通知のターゲット定義
+export type NotificationTarget = "alien" | "native" | "broadcast";
+
+// ✨ 追加: 通知アクション用のProps型定義
+export interface NotifyProps {
+  message: string;
+  type?: "info" | "error" | "success" | "system";
+  /** * 通知の表示先 
+   * - undefined / 'current': 現在のターンプレイヤー (デフォルト)
+   * - 'alien' / 'native': 指定プレイヤーのみ
+   * - 'broadcast': 全員
+   */
+  target?: "alien" | "native" | "broadcast" | "current";
+}
 
 // 通知の型定義
 export interface NotificationItem {
   id: string;
   message: string;
   type: "info" | "error" | "success" | "system";
-  player?: PlayerType; // どちらのプレイヤーに対する通知か（省略時はシステム全体）
+  target: NotificationTarget;
   timestamp: number;
 }
 
@@ -34,7 +50,7 @@ interface UIState {
   /** デバッグ設定 */
   debugSettings: {
     showGestureArea: boolean;
-    showFps: boolean; // ✨ 追加: FPS表示フラグ
+    showFps: boolean;
   };
 }
 
@@ -47,10 +63,15 @@ interface UIActions {
   setHoverValid: (isValid: boolean) => void;
 
   /** 通知を追加 */
-  pushNotification: (message: string, type?: NotificationItem["type"], player?: PlayerType) => void;
+  pushNotification: (
+    message: string,
+    type?: NotificationItem["type"],
+    target?: NotificationTarget
+  ) => void;
+
   /** 通知を削除 */
   removeNotification: (id: string) => void;
-  /** ✨ 全ての通知を削除 (ターン交代時用) */
+  /** 全ての通知を削除 */
   clearNotifications: () => void;
 
   setCardPreview: (isPreview: boolean) => void;
@@ -65,14 +86,14 @@ export const useUIStore = create(
     selectedCell: null,
     hoveredCell: null,
     selectedCardId: null,
-    isHoverValid: false, // 初期値はfalse
+    isHoverValid: false,
     notifications: [],
     isCardPreview: false,
     isInteractionLocked: false,
 
     debugSettings: {
       showGestureArea: false,
-      showFps: false, // ✨ 初期値: 非表示
+      showFps: false,
     },
 
     // Actions
@@ -83,7 +104,6 @@ export const useUIStore = create(
     hoverCell: (cell) =>
       set((state) => {
         state.hoveredCell = cell;
-        // セルが変わったら配置可能状態はリセット
         if (cell === null) {
           state.isHoverValid = false;
         }
@@ -101,13 +121,13 @@ export const useUIStore = create(
       }),
 
     // 通知ロジック
-    pushNotification: (message, type = "info", player) =>
+    pushNotification: (message, type = "info", target = "broadcast") =>
       set((state) => {
         const newItem: NotificationItem = {
           id: uuidv4(),
           message,
           type,
-          player,
+          target,
           timestamp: Date.now(),
         };
         // 新しいものを先頭に追加し、最大3件に制限
@@ -119,7 +139,6 @@ export const useUIStore = create(
         state.notifications = state.notifications.filter((n) => n.id !== id);
       }),
 
-    // ✨ 全削除アクションの実装
     clearNotifications: () =>
       set((state) => {
         state.notifications = [];
@@ -145,5 +164,5 @@ export const useUIStore = create(
       set((state) => {
         state.debugSettings = { ...state.debugSettings, ...settings };
       }),
-  })),
+  }))
 );

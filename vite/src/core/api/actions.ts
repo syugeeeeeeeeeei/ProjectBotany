@@ -3,8 +3,8 @@ import { z } from "zod";
 import { RoundSystem } from "@/core/systems/RoundSystem";
 import { TurnSystem } from "@/core/systems/TurnSystem";
 import { useGameStore } from "@/core/store/gameStore";
-import { useUIStore } from "@/core/store/uiStore";
-import { CellState, PlayerType, GameState } from "@/shared/types";
+import { useUIStore, NotifyProps } from "@/core/store/uiStore"; // ✨ 修正: NotifyPropsをインポート
+import { CellState, GameState } from "@/shared/types";
 import { AlertSystem } from "../systems/AlertSystem";
 
 // --- Validation Schemas ---
@@ -14,10 +14,11 @@ const MutateCellSchema = z.object({
   type: z.enum(["native", "alien", "bare", "pioneer"]),
 });
 
+// NotifyPropsの型定義に合わせたZodスキーマ
 const NotifySchema = z.object({
   message: z.string(),
   type: z.enum(["info", "error", "success", "system"]).optional(),
-  player: z.enum(["native", "alien"]).optional(),
+  target: z.enum(["native", "alien", "broadcast", "current"]).optional(),
 });
 
 const SelectCardSchema = z.string().uuid();
@@ -80,18 +81,26 @@ export const gameActions = {
       useUIStore.getState().selectCard(cardId);
     },
     deselectCard: () => useUIStore.getState().deselectCard(),
-    hoverCell: (cell: CellState | null) => useUIStore.getState().hoverCell(cell),
+    hoverCell: (cell: CellState | null) =>
+      useUIStore.getState().hoverCell(cell),
 
-    updateDebugSettings: (settings: Parameters<ReturnType<typeof useUIStore.getState>["updateDebugSettings"]>[0]) =>
-      useUIStore.getState().updateDebugSettings(settings),
+    updateDebugSettings: (
+      settings: Parameters<
+        ReturnType<typeof useUIStore.getState>["updateDebugSettings"]
+      >[0]
+    ) => useUIStore.getState().updateDebugSettings(settings),
 
-    /** ✨ 新しい通知システムへの対応 */
-    notify: (input: unknown) => {
-      const { message, type, player } = NotifySchema.parse(input);
+    /** ✨ 修正: NotifyProps型を受け取り、型安全にする */
+    notify: (input: NotifyProps) => {
+      // ランタイムバリデーション（念のため）
+      const { message, type, target } = NotifySchema.parse(input);
+
+      // AlertSystemへ委譲
+      // targetがundefinedの場合、AlertSystem.notifyのデフォルト引数(current)が適用される
       AlertSystem.notify(
         message,
         type as "info" | "error" | "success" | "system",
-        player as PlayerType
+        target as "native" | "alien" | "broadcast" | "current"
       );
     },
   },
