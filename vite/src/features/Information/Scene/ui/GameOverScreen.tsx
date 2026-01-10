@@ -64,12 +64,15 @@ interface GameOverDialogProps {
   side: "top" | "bottom";
   playerId: PlayerType;
   onRestart: () => void;
+  // ✨ 追加: 準備完了状態
+  isReady: boolean;
 }
 
 export const GameOverDialog: React.FC<GameOverDialogProps> = ({
   side,
   playerId,
   onRestart,
+  isReady,
 }) => {
   const { winningPlayerId, alienScore, nativeScore } =
     useGameQuery.useGameState();
@@ -99,14 +102,16 @@ export const GameOverDialog: React.FC<GameOverDialogProps> = ({
       <div>
         <BaseActionButton
           onClick={onRestart}
+          disabled={isReady}
           style={{
-            padding: "15px 35px", // サイズ縮小
-            fontSize: "1.5rem", // フォントサイズ縮小
-            backgroundColor: "#2E7D32", // 緑色に変更 (Material Green 800)
-            border: "1px solid #4CAF50",
+            padding: "15px 35px",
+            fontSize: "1.5rem",
+            backgroundColor: isReady ? "#555" : "#2E7D32",
+            border: isReady ? "1px solid #777" : "1px solid #4CAF50",
+            cursor: isReady ? "default" : "pointer",
           }}
         >
-          タイトルに戻る
+          {isReady ? "待機中..." : "タイトルに戻る"}
         </BaseActionButton>
       </div>
     </Container>

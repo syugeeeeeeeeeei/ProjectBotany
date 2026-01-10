@@ -37,7 +37,7 @@ export const FieldSystem = {
 
     // 2. ランダムに10箇所を選んで「裸地 (bare)」にする
     const totalCells = width * height;
-    const bareCount = 10;
+    const bareCount = 20;
     const bareIndices = new Set<number>();
 
     // 重複しないようにインデックスを選ぶ

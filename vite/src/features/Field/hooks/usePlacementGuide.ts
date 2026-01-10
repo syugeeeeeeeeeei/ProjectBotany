@@ -1,3 +1,5 @@
+// vite/src/features/Field/hooks/usePlacementGuide.ts
+
 import { useMemo, useEffect } from "react";
 import { useGameQuery } from "@/core/api/queries";
 import { useUIStore } from "@/core/store/uiStore";
@@ -43,19 +45,52 @@ export const usePlacementGuide = () => {
 		}
 	}, [selectedCardId, selectedCard]);
 
-	// ヘルパー: 配置可否判定
+	// ✨ 修正: 配置可否判定ロジックの更新
 	const checkPlacementValid = (x: number, y: number, card: CardDefinition, fieldData: FieldState): boolean => {
 		const cell = fieldData.cells[y]?.[x];
 		if (!cell) return false;
 
-		// ✨ 修正: 配列内のいずれかのターゲットにマッチするかチェック
+		// ターゲットリスト作成
 		const allowedTargets: CellType[] = [];
 		card.transition.forEach(t => {
 			const targets = Array.isArray(t.target) ? t.target : [t.target];
 			allowedTargets.push(...targets);
 		});
 
-		return allowedTargets.includes(cell.type);
+		// A. 外来種カード (Alien)
+		// 従来通り、配置しようとしている「中心点」がターゲット(bare等)である必要がある
+		if (card.cardType === "alien") {
+			return allowedTargets.includes(cell.type);
+		}
+
+		// B. 連鎖駆除 (Chain Eradication)
+		// 特定の個体(Core)をクリックする必要があるため、中心点判定のまま
+		if (card.cardType === "eradication" && card.eradicationType === "chain") {
+			return allowedTargets.includes(cell.type);
+		}
+
+		// C. 範囲系の駆除・回復 (Simple/Strong Eradication, Recovery)
+		// ✨ 中心点が対象外でも、効果範囲内に一つでも対象が含まれていればOKとする
+		if (card.cardType === "eradication" || card.cardType === "recovery") {
+			const { shape, scale } = card.range;
+
+			// その座標に置いた場合の効果範囲を計算
+			const affectedPoints = getCellsByShape(
+				fieldData.width,
+				fieldData.height,
+				{ x, y },
+				shape,
+				scale
+			);
+
+			// 範囲内のいずれかのセルがターゲットリストに含まれていれば True
+			return affectedPoints.some(p => {
+				const targetCell = fieldData.cells[p.y]?.[p.x];
+				return targetCell && allowedTargets.includes(targetCell.type);
+			});
+		}
+
+		return false;
 	};
 
 	// 2. 全マスのガイド情報 (配置可能かどうかのマップ)

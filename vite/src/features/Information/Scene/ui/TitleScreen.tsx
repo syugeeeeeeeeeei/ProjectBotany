@@ -22,7 +22,7 @@ const Container = styled.div<{ $side: "top" | "bottom" }>`
 `;
 
 const Title = styled.h1`
-  font-size: 3rem; /* 少しサイズ調整 */
+  font-size: 3rem;
   background: linear-gradient(180deg, #36d63eff, #162716ff);
   margin-bottom: 1rem;
   -webkit-background-clip: text;
@@ -42,9 +42,15 @@ const SubTitle = styled.h2`
 interface TitleScreenProps {
   side: "top" | "bottom";
   onStart: () => void;
+  // ✨ 追加: 準備完了状態を受け取る
+  isReady: boolean;
 }
 
-export const TitleScreen: React.FC<TitleScreenProps> = ({ side, onStart }) => {
+export const TitleScreen: React.FC<TitleScreenProps> = ({
+  side,
+  onStart,
+  isReady,
+}) => {
   return (
     <Container $side={side}>
       <Title>『侵緑』</Title>
@@ -52,14 +58,17 @@ export const TitleScreen: React.FC<TitleScreenProps> = ({ side, onStart }) => {
       <div>
         <BaseActionButton
           onClick={onStart}
+          disabled={isReady} // 準備完了済なら無効化
           style={{
-            padding: "15px 35px", // サイズ縮小
-            fontSize: "1.5rem", // フォントサイズ縮小
-            backgroundColor: "#2E7D32", // 緑色に変更 (Material Green 800)
-            border: "1px solid #4CAF50",
+            padding: "15px 35px",
+            fontSize: "1.5rem",
+            // 準備完了ならグレーアウト、未完了なら緑
+            backgroundColor: isReady ? "#555" : "#2E7D32",
+            border: isReady ? "1px solid #777" : "1px solid #4CAF50",
+            cursor: isReady ? "default" : "pointer",
           }}
         >
-          ゲーム開始
+          {isReady ? "待機中..." : "ゲーム開始"}
         </BaseActionButton>
       </div>
     </Container>

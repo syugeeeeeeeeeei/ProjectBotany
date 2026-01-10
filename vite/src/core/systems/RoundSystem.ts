@@ -19,7 +19,7 @@ export const RoundSystem = {
       const player = newPlayerStates[playerId];
       const newMaxAp = Math.min(nextRound, gameState.maximumRounds);
 
-      // ✨ 修正: クールダウンの更新処理を追加
+      // クールダウンの更新処理
       // 残りラウンド数を1減らし、0以下のものを除去する
       const updatedCooldowns = player.cooldownActiveCards
         .map((c) => ({ ...c, roundsRemaining: c.roundsRemaining - 1 }))
@@ -29,7 +29,7 @@ export const RoundSystem = {
         ...player,
         maxEnvironment: newMaxAp,
         currentEnvironment: newMaxAp,
-        cooldownActiveCards: updatedCooldowns, // 更新されたクールダウンリストを適用
+        cooldownActiveCards: updatedCooldowns,
       };
     });
 
@@ -39,21 +39,13 @@ export const RoundSystem = {
       for (let x = 0; x < gameField.width; x++) {
         const cell = gameField.cells[y][x];
         if (cell.type === "pioneer") {
-          // ✨ 修正: 生成された直後のラウンド開始時には回復しないようにする
-          // pioneerCreatedAt は先駆植生が作られたラウンド (例: 1)
-          // currentRound は終了したばかりのラウンド (例: 1)
-          // この startRound が呼ばれるのは R1終了後の R2開始処理。
-          // 1-n に作られた場合: pioneerCreatedAt = 1, currentRound = 1
-          // 1 > 1 (False) となり回復しない。
-          // R2終了後の R3開始処理: currentRound = 2
-          // 2 > 1 (True) となり回復する。
           const createdAt = cell.pioneerCreatedAt ?? 0;
           if (currentRound > createdAt) {
             newCells.push({
               ...cell,
               type: "native",
               ownerId: "native",
-              pioneerCreatedAt: undefined // 属性を消去
+              pioneerCreatedAt: undefined
             });
           }
         }
@@ -96,7 +88,7 @@ export const RoundSystem = {
 
     // 3. 終了判定: 現在のラウンドが最大ラウンドに達しているか
     if (latestState.currentRound >= latestState.maximumRounds) {
-      console.log("🏆 Game Over: Maximum rounds reached.");
+      console.log("🏆 Game Over Check: Maximum rounds reached.");
 
       // 最終的なスコアの集計（支配マス数比較）
       const finalNativeScore = FieldSystem.countCellsByType(latestState.gameField, "native");
@@ -110,14 +102,20 @@ export const RoundSystem = {
         winner = "alien";
       }
 
-      // ゲーム終了状態へ遷移
-      useGameStore.getState().setState({
-        isGameOver: true,
-        winningPlayerId: winner,
-        nativeScore: finalNativeScore,
-        alienScore: finalAlienScore,
-        currentPhase: "end"
-      });
+      // ✨ 修正: 勝敗確定後、少し間を開けてからゲーム終了画面へ遷移する
+      // これにより、最後の盤面状況（外来種の最終的な拡散結果など）をプレイヤーが確認できる
+      console.log("⏳ Waiting for game over transition...");
+      setTimeout(() => {
+        console.log("🏁 Triggering Game Over State.");
+        useGameStore.getState().setState({
+          isGameOver: true,
+          winningPlayerId: winner,
+          nativeScore: finalNativeScore,
+          alienScore: finalAlienScore,
+          currentPhase: "end"
+        });
+      }, 1500); // 3秒待機
+
       return;
     }
 

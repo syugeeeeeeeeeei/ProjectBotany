@@ -135,32 +135,22 @@ const executeEradicationCard = (
   let removedCount = 0;
   let affectedCount = 0;
 
-  // ターゲットバリデーション
-  const targetCell = FieldUtils.getCell(currentGameState.gameField, targetPoint);
-  if (!targetCell) return gameState;
-
-  // Chainの場合は Core 限定
+  // Chain (連鎖) タイプは「対象を選択して発動」する性質上、クリックした場所がCoreである必要がある
   if (eradicationType === "chain") {
-    if (targetCell.type !== "alien-core") {
+    const targetCell = FieldUtils.getCell(currentGameState.gameField, targetPoint);
+    if (!targetCell || targetCell.type !== "alien-core") {
       const msg = "連鎖駆除は「外来種(Core)」を指定してください。";
-      console.warn(`[PlayCard] ❌ ${msg}`);
-      AlertSystem.notify(msg, "error");
-      return gameState;
-    }
-  } else {
-    const allowedTargets = getAllowedTargets(transition);
-    if (!allowedTargets.includes(targetCell.type)) {
-      const msg = "無効なターゲットです。";
       console.warn(`[PlayCard] ❌ ${msg}`);
       AlertSystem.notify(msg, "error");
       return gameState;
     }
   }
 
-  // ターゲット座標の算出
+  // 効果範囲内の座標をすべて取得
   let targetPoints: Point[] = [];
 
   if (eradicationType === "chain") {
+    const targetCell = FieldUtils.getCell(currentGameState.gameField, targetPoint);
     if (targetCell && targetCell.alienUnitId) {
       targetPoints = FieldUtils.getCellsByType(currentGameState.gameField, "alien")
         .concat(FieldUtils.getCellsByType(currentGameState.gameField, "alien-core"))
@@ -168,7 +158,6 @@ const executeEradicationCard = (
           const c = FieldUtils.getCell(currentGameState.gameField, p);
           return c?.alienUnitId === targetCell.alienUnitId;
         });
-      console.log(`[PlayCard] ⛓️ Chain Destruction selected: ${targetPoints.length} cells linked to ID ${targetCell.alienUnitId}`);
     }
   } else {
     targetPoints = getCellsByShape(
@@ -180,12 +169,26 @@ const executeEradicationCard = (
     );
   }
 
+  // ✨ 修正: 効果範囲内に「有効なターゲット」が1つでも存在するかチェックする
+  const allowedTargets = getAllowedTargets(transition);
+  const hasValidTarget = targetPoints.some(p => {
+    const cell = FieldUtils.getCell(currentGameState.gameField, p);
+    return cell && allowedTargets.includes(cell.type);
+  });
+
+  if (!hasValidTarget) {
+    const msg = "効果範囲内に対象が存在しません。";
+    console.warn(`[PlayCard] ❌ ${msg}`);
+    AlertSystem.notify(msg, "error");
+    return gameState;
+  }
+
+  // 範囲内の各セルに対して効果適用
   targetPoints.forEach((p) => {
     const cell = FieldUtils.getCell(currentGameState.gameField, p);
     if (!cell) return;
 
     // 1. 外来種ユニット(Core)の処理
-    // ✨ 修正: 反撃判定とインスタンス削除は alien-core の場合のみ行う
     if (cell.type === "alien-core" && cell.alienUnitId) {
       const unitId = cell.alienUnitId;
       const instance = currentGameState.alienInstances[unitId];
@@ -198,7 +201,6 @@ const executeEradicationCard = (
 
         if (isSimple && !preventsCounter && hasCounter) {
           console.warn(`[PlayCard] ⚠️ Counter Ability Triggered at [${p.x}, ${p.y}]!`);
-          // ✨ 修正: 駆除された外来種(Core)の座標を渡す
           currentGameState = triggerCounterEffect(currentGameState, p, instance.cardDefinitionId);
         }
 
@@ -209,7 +211,6 @@ const executeEradicationCard = (
         removedCount++;
       }
     } else if (cell.type === "alien") {
-      // 領域(alien)の場合はユニット削除処理は不要だが、除去カウントは増やす
       removedCount++;
     }
 
@@ -257,17 +258,7 @@ const executeRecoveryCard = (
   const currentGameState = { ...gameState };
   let recoveredCount = 0;
 
-  // ターゲットバリデーション
-  const targetCell = FieldUtils.getCell(currentGameState.gameField, targetPoint);
-  if (!targetCell) return gameState;
-
-  const allowedTargets = getAllowedTargets(transition);
-  if (!allowedTargets.includes(targetCell.type)) {
-    const msg = "無効なターゲットです。";
-    AlertSystem.notify(msg, "error");
-    return gameState;
-  }
-
+  // 効果範囲内の座標をすべて取得
   const targetPoints = getCellsByShape(
     currentGameState.gameField.width,
     currentGameState.gameField.height,
@@ -276,6 +267,20 @@ const executeRecoveryCard = (
     range.scale
   );
 
+  // ✨ 修正: 効果範囲内に「有効なターゲット」が1つでも存在するかチェックする
+  const allowedTargets = getAllowedTargets(transition);
+  const hasValidTarget = targetPoints.some(p => {
+    const cell = FieldUtils.getCell(currentGameState.gameField, p);
+    return cell && allowedTargets.includes(cell.type);
+  });
+
+  if (!hasValidTarget) {
+    const msg = "効果範囲内に対象が存在しません。";
+    AlertSystem.notify(msg, "error");
+    return gameState;
+  }
+
+  // 範囲内の各セルに対して効果適用
   targetPoints.forEach((p) => {
     const cell = FieldUtils.getCell(currentGameState.gameField, p);
     if (!cell) return;
@@ -317,21 +322,14 @@ const executeRecoveryCard = (
 
 /**
  * 反撃効果 (Counter Effect)
- * ※現在は「種子散布」のみ対応。
- * ※将来的に効果を増やす際には関数切り出しやイベント化を推奨
  */
 const triggerCounterEffect = (gameState: GameState, center: Point, originCardId: string): GameState => {
   const newState = { ...gameState };
   const { gameField } = newState;
 
-  // ✨ 修正: 盤面内の全裸地マスを取得
   const allBareCells = FieldUtils.getCellsByType(gameField, "bare");
-
-  // ✨ 修正: 駆除対象となったマス(center)を候補から除外
-  // (駆除前の状態だとまだbareではないかもしれないが、座標一致で除外する)
   const candidates = allBareCells.filter(p => !(p.x === center.x && p.y === center.y));
 
-  // ✨ 修正: 50%の確率で2個、それ以外は1個生成
   const countBase = Math.random() < 0.5 ? 2 : 1;
   const seedCount = Math.min(candidates.length, countBase);
 
@@ -345,22 +343,17 @@ const triggerCounterEffect = (gameState: GameState, center: Point, originCardId:
 
   console.log(`[Counter] Spawning ${seedCount} seeds (Target: ${countBase}) from ${originCardId}`);
 
-  // ▼▼▼ 追加修正箇所 ▼▼▼
-  // 反撃元のカード情報を取得して名前を表示する
   const originCardDef = getCardDefinition(originCardId);
   const cardName = originCardDef ? originCardDef.name : "外来種";
 
   AlertSystem.notify(
     `【反撃】${cardName}が種子を拡散しました`,
-    "system",    // 種類: システム通知（強調表示）
-    "broadcast"  // 対象: 両プレイヤー
+    "system",
+    "broadcast"
   );
-  // ▲▲▲ 追加修正箇所 ▲▲▲
 
   targets.forEach(p => {
     const newId = uuidv4();
-
-    // 反撃で生まれた種は「次のラウンドに生まれた扱い」(+1)
     const effectiveSpawnRound = newState.currentRound + 1;
 
     const newInstance: AlienInstance = {

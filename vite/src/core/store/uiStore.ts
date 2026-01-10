@@ -7,7 +7,7 @@ import { CellState } from "@/shared/types";
 // 通知のターゲット定義
 export type NotificationTarget = "alien" | "native" | "broadcast";
 
-// ✨ 追加: 通知アクション用のProps型定義
+// 通知アクション用のProps型定義
 export interface NotifyProps {
   message: string;
   type?: "info" | "error" | "success" | "system";
@@ -78,23 +78,30 @@ interface UIActions {
   setInteractionLock: (isLocked: boolean) => void;
   deselectCard: () => void;
   updateDebugSettings: (settings: Partial<UIState["debugSettings"]>) => void;
+
+  /** UI状態をリセットする */
+  reset: () => void;
 }
+
+// 初期状態を定数として定義
+const INITIAL_STATE: UIState = {
+  selectedCell: null,
+  hoveredCell: null,
+  selectedCardId: null,
+  isHoverValid: false,
+  notifications: [],
+  isCardPreview: false,
+  isInteractionLocked: false,
+  debugSettings: {
+    showGestureArea: false,
+    showFps: false,
+  },
+};
 
 export const useUIStore = create(
   immer<UIState & UIActions>((set) => ({
-    // State
-    selectedCell: null,
-    hoveredCell: null,
-    selectedCardId: null,
-    isHoverValid: false,
-    notifications: [],
-    isCardPreview: false,
-    isInteractionLocked: false,
-
-    debugSettings: {
-      showGestureArea: false,
-      showFps: false,
-    },
+    // State (Spread initial state)
+    ...INITIAL_STATE,
 
     // Actions
     selectCell: (cell) =>
@@ -164,5 +171,8 @@ export const useUIStore = create(
       set((state) => {
         state.debugSettings = { ...state.debugSettings, ...settings };
       }),
+
+    // ✨ 追加: 全状態をリセット
+    reset: () => set(INITIAL_STATE),
   }))
 );
