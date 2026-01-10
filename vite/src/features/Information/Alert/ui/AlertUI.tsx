@@ -77,7 +77,7 @@ const AlertItemWrapper = styled.div<{ $type: string; $isExiting: boolean }>`
   }};
 
   /* システム通知の場合は文字色を黒に、それ以外は白 */
-  color: "#fff";
+  color: ${({ $type }) => ($type === "system" ? "#3e3e3eff" : "#fff")};
 
   /* システム通知の場合は太枠をつける */
   border: ${({ $type }) => ($type === "system" ? "2px solid #fff" : "none")};

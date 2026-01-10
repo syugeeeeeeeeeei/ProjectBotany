@@ -14,6 +14,9 @@ export const BannerManager: React.FC = () => {
 
   const [showBanner, setShowBanner] = useState(false);
   const [isBannerExiting, setIsBannerExiting] = useState(false);
+  // ✨ 追加: シーケンス中の操作ロック用フラグ
+  const [isSequenceLocked, setIsSequenceLocked] = useState(false);
+
   const [bannerContent, setBannerContent] = useState({
     message: "",
     subMessage: "",
@@ -23,6 +26,7 @@ export const BannerManager: React.FC = () => {
   const exitTimerRef = useRef<NodeJS.Timeout | null>(null);
   const hideTimerRef = useRef<NodeJS.Timeout | null>(null);
   const sequenceTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const lockTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   const getPlayerLabel = (id: string) => (id === "alien" ? "外来種" : "在来種");
 
@@ -53,6 +57,10 @@ export const BannerManager: React.FC = () => {
       const isFinal = payload.round === GAME_SETTINGS.MAXIMUM_ROUNDS;
       const roundText = isFinal ? "FINAL ROUND" : `ROUND ${payload.round}`;
 
+      // ✨ ロック開始: ラウンド開始からターン開始表示完了まで一貫してロックする
+      setIsSequenceLocked(true);
+      if (lockTimerRef.current) clearTimeout(lockTimerRef.current);
+
       // 1. まずラウンド数を表示 (subMessageなし)
       triggerBanner(roundText, "");
 
@@ -62,6 +70,12 @@ export const BannerManager: React.FC = () => {
       sequenceTimerRef.current = setTimeout(() => {
         // ラウンド開始時は常に外来種(alien)から始まる
         triggerBanner(`${getPlayerLabel("alien")}のターン`, "Turn Start");
+
+        // 2つ目のバナーが終了するタイミングでロック解除
+        // 2800ms (開始) + 2000ms (表示) + 500ms (フェード) = 5300ms
+        lockTimerRef.current = setTimeout(() => {
+          setIsSequenceLocked(false);
+        }, 2500); // triggerBanner呼び出しから2500ms後
       }, 2800);
     };
 
@@ -71,10 +85,19 @@ export const BannerManager: React.FC = () => {
       // 進行中のシーケンスタイマーがあればキャンセル（念のため）
       if (sequenceTimerRef.current) clearTimeout(sequenceTimerRef.current);
 
+      // ✨ ロック開始: 単発バナー表示中もロック
+      setIsSequenceLocked(true);
+      if (lockTimerRef.current) clearTimeout(lockTimerRef.current);
+
       triggerBanner(
         `${getPlayerLabel(payload.playerId)}のターン`,
         "Turn Action",
       );
+
+      // バナー終了後にロック解除
+      lockTimerRef.current = setTimeout(() => {
+        setIsSequenceLocked(false);
+      }, 2500);
     };
 
     gameEventBus.on("ROUND_START", onRoundStart);
@@ -88,28 +111,34 @@ export const BannerManager: React.FC = () => {
       if (exitTimerRef.current) clearTimeout(exitTimerRef.current);
       if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
       if (sequenceTimerRef.current) clearTimeout(sequenceTimerRef.current);
+      if (lockTimerRef.current) clearTimeout(lockTimerRef.current);
     };
-    // ✨ 修正: activePlayer を依存配列から削除
-    // activePlayerが変わるたびにuseEffectが再実行され、タイマーが消されるのを防ぐ
+    // activePlayer を依存配列から削除
   }, [isGameOver]);
 
-  if (!showBanner) return null;
+  // showBanner または isSequenceLocked が true の場合は操作をブロック
+  if (!showBanner && !isSequenceLocked) return null;
 
   return (
     <>
-      <TurnBanner
-        side="top"
-        message={bannerContent.message}
-        subMessage={bannerContent.subMessage}
-        isExiting={isBannerExiting}
-      />
-      <TurnBanner
-        side="bottom"
-        message={bannerContent.message}
-        subMessage={bannerContent.subMessage}
-        isExiting={isBannerExiting}
-      />
-      {/* バナー表示中は操作ブロック用の透明レイヤー */}
+      {/* showBannerがtrueの時のみバナーを表示 */}
+      {showBanner && (
+        <>
+          <TurnBanner
+            side="top"
+            message={bannerContent.message}
+            subMessage={bannerContent.subMessage}
+            isExiting={isBannerExiting}
+          />
+          <TurnBanner
+            side="bottom"
+            message={bannerContent.message}
+            subMessage={bannerContent.subMessage}
+            isExiting={isBannerExiting}
+          />
+        </>
+      )}
+      {/* バナー表示中およびシーケンスロック中は操作ブロック用の透明レイヤー */}
       <div
         style={{
           position: "absolute",

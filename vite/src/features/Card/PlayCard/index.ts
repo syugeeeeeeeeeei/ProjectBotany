@@ -1,3 +1,4 @@
+
 // vite/src/features/play-card/index.ts
 import { GameFeature } from "@/core/types/architecture";
 import { gameEventBus } from "@/core/event-bus/GameEventBus";
@@ -59,9 +60,12 @@ export const playCardFeature: GameFeature = {
         // クールダウン設定 (定義に設定があれば)
         const newCooldowns = [...playerState.cooldownActiveCards];
         if (cardDef.cooldownTurns && cardDef.cooldownTurns > 0) {
+          // ✨ 修正: RoundSystemはラウンド開始時に減算を行うため、
+          // 次のラウンドで使用不可にする（1ターン待機させる）には、+1して登録する必要がある。
+          // 例: cooldownTurns: 1 の場合、2を登録 -> 次R開始時に1になる(まだ使用不可) -> その次R開始時に0になる(使用可)
           newCooldowns.push({
             cardId: selectedCardId,
-            roundsRemaining: cardDef.cooldownTurns,
+            roundsRemaining: cardDef.cooldownTurns + 1,
           });
         }
 

@@ -1,3 +1,4 @@
+
 // vite/src/features/Card/PlayCard/logic.ts
 
 import { v4 as uuidv4 } from "uuid";
@@ -173,7 +174,8 @@ const executeEradicationCard = (
   const allowedTargets = getAllowedTargets(transition);
   const hasValidTarget = targetPoints.some(p => {
     const cell = FieldUtils.getCell(currentGameState.gameField, p);
-    return cell && allowedTargets.includes(cell.type);
+    if (!cell || !allowedTargets.includes(cell.type)) return false;
+    return true;
   });
 
   if (!hasValidTarget) {
@@ -194,6 +196,7 @@ const executeEradicationCard = (
       const instance = currentGameState.alienInstances[unitId];
 
       if (instance) {
+
         // 反撃判定: Simple駆除 かつ 反撃無効化属性なし
         const isSimple = eradicationType === "simple";
         const masterData = getCardDefinition(instance.cardDefinitionId);
@@ -223,6 +226,14 @@ const executeEradicationCard = (
     } else {
       const rule = findMatchingTransition(transition, cell.type);
       if (rule) resultType = rule.result;
+    }
+
+    // ✨ Seedは地形変更もしない
+    if (cell.type === "alien-core" && cell.alienUnitId) {
+      const instance = currentGameState.alienInstances[cell.alienUnitId];
+      if (instance && instance.status === "seed") {
+        resultType = null;
+      }
     }
 
     if (resultType) {
