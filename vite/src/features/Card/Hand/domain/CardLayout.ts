@@ -129,7 +129,7 @@ export const CardLayout = {
 
 		IMAGE: {
 			TOP_Y_OFFSET: 0.015,
-			IMAGE_PLANE_HEIGHT: 1.35, // 0.9 * 1.5
+			IMAGE_PLANE_HEIGHT: 1.5,
 			get SIZE(): [number, number] {
 				return [
 					CardLayout.AREAS.BASE_INNER.CONTENT_WIDTH,
@@ -158,7 +158,7 @@ export const CardLayout = {
 
 		DESC: {
 			TOP_Y_OFFSET: 0.075, // 0.05 * 1.5
-			PLANE_HEIGHT: 1.9, // 1.15 * 1.5
+			PLANE_HEIGHT: 1.8, // 1.15 * 1.5
 			get SIZE(): [number, number] {
 				return [
 					CardLayout.AREAS.BASE_INNER.CONTENT_WIDTH,

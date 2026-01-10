@@ -46,7 +46,7 @@ export const DESIGN = {
       BASE_BG: "#e8e6dd",
       TEXT_WHITE: "#FFFFFF",
       TEXT_BLACK: "#000000",
-      DESC_BG: "#FFFFFF",
+      DESC_BG: "#eeeeee",
     },
   },
 } as const;
