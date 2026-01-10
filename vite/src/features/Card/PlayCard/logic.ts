@@ -317,6 +317,8 @@ const executeRecoveryCard = (
 
 /**
  * 反撃効果 (Counter Effect)
+ * ※現在は「種子散布」のみ対応。
+ * ※将来的に効果を増やす際には関数切り出しやイベント化を推奨
  */
 const triggerCounterEffect = (gameState: GameState, center: Point, originCardId: string): GameState => {
   const newState = { ...gameState };
@@ -342,6 +344,18 @@ const triggerCounterEffect = (gameState: GameState, center: Point, originCardId:
   const targets = shuffled.slice(0, seedCount);
 
   console.log(`[Counter] Spawning ${seedCount} seeds (Target: ${countBase}) from ${originCardId}`);
+
+  // ▼▼▼ 追加修正箇所 ▼▼▼
+  // 反撃元のカード情報を取得して名前を表示する
+  const originCardDef = getCardDefinition(originCardId);
+  const cardName = originCardDef ? originCardDef.name : "外来種";
+
+  AlertSystem.notify(
+    `【反撃】${cardName}が種子を拡散しました`,
+    "system",    // 種類: システム通知（強調表示）
+    "broadcast"  // 対象: 両プレイヤー
+  );
+  // ▲▲▲ 追加修正箇所 ▲▲▲
 
   targets.forEach(p => {
     const newId = uuidv4();

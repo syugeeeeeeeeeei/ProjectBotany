@@ -5,7 +5,7 @@ import { useUIStore, NotificationItem } from "@/core/store/uiStore";
 
 // 🕒 アラートの表示時間はここで定義されています
 const ERROR_DURATION = 3000;
-const DEFAULT_DURATION = 2000;
+const DEFAULT_DURATION = 3000;
 
 // --- Animations ---
 const slideIn = keyframes`
@@ -77,7 +77,7 @@ const AlertItemWrapper = styled.div<{ $type: string; $isExiting: boolean }>`
   }};
 
   /* システム通知の場合は文字色を黒に、それ以外は白 */
-  color: ${({ $type }) => ($type === "system" ? "#000" : "#fff")};
+  color: "#fff";
 
   /* システム通知の場合は太枠をつける */
   border: ${({ $type }) => ($type === "system" ? "2px solid #fff" : "none")};
