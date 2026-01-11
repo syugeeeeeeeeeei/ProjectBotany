@@ -2,7 +2,7 @@ name: Deploy to GitHub Pages
 
 on:
   push:
-    branches: ["main"] # masterの場合は "master" に変更してください
+    branches: ["main"]
   workflow_dispatch:
 
 permissions:
@@ -21,7 +21,6 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
 
-    # ここが重要: プロジェクトが 'vite' サブディレクトリにあるためデフォルトの作業場所を指定
     defaults:
       run:
         working-directory: ./vite
@@ -29,6 +28,11 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      # ✨ 追加: Yarn v4を使うためにCorepackを有効化します
+      # Setup Nodeでキャッシュ機能を使う際、この処理が先に必要です
+      - name: Enable Corepack
+        run: corepack enable
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -49,7 +53,6 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          # ビルド成果物の場所を指定（viteフォルダの中のdist）
           path: "./vite/dist"
 
       - name: Deploy to GitHub Pages
