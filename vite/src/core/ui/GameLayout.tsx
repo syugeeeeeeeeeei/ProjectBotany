@@ -87,7 +87,9 @@ const SceneSetup = () => {
 
       {/* 背景モデル/画像 */}
       {/* <EnvironmentModel /> */}
-      <SceneBackground image="/textures/テーブル3.jpg" />
+      <SceneBackground
+        image={`${import.meta.env.BASE_URL}/textures/テーブル3.jpg`}
+      />
 
       {/* デバッグ用グリッド */}
       {/* <gridHelper args={[20, 20, 0x444444, 0x222222]} position={[0, -0.1, 0]} /> */}
